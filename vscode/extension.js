@@ -26,9 +26,12 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
+const { initDatabase, createTables } = require('../out/database');
 
 
 exports.activate = async function activate(context) {
+  initDatabase();
+  createTables();
   context.subscriptions.push(
     commands.registerTextEditorCommand(
       "notesnlh.cycleTaskForwardNew",
