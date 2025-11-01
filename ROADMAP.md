@@ -254,7 +254,6 @@
 -  Performance: <100ms for most operations
 -  No data loss during migration
 -  Positive user feedback on marketplace
--  Used successfully at Q-Centrix (restricted environment)
 
 ---
 
