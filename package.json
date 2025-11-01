@@ -154,9 +154,11 @@
     "publisherId": ""
   },
   "dependencies": {
+    "better-sqlite3": "^12.4.1",
     "compromise": "^14.14.0"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "esbuild": "^0.23.1"
   }
 }
