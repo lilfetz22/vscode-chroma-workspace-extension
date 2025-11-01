@@ -1,0 +1,85 @@
+{
+    "editor.tokenColorCustomizations": {
+      "textMateRules": [
+        {
+          "scope": "source.notesnlh",
+          "settings": {
+            "foreground": "#d4d4d4ff"
+          }
+        },
+        {
+          "scope": "markup.heading.notesnlh",
+          "settings": {
+            "foreground": "#569cd6ff"
+          }
+        },
+        {
+          "scope": "markup.changed.notesnlh",
+          "settings": {
+            "foreground": "#569cd6ff"
+          }
+        },
+        {
+          "scope": "markup.canceled.notesnlh",
+          "settings": {
+            "foreground": "#656565ff"
+          }
+        },
+        {
+          "scope": "variable.language.notesnlh",
+          "settings": {
+            "foreground": "#92b630ff"
+          }
+        },
+        {
+          "scope": "markup.bold.notesnlh",
+          "settings": {
+            "foreground": "#569cd6ff"
+          }
+        },
+        {
+          "scope": "keyword.other.notesnlh",
+          "settings": {
+            "foreground": "#569cd6ff"
+          }
+        },
+        {
+          "scope": "keyword.operator.notesnlh",
+          "settings": {
+            "foreground": "#92b630ff"
+          }
+        },
+        {
+          "scope": "invalid.deprecated.notesnlh",
+          "settings": {
+            "foreground": "#f44747ff"
+          }
+        },
+        {
+          "scope": "comment.notesnlh",
+          "settings": {
+            "foreground": "#6a9955ff"
+          }
+        }
+      ]
+    },
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "entity_name_type": {
+                "foreground": "#4EC9B0"
+            },
+            "entity_name_function": {
+                "foreground": "#DCDCAA"
+            },
+            "entity_other_attribute_name": {
+                "foreground": "#9CDCFE"
+            },
+            "adverb_language": {
+                "foreground": "#6a9955ff"
+            },
+            "value_type": {
+              "foreground": "#FF69B4"
+            }
+        }
+    }
+}

@@ -1,0 +1,1332 @@
+{
+  "name": "notesnlh NLH",
+  "scopeName": "source.notesnlh",
+  "fileTypes": [
+    "notesnlh"
+  ],
+  "uuid": "b9bf3970-f517-46fd-a7f8-ae78fd761f84",
+  "patterns": [
+    {
+      "comment": "Date Header",
+      "name": "keyword.operator.notesnlh",
+      "match": "\\[([\\d\\-]+)\\]",
+      "captures": {
+        "1": {
+          "name": "markup.heading.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Action Item High Priority",
+      "name": "nothing.notesnlh",
+      "match": "(\\[)(\\!)(\\]) (.*)$",
+      "captures": {
+        "1": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "2": {
+          "name": "invalid.deprecated.notesnlh"
+        },
+        "3": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "4": {
+          "name": "invalid.deprecated.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Action Item Done",
+      "name": "nothing.notesnlh",
+      "match": "(\\[)(√)(\\]) (.*)$",
+      "captures": {
+        "1": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "2": {
+          "name": "markup.changed.notesnlh"
+        },
+        "3": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "4": {
+          "name": "markup.changed.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Action Item Disabled",
+      "name": "nothing.notesnlh",
+      "match": "(\\[)(x)(\\]) (.*)$",
+      "captures": {
+        "1": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "2": {
+          "name": "markup.canceled.notesnlh"
+        },
+        "3": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "4": {
+          "name": "markup.canceled.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Action Item Empty",
+      "name": "nothing.notesnlh",
+      "match": "(\\[)(.)(\\]) (.*)$",
+      "captures": {
+        "1": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "2": {
+          "name": "keyword.other.notesnlh"
+        },
+        "3": {
+          "name": "keyword.operator.notesnlh"
+        },
+        "4": {
+          "name": "source.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Ordered bullets",
+      "name": "keyword.operator.notesnlh",
+      "match": "^[ \\t]*[0-9a-z]+[\\:\\.\\)]\\)?\\s([^,\\.\"'()\\[\\]:]*\\:)?",
+      "captures": {
+        "1": {
+          "name": "keyword.other.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Unordered bullets",
+      "name": "variable.language.notesnlh",
+      "match": "^[ \\t]*\\-\\s([^,\\.\"'()\\[\\]:]*\\:(?=[\\s]))?",
+      "captures": {
+        "1": {
+          "name": "keyword.other.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Highlights",
+      "name": "nothing.notesnlh",
+      "match": "(\\#+[^\\#]*\\#*)",
+      "captures": {
+        "1": {
+          "name": "variable.language.notesnlh"
+        }
+      }
+    },
+    {
+      "comment": "Headers",
+      "name": "markup.heading.notesnlh",
+      "match": "^([A-Za-z].*\\:)$"
+    },
+    {
+      "comment": "Proper Markdown Headers",
+      "name": "markup.heading.notesnlh",
+      "match": "^[\\-=]+\\s?\\w[\\w\\s]*[\\-=]+"
+    },
+    {
+      "comment": "Comments",
+      "name": "comment.notesnlh",
+      "match": "(?<!\\:)(\\/\\/.*)"
+    },
+    {
+      "comment": "Emphasis",
+      "name": "keyword.other.notesnlh",
+      "match": "(\\*+.*?\\*+)"
+    },
+    {
+      "comment": "Arrows",
+      "name": "variable.language.notesnlh",
+      "match": "(-+>|=+>|<=+|<-+)"
+    },
+    {
+      "comment": "Single Quotes, as back ticks",
+      "name": "string.quoted.single.notesnlh",
+      "match": "(\\`[^\\`]*\\`)"
+    },
+    {
+      "comment": "Double Quotes",
+      "name": "string.quoted.double.notesnlh",
+      "match": "(\\\"[^\\\"]*\\\")"
+    },
+    {
+      "comment": "Warning/critical",
+      "name": "invalid.deprecated.notesnlh",
+      "match": "(?![a-zA-Z])\\!+[^\\!\\n\\r]+\\!*"
+    },
+    {
+      "comment": "Emphasis on parentheses",
+      "name": "keyword.operator.notesnlh",
+      "match": "[\\(\\)]"
+    },
+
+    
+
+
+
+    {
+      "comment": "Actionscript",
+      "begin": "(\\[)(actionscript|as)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|actionscript|as))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.actionscript.2"
+        }
+      ]
+    },
+    {
+      "comment": "Applescript",
+      "begin": "(\\[)(applescript)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|applescript))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.applescript"
+        }
+      ]
+    },
+    {
+      "comment": "ASP",
+      "begin": "(\\[)(asp|asa)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|asp|asa))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.asp"
+        }
+      ]
+    },
+    {
+      "comment": "C",
+      "begin": "(\\[)(c)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|c))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.c"
+        }
+      ]
+    },
+    {
+      "comment": "C#",
+      "begin": "(\\[)(cs|c#|csharp)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|cs|c#|csharp))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.cs"
+        }
+      ]
+    },
+    {
+      "comment": "C++",
+      "begin": "(\\[)(c\\+\\+|cpp|cc|cxx)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|c\\+\\+|cpp|cc|cxx))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.c++"
+        }
+      ]
+    },
+    {
+      "comment": "Clojure",
+      "begin": "(\\[)(clj|clojure)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|clj|clojure))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.clojure"
+        }
+      ]
+    },
+    {
+      "comment": "CSS",
+      "begin": "(\\[)(css)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|css))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.css"
+        }
+      ]
+    },
+    {
+      "comment": "D",
+      "begin": "(\\[)(di)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|di))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.d"
+        }
+      ]
+    },
+    {
+      "comment": "Erlang",
+      "begin": "(\\[)(erl|hrl|Emakefile|emakefile|)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|erl|hrl|Emakefile|emakefile|))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.erlang"
+        }
+      ]
+    },
+    {
+      "comment": "Go",
+      "begin": "(\\[)(go|golang)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|go|golang))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.go"
+        }
+      ]
+    },
+    {
+      "comment": "Groovy",
+      "begin": "(\\[)(groovy|gvy)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|groovy|gvy))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.groovy"
+        }
+      ]
+    },
+    {
+      "comment": "Haskell",
+      "begin": "(\\[)(hs|haskell)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|hs|haskell))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.haskell"
+        }
+      ]
+    },
+    {
+      "comment": "HTML",
+      "begin": "(\\[)(html|htm|shtml|xhtml|phtml|inc|tmpl|tpl|ctp)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|html|htm|shtml|xhtml|phtml|inc|tmpl|tpl|ctp))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "text.html.basic"
+        }
+      ]
+    },
+    {
+      "comment": "Java",
+      "begin": "(\\[)(java|bsh)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|java|bsh))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.java"
+        }
+      ]
+    },
+    {
+      "comment": "Javascript",
+      "begin": "(\\[)(js|jsx|htc|javascript)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|js|jsx|htc|javascript))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.js"
+        }
+      ]
+    },
+    {
+      "comment": "Lua",
+      "begin": "(\\[)(lua)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|lua))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.lua"
+        }
+      ]
+    },
+    {
+      "comment": "Makefile",
+      "begin": "(\\[)(gnumakefile|makefile|makefile|ocamlmakefile|make)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|gnumakefile|makefile|makefile|ocamlmakefile|make))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.makefile"
+        }
+      ]
+    },
+    {
+      "comment": "Markdown",
+      "begin": "(\\[)(mdown|markdown|markdn|md)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|mdown|markdown|markdn|md))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "text.html.markdown"
+        }
+      ]
+    },
+    {
+      "comment": "Matlab",
+      "begin": "(\\[)(matlab)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|matlab))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.matlab"
+        }
+      ]
+    },
+    {
+      "comment": "Objective-c",
+      "begin": "(\\[)(objective-c|objc|m|h)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|objective-c|objc|m|h))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.objc"
+        }
+      ]
+    },
+    {
+      "comment": "Ocaml",
+      "begin": "(\\[)(ocaml|ml|mli)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|ocaml|ml|mli))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ocaml"
+        }
+      ]
+    },
+    {
+      "comment": "Pascal",
+      "begin": "(\\[)(p|pas|pascal)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|p|pas|pascal))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.pascal"
+        }
+      ]
+    },
+    {
+      "comment": "Perl",
+      "begin": "(\\[)(pm|pl|pod|t|perl)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|pm|pl|pod|t|perl))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.perl"
+        }
+      ]
+    },
+    {
+      "comment": "PHP",
+      "begin": "(\\[)(php)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|php))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.php"
+        }
+      ]
+    },
+    {
+      "comment": "Python",
+      "begin": "(\\[)(cpy|py|python|rpy|pyw)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|cpy|py|python|rpy|pyw))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.python"
+        }
+      ]
+    },
+    {
+      "comment": "R",
+      "begin": "(\\[)(r|s|rprofile)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|r|s|rprofile))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.r"
+        }
+      ]
+    },
+    {
+      "comment": "Regex",
+      "begin": "(\\[)(re|regex|regexp)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|re|regex|regexp))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.regexp"
+        }
+      ]
+    },
+    {
+      "comment": "Ruby",
+      "begin": "(\\[)(rb|rbx|rjs|ruby|Rakefile|rake|cgi|fcgi|gemspec|irbrc|capfile|gemfile)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|rb|rbx|rjs|ruby|Rakefile|rake|cgi|fcgi|gemspec|irbrc|capfile|gemfile))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ruby"
+        }
+      ]
+    },
+    {
+      "comment": "Scala",
+      "begin": "(\\[)(scala)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|scala))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.scala"
+        }
+      ]
+    },
+    {
+      "comment": "Shell",
+      "begin": "(\\[)(sh|bash|zsh|bashrc)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|sh|bash|zsh|bashrc))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.shell"
+        }
+      ]
+    },
+    {
+      "comment": "SQL",
+      "begin": "(\\[)(sql|dml|ddl|mysql)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|sql|dml|ddl|mysql))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.sql"
+        }
+      ]
+    },
+    {
+      "comment": "TCL",
+      "begin": "(\\[)(tcl)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|tcl))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.tcl"
+        }
+      ]
+    },
+    {
+      "comment": "TeX",
+      "begin": "(\\[)(tex|latex|sty|cls)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|tex|latex|sty|cls))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "text.tex"
+        }
+      ]
+    },
+    {
+      "comment": "XML",
+      "begin": "(\\[)(xml|tld|jsp|pt|cpt|dtml|rss|opml)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|xml|tld|jsp|pt|cpt|dtml|rss|opml))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "text.xml"
+        }
+      ]
+    },
+    {
+      "comment": "YAML",
+      "begin": "(\\[)(yaml|yml)(\\])",
+      "beginCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "2": {
+          "name": "markup.bold.notesnlh"
+        },
+        "3": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "end": "(\\[)(\\\\?\\/?(end|yaml|yml))(\\])",
+      "endCaptures": {
+        "1": {
+          "name": "string.regexp.notesnlh"
+        },
+        "3": {
+          "name": "markup.bold.notesnlh"
+        },
+        "4": {
+          "name": "string.regexp.notesnlh"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.yaml"
+        }
+      ]
+    }
+  ]
+}
+
+
+
+

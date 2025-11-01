@@ -1,0 +1,162 @@
+{
+  "name": "notesnlh",
+  "displayName": "Notes_NLH",
+  "description": "Syntax highlighting for simple notes with Natural Language Highlighting (NLP parts of speech) in Visual Studio Code",
+  "icon": "images/Natural_Language_Highlighting.png",
+  "version": "0.0.1",
+  "publisher": "lilfetz22",
+  "repository": "https://github.com/lilfetz22/vscode-notes",
+  "engines": {
+    "vscode": "^1.10.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:notesnlh"
+  ],
+  "main": "./dist/extension_bundled.js",
+  "contributes": {
+    "configuration": {
+      "title": "Notes NLH",
+      "properties": {
+        "notesnlh.linkPatterns": {
+          "type": "object",
+          "default": {},
+          "description": "A list of regex to link patterns (e.g. Item: \"ABC-\\d+\"  Value: \"https://abc-project.atlassian.net/browse/$0\") that will be applied across all your notesnlh. Turns matching text into links.",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "notesnlh.highlightNouns": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight nouns in the document"
+        },
+        "notesnlh.highlightVerbs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight verbs in the document"
+        },
+        "notesnlh.highlightAdjectives": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight adjectives in the document"
+        },
+        "notesnlh.highlightAdverbs": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight adverbs in the document"
+        },
+        "notesnlh.highlightNumbers": {
+          "type": "boolean",
+          "default": true,
+          "description": "Highlight numbers in the document"
+        }
+      }
+    },
+    "languages": [
+      {
+        "id": "notesnlh",
+        "aliases": [
+          "Notes NLH"
+        ],
+        "extensions": [
+          ".notesnlh"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "notesnlh",
+        "scopeName": "source.notesnlh",
+        "path": "./syntaxes/notesnlh.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "notesnlh.cycleTaskForwardNew",
+        "title": "Task Complete (cycle)"
+      },
+      {
+        "command": "notesnlh.cycleTaskBackwardNew",
+        "title": "Task Complete (cycle backward)"
+      },
+      {
+        "command": "notesnlh.highlightPartsOfSpeech",
+        "title": "Highlight Parts of Speech"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "notesnlh",
+        "path": "./snippets/newday.json"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "notesnlh.cycleTaskForwardNew",
+        "key": "cmd+l",
+        "when": "editorTextFocus && isMac"
+      },
+      {
+        "command": "notesnlh.cycleTaskForwardNew",
+        "key": "ctrl+l",
+        "when": "editorTextFocus && !isMac"
+      },
+      {
+        "command": "notesnlh.cycleTaskBackwardNew",
+        "key": "cmd+shift+l",
+        "when": "editorTextFocus && isMac"
+      },
+      {
+        "command": "notesnlh.cycleTaskBackwardNew",
+        "key": "ctrl+shift+l",
+        "when": "editorTextFocus && !isMac"
+      }
+    ],
+    "semanticTokenTypes": [
+      {
+        "id": "entity_name_type",
+        "superType": "type",
+        "description": "Noun"
+      },
+      {
+        "id": "entity_name_function",
+        "superType": "function",
+        "description": "Verb"
+      },
+      {
+        "id": "entity_other_attribute_name",
+        "superType": "string",
+        "description": "Adjective"
+      },
+      {
+        "id": "adverb_language",
+        "superType": "variable",
+        "description": "Adverb"
+      },
+      {
+        "id": "value_type",
+        "superType": "regexp",
+        "description": "Value"
+      }
+    ]
+  },
+  "__metadata": {
+    "id": "",
+    "publisherDisplayName": "lilfetz22",
+    "publisherId": ""
+  },
+  "dependencies": {
+    "compromise": "^14.14.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.23.1"
+  }
+}
