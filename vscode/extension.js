@@ -114,12 +114,7 @@ exports.activate = async function activate(context) {
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.notesnlh');
   context.subscriptions.push(watcher);
 
-  watcher.onDidChange(async uri => {
-    const note = getNoteByFilePath(uri.fsPath);
-    if (note) {
-      try {
-        const doc = await vscode.workspace.openTextDocument(uri);
-        const content = doc.getText();
+  watcher.onDidChange(uri => {
     try {
       const note = getNoteByFilePath(uri.fsPath);
       if (note) {
