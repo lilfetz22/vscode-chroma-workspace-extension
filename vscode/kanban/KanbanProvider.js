@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { getAllBoards, getColumnsByBoardId, getCardsByColumnId } = require('../../out/database');
+const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById } = require('../../out/database');
 
 class KanbanProvider {
     constructor() {
