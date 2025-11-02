@@ -31,8 +31,8 @@ const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNo
 
 exports.activate = async function activate(context) {
   try {
-    initDatabase();
-    createTables();
+    await initDatabase();
+    await createTables();
   } catch (err) {
     vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
     // Optionally, log error to console for debugging
