@@ -48,11 +48,16 @@ exports.activate = async function activate(context) {
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.notesnlh');
   context.subscriptions.push(watcher);
 
-  watcher.onDidChange(uri => {
+  watcher.onDidChange(async uri => {
     const note = getNoteByFilePath(uri.fsPath);
     if (note) {
-      const content = fs.readFileSync(uri.fsPath, 'utf8');
-      updateNote({ ...note, content });
+      try {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const content = doc.getText();
+        updateNote({ ...note, content });
+      } catch (err) {
+        console.error("Failed to read changed file:", uri.fsPath, err);
+      }
     }
   });
 
