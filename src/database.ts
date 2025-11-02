@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
 
-let db: Database.Database;
+let db: Database.Database | undefined;
 
 export function initDatabase(): Database.Database {
     if (db) {
@@ -106,6 +106,6 @@ export function deleteNote(id: string): void {
 export function closeDb(): void {
     if (db) {
         db.close();
-        db = undefined as any;
+        db = undefined;
     }
 }
