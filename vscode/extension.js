@@ -41,7 +41,12 @@ exports.activate = async function activate(context) {
 
   vscode.workspace.onDidOpenTextDocument((document) => {
     if (document.languageId === 'notesnlh') {
-      findOrCreateNoteByPath(document.fileName);
+      try {
+        findOrCreateNoteByPath(document.fileName);
+      } catch (err) {
+        vscode.window.showErrorMessage("Failed to open or create note: " + (err && err.message ? err.message : err));
+        console.error("findOrCreateNoteByPath error:", err);
+      }
     }
   });
 
