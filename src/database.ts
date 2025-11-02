@@ -203,8 +203,27 @@ export function getColumnsByBoardId(boardId: string): Column[] {
 
 export function updateColumn(column: Partial<Column>): Column {
     const db = getDb();
-    const stmt = db.prepare('UPDATE columns SET name = ?, order_index = ? WHERE id = ?');
-    stmt.run(column.name, column.order, column.id);
+    if (!column.id) {
+        throw new Error("Column id is required for update");
+    }
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (column.name !== undefined) {
+        fields.push("name = ?");
+        values.push(column.name);
+    }
+    if (column.order !== undefined) {
+        fields.push("order_index = ?");
+        values.push(column.order);
+    }
+    if (fields.length === 0) {
+        // Nothing to update
+        return getColumnById(column.id as string);
+    }
+    const sql = `UPDATE columns SET ${fields.join(", ")} WHERE id = ?`;
+    values.push(column.id);
+    const stmt = db.prepare(sql);
+    stmt.run(...values);
     return getColumnById(column.id as string);
 }
 
