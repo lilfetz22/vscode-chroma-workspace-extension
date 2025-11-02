@@ -26,6 +26,40 @@ const migrations: Migration[] = [
                 );
             `);
         }
+    },
+    {
+        version: 2,
+        name: 'add_kanban_tables',
+        up: (db) => {
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS boards (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS columns (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    board_id TEXT NOT NULL,
+                    order_index INTEGER NOT NULL,
+                    FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS cards (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    column_id TEXT NOT NULL,
+                    note_id TEXT,
+                    order_index INTEGER NOT NULL,
+                    priority TEXT CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+                    FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
+                );
+            `);
+        }
     }
 ];
 
