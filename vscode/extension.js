@@ -26,7 +26,7 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables } = require('../out/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath } = require('../out/database');
 
 
 exports.activate = async function activate(context) {
@@ -38,6 +38,51 @@ exports.activate = async function activate(context) {
     // Optionally, log error to console for debugging
     console.error("Database initialization error:", err);
   }
+
+  vscode.workspace.onDidOpenTextDocument((document) => {
+    if (document.languageId === 'notesnlh') {
+      try {
+        findOrCreateNoteByPath(document.fileName);
+      } catch (err) {
+        vscode.window.showErrorMessage("Failed to open or create note: " + (err && err.message ? err.message : err));
+        console.error("findOrCreateNoteByPath error:", err);
+      }
+    }
+  });
+
+  const watcher = vscode.workspace.createFileSystemWatcher('**/*.notesnlh');
+  context.subscriptions.push(watcher);
+
+  watcher.onDidChange(async uri => {
+    const note = getNoteByFilePath(uri.fsPath);
+    if (note) {
+      try {
+        const doc = await vscode.workspace.openTextDocument(uri);
+        const content = doc.getText();
+    try {
+      const note = getNoteByFilePath(uri.fsPath);
+      if (note) {
+        const content = fs.readFileSync(uri.fsPath, 'utf8');
+        updateNote({ ...note, content });
+      }
+    } catch (err) {
+      console.error("Error handling file change for", uri.fsPath, ":", err);
+      vscode.window.showErrorMessage("Failed to update note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));
+    }
+  });
+
+  watcher.onDidDelete(uri => {
+    try {
+      const note = getNoteByFilePath(uri.fsPath);
+      if (note) {
+        deleteNote(note.id);
+      }
+    } catch (err) {
+      console.error("Error handling file delete for", uri.fsPath, ":", err);
+      vscode.window.showErrorMessage("Failed to delete note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));
+    }
+  });
+
   context.subscriptions.push(
     commands.registerTextEditorCommand(
       "notesnlh.cycleTaskForwardNew",

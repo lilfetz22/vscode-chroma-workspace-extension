@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { Note } from './models/Note';
 import { runMigrations } from './migrations';
+import { randomBytes } from 'crypto';
 
 let db: Database.Database | undefined;
 
@@ -75,6 +76,31 @@ export function getNoteById(id: string): Note {
     const note = stmt.get(id) as Note;
     if (note) {
         note.nlh_enabled = !!note.nlh_enabled;
+    }
+    return note;
+}
+
+export function getNoteByFilePath(filePath: string): Note {
+    const db = getDb();
+    const stmt = db.prepare('SELECT * FROM notes WHERE file_path = ?');
+    const note = stmt.get(filePath) as Note;
+    if (note) {
+        note.nlh_enabled = !!note.nlh_enabled;
+    }
+    return note;
+}
+
+export function findOrCreateNoteByPath(filePath: string): Note {
+    let note = getNoteByFilePath(filePath);
+    if (!note) {
+        const newNote: Partial<Note> = {
+            id: randomBytes(16).toString('hex'),
+            title: path.basename(filePath, '.notesnlh'),
+            content: '',
+            file_path: filePath,
+            nlh_enabled: true,
+        };
+        note = createNote(newNote);
     }
     return note;
 }
