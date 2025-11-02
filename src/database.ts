@@ -242,8 +242,34 @@ export function getCardsByColumnId(columnId: string): Card[] {
 
 export function updateCard(card: Partial<Card>): Card {
     const db = getDb();
-    const stmt = db.prepare('UPDATE cards SET title = ?, content = ?, column_id = ?, note_id = ?, order_index = ?, priority = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    stmt.run(card.title, card.content, card.column_id, card.note_id, card.order, card.priority, card.id);
+    if (!card.id) {
+        throw new Error("Card id is required for update");
+    }
+    // Only update fields that are provided
+    const fields: { [key: string]: any } = {
+        title: card.title,
+        content: card.content,
+        column_id: card.column_id,
+        note_id: card.note_id,
+        order_index: card.order,
+        priority: card.priority,
+    };
+    const setClauses: string[] = [];
+    const values: any[] = [];
+    for (const [key, value] of Object.entries(fields)) {
+        if (value !== undefined) {
+            setClauses.push(`${key} = ?`);
+            values.push(value);
+        }
+    }
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    if (setClauses.length === 1) {
+        // Only updated_at, nothing else to update
+        throw new Error("No fields to update");
+    }
+    const sql = `UPDATE cards SET ${setClauses.join(', ')} WHERE id = ?`;
+    values.push(card.id);
+    db.prepare(sql).run(...values);
     return getCardById(card.id as string);
 }
 
