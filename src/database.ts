@@ -2,6 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { Note } from './models/Note';
+import { Board } from './models/Board';
+import { Column } from './models/Column';
+import { Card } from './models/Card';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 
@@ -138,4 +141,158 @@ export function closeDb(): void {
         db.close();
         db = undefined;
     }
+}
+
+// Kanban Board CRUD
+export function createBoard(board: Partial<Board>): Board {
+    const db = getDb();
+    const id = randomBytes(16).toString('hex');
+    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
+    stmt.run(id, board.name);
+    return getBoardById(id);
+}
+
+export function getBoardById(id: string): Board {
+    const db = getDb();
+    return db.prepare('SELECT * FROM boards WHERE id = ?').get(id) as Board;
+}
+
+export function getAllBoards(): Board[] {
+    const db = getDb();
+    return db.prepare('SELECT * FROM boards').all() as Board[];
+}
+
+export function updateBoard(board: Partial<Board>): Board {
+    const db = getDb();
+    const stmt = db.prepare('UPDATE boards SET name = ? WHERE id = ?');
+    stmt.run(board.name, board.id);
+    return getBoardById(board.id as string);
+}
+
+export function deleteBoard(id: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM boards WHERE id = ?').run(id);
+}
+
+// Column CRUD
+const rowToColumn = (row: any): Column => {
+    if (!row) return row;
+    const { order_index, ...rest } = row;
+    return { ...rest, order: order_index };
+};
+
+export function createColumn(column: Partial<Column>): Column {
+    const db = getDb();
+    const id = randomBytes(16).toString('hex');
+    const stmt = db.prepare('INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)');
+    stmt.run(id, column.name, column.board_id, column.order);
+    return getColumnById(id);
+}
+
+export function getColumnById(id: string): Column {
+    const db = getDb();
+    const row = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);
+    return rowToColumn(row);
+}
+
+export function getColumnsByBoardId(boardId: string): Column[] {
+    const db = getDb();
+    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index').all(boardId);
+    return rows.map(rowToColumn);
+}
+
+export function updateColumn(column: Partial<Column>): Column {
+    const db = getDb();
+    if (!column.id) {
+        throw new Error("Column id is required for update");
+    }
+    const fields: string[] = [];
+    const values: any[] = [];
+    if (column.name !== undefined) {
+        fields.push("name = ?");
+        values.push(column.name);
+    }
+    if (column.order !== undefined) {
+        fields.push("order_index = ?");
+        values.push(column.order);
+    }
+    if (fields.length === 0) {
+        // Nothing to update
+        return getColumnById(column.id as string);
+    }
+    const sql = `UPDATE columns SET ${fields.join(", ")} WHERE id = ?`;
+    values.push(column.id);
+    const stmt = db.prepare(sql);
+    stmt.run(...values);
+    return getColumnById(column.id as string);
+}
+
+export function deleteColumn(id: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM columns WHERE id = ?').run(id);
+}
+
+// Card CRUD
+const rowToCard = (row: any): Card => {
+    if (!row) return row;
+    const { id, title, content, column_id, note_id, order_index, priority } = row;
+    return { id, title, content, column_id, note_id, order: order_index, priority };
+}
+
+export function createCard(card: Partial<Card>): Card {
+    const db = getDb();
+    const id = randomBytes(16).toString('hex');
+    const stmt = db.prepare('INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(id, card.title, card.content, card.column_id, card.note_id, card.order, card.priority);
+    return getCardById(id);
+}
+
+export function getCardById(id: string): Card {
+    const db = getDb();
+    const row = db.prepare('SELECT * FROM cards WHERE id = ?').get(id);
+    return rowToCard(row);
+}
+
+export function getCardsByColumnId(columnId: string): Card[] {
+    const db = getDb();
+    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index').all(columnId);
+    return rows.map(rowToCard);
+}
+
+export function updateCard(card: Partial<Card>): Card {
+    const db = getDb();
+    if (!card.id) {
+        throw new Error("Card id is required for update");
+    }
+    // Only update fields that are provided
+    const fields: { [key: string]: any } = {
+        title: card.title,
+        content: card.content,
+        column_id: card.column_id,
+        note_id: card.note_id,
+        order_index: card.order,
+        priority: card.priority,
+    };
+    const setClauses: string[] = [];
+    const values: any[] = [];
+    for (const [key, value] of Object.entries(fields)) {
+        if (value !== undefined) {
+            setClauses.push(`${key} = ?`);
+            values.push(value);
+        }
+    }
+    setClauses.push("updated_at = CURRENT_TIMESTAMP");
+    if (setClauses.length === 1) {
+        // Only updated_at, nothing else to update
+        throw new Error("No fields to update");
+    }
+    const sql = `UPDATE cards SET ${setClauses.join(', ')} WHERE id = ?`;
+    values.push(card.id);
+    db.prepare(sql).run(...values);
+    return getCardById(card.id as string);
+}
+
+export function deleteCard(id: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM cards WHERE id = ?').run(id);
 }
