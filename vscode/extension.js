@@ -26,9 +26,18 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
+const { initDatabase, createTables } = require('../out/database');
 
 
 exports.activate = async function activate(context) {
+  try {
+    await initDatabase();
+    await createTables();
+  } catch (err) {
+    vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
+    // Optionally, log error to console for debugging
+    console.error("Database initialization error:", err);
+  }
   context.subscriptions.push(
     commands.registerTextEditorCommand(
       "notesnlh.cycleTaskForwardNew",
