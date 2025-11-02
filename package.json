@@ -17,6 +17,23 @@
   ],
   "main": "./dist/extension_bundled.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "chroma-workspace",
+          "title": "Chroma Workspace",
+          "icon": "images/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "chroma-workspace": [
+        {
+          "id": "kanban",
+          "name": "Kanban"
+        }
+      ]
+    },
     "configuration": {
       "title": "Notes NLH",
       "properties": {
@@ -90,8 +107,104 @@
       {
         "command": "notesnlh.highlightPartsOfSpeech",
         "title": "Highlight Parts of Speech"
+      },
+      {
+        "command": "chroma.addCard",
+        "title": "Add Card"
+      },
+      {
+        "command": "chroma.editCard",
+        "title": "Edit Card"
+      },
+      {
+        "command": "chroma.moveCard",
+        "title": "Move Card"
+      },
+      {
+        "command": "chroma.addBoard",
+        "title": "Add Board"
+      },
+      {
+        "command": "chroma.editBoard",
+        "title": "Edit Board"
+      },
+      {
+        "command": "chroma.deleteBoard",
+        "title": "Delete Board"
+      },
+      {
+        "command": "chroma.addColumn",
+        "title": "Add Column"
+      },
+      {
+        "command": "chroma.editColumn",
+        "title": "Edit Column"
+      },
+      {
+        "command": "chroma.deleteColumn",
+        "title": "Delete Column"
+      },
+      {
+        "command": "chroma.deleteCard",
+        "title": "Delete Card"
       }
     ],
+    "menus": {
+        "view/title": [
+            {
+                "command": "chroma.addBoard",
+                "when": "view == kanban",
+                "group": "navigation"
+            }
+        ],
+        "view/item/context": [
+            {
+                "command": "chroma.editBoard",
+                "when": "view == kanban && viewItem == board",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.deleteBoard",
+                "when": "view == kanban && viewItem == board",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.addColumn",
+                "when": "view == kanban && viewItem == board",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.editColumn",
+                "when": "view == kanban && viewItem == column",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.deleteColumn",
+                "when": "view == kanban && viewItem == column",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.addCard",
+                "when": "view == kanban && viewItem == column",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.editCard",
+                "when": "view == kanban && viewItem == card",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.deleteCard",
+                "when": "view == kanban && viewItem == card",
+                "group": "inline"
+            },
+            {
+                "command": "chroma.moveCard",
+                "when": "view == kanban && viewItem == card",
+                "group": "inline"
+            }
+        ]
+    },
     "snippets": [
       {
         "language": "notesnlh",
