@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard, getColumnsByBoardId } = require('../../out/database');
+const { createCard, updateCard, deleteCard: deleteCardDb, getColumnsByBoardId } = require('../../out/database');
 
 async function addCard(column) {
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });
@@ -18,7 +18,7 @@ async function editCard(card) {
 async function deleteCard(card) {
     const confirm = await vscode.window.showWarningMessage(`Are you sure you want to delete the card "${card.label}"?`, { modal: true }, 'Delete');
     if (confirm === 'Delete') {
-        deleteCard(card.cardId);
+        deleteCardDb(card.cardId);
     }
 }
 
