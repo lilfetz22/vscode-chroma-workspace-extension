@@ -54,17 +54,27 @@ exports.activate = async function activate(context) {
       try {
         const doc = await vscode.workspace.openTextDocument(uri);
         const content = doc.getText();
+    try {
+      const note = getNoteByFilePath(uri.fsPath);
+      if (note) {
+        const content = fs.readFileSync(uri.fsPath, 'utf8');
         updateNote({ ...note, content });
-      } catch (err) {
-        console.error("Failed to read changed file:", uri.fsPath, err);
       }
+    } catch (err) {
+      console.error("Error handling file change for", uri.fsPath, ":", err);
+      vscode.window.showErrorMessage("Failed to update note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));
     }
   });
 
   watcher.onDidDelete(uri => {
-    const note = getNoteByFilePath(uri.fsPath);
-    if (note) {
-      deleteNote(note.id);
+    try {
+      const note = getNoteByFilePath(uri.fsPath);
+      if (note) {
+        deleteNote(note.id);
+      }
+    } catch (err) {
+      console.error("Error handling file delete for", uri.fsPath, ":", err);
+      vscode.window.showErrorMessage("Failed to delete note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));
     }
   });
 
