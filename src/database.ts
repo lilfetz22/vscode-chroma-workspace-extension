@@ -2,6 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
 import { Note } from './models/Note';
+import { runMigrations } from './migrations';
 
 let db: Database.Database | undefined;
 
@@ -22,6 +23,10 @@ export function initDatabase(): Database.Database {
         db.pragma('journal_mode = WAL');
 
         console.log('Chroma database initialized at:', dbPath);
+        
+        // Run migrations automatically on initialization
+        runMigrations();
+        
         return db;
     } catch (error: any) {
         console.error(`Failed to initialize Chroma database: ${error.message}`);
