@@ -26,18 +26,43 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables } = require('../out/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath } = require('../out/database');
 
 
 exports.activate = async function activate(context) {
   try {
-    await initDatabase();
-    await createTables();
+    initDatabase();
+    createTables();
   } catch (err) {
     vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
     // Optionally, log error to console for debugging
     console.error("Database initialization error:", err);
   }
+
+  vscode.workspace.onDidOpenTextDocument((document) => {
+    if (document.languageId === 'notesnlh') {
+      findOrCreateNoteByPath(document.fileName);
+    }
+  });
+
+  const watcher = vscode.workspace.createFileSystemWatcher('**/*.notesnlh');
+  context.subscriptions.push(watcher);
+
+  watcher.onDidChange(uri => {
+    const note = getNoteByFilePath(uri.fsPath);
+    if (note) {
+      const content = fs.readFileSync(uri.fsPath, 'utf8');
+      updateNote({ ...note, content });
+    }
+  });
+
+  watcher.onDidDelete(uri => {
+    const note = getNoteByFilePath(uri.fsPath);
+    if (note) {
+      deleteNote(note.id);
+    }
+  });
+
   context.subscriptions.push(
     commands.registerTextEditorCommand(
       "notesnlh.cycleTaskForwardNew",
