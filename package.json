@@ -31,6 +31,10 @@
         {
           "id": "kanban",
           "name": "Kanban"
+        },
+        {
+          "id": "scheduledTasks",
+          "name": "Scheduled Tasks"
         }
       ]
     },
@@ -147,63 +151,103 @@
       {
         "command": "chroma.deleteCard",
         "title": "Delete Card"
+      },
+      {
+        "command": "chroma.convertCardToTask",
+        "title": "Convert Card to Task"
+      },
+      {
+        "command": "chroma.addTask",
+        "title": "Add Task"
+      },
+      {
+        "command": "chroma.editTask",
+        "title": "Edit Task"
+      },
+      {
+        "command": "chroma.completeTask",
+        "title": "Complete Task"
+      },
+      {
+        "command": "chroma.deleteTask",
+        "title": "Delete Task"
       }
     ],
     "menus": {
-        "view/title": [
-            {
-                "command": "chroma.addBoard",
-                "when": "view == kanban",
-                "group": "navigation"
-            }
-        ],
-        "view/item/context": [
-            {
-                "command": "chroma.editBoard",
-                "when": "view == kanban && viewItem == board",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.deleteBoard",
-                "when": "view == kanban && viewItem == board",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.addColumn",
-                "when": "view == kanban && viewItem == board",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.editColumn",
-                "when": "view == kanban && viewItem == column",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.deleteColumn",
-                "when": "view == kanban && viewItem == column",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.addCard",
-                "when": "view == kanban && viewItem == column",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.editCard",
-                "when": "view == kanban && viewItem == card",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.deleteCard",
-                "when": "view == kanban && viewItem == card",
-                "group": "inline"
-            },
-            {
-                "command": "chroma.moveCard",
-                "when": "view == kanban && viewItem == card",
-                "group": "inline"
-            }
-        ]
+      "view/title": [
+        {
+          "command": "chroma.addBoard",
+          "when": "view == kanban",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "chroma.editBoard",
+          "when": "view == kanban && viewItem == board",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteBoard",
+          "when": "view == kanban && viewItem == board",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.addColumn",
+          "when": "view == kanban && viewItem == board",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editColumn",
+          "when": "view == kanban && viewItem == column",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteColumn",
+          "when": "view == kanban && viewItem == column",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.addCard",
+          "when": "view == kanban && viewItem == column",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editCard",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteCard",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.moveCard",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.convertCardToTask",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editTask",
+          "when": "view == scheduledTasks && viewItem == task",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.completeTask",
+          "when": "view == scheduledTasks && viewItem == task",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteTask",
+          "when": "view == scheduledTasks && viewItem == task",
+          "group": "inline"
+        }
+      ]
     },
     "snippets": [
       {
@@ -268,19 +312,27 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
-    "compromise": "^14.14.0"
+    "compromise": "^14.14.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
+    "@types/sinon": "^17.0.4",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.105.0",
     "chai": "^6.2.0",
     "esbuild": "^0.23.1",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
     "mocha": "^11.7.4",
+    "sinon": "^21.0.0",
+    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2"
   },
   "scripts": {
-    "test": "mocha --require ts-node/register test/**/*.test.ts",
+    "test": "jest",
     "compile": "tsc -p ./"
   }
 }

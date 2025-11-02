@@ -113,5 +113,23 @@ CREATE TABLE user_settings (
 );
 ```
 
+### tasks
+```sql
+CREATE TABLE tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  due_date DATETIME NOT NULL,
+  recurrence TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  card_id TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL
+);
+CREATE INDEX idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX idx_tasks_status ON tasks(status);
+```
+
 ## Migration from Supabase
 See `MIGRATION.md` for data export/import procedures.
