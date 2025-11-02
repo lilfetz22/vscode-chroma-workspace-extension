@@ -14,6 +14,11 @@ const {
   workspace,
   window,
 } = vscode;
+const { KanbanProvider } = require('./kanban/KanbanProvider');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
+const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
+
+let kanbanProvider;
 
 // Define color for each part of speech
 const posColors = {
@@ -30,6 +35,62 @@ const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNo
 
 
 exports.activate = async function activate(context) {
+  kanbanProvider = new KanbanProvider();
+  vscode.window.registerTreeDataProvider('kanban', kanbanProvider);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('chroma.addBoard', () => {
+        addBoard().then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.editBoard', (board) => {
+        editBoard(board).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.deleteBoard', (board) => {
+        deleteBoard(board).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.addColumn', (board) => {
+        addColumn(board).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.editColumn', (column) => {
+        editColumn(column).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.deleteColumn', (column) => {
+        deleteColumn(column).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.addCard', (column) => {
+      addCard(column).then(() => {
+        kanbanProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.editCard', (card) => {
+      editCard(card).then(() => {
+        kanbanProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.deleteCard', (card) => {
+        deleteCard(card).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.moveCard', (card) => {
+      moveCard(card).then(() => {
+        kanbanProvider.refresh();
+      });
+    })
+  );
+
   try {
     await initDatabase();
     await createTables();
