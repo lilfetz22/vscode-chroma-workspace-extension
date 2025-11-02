@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import * as path from 'path';
 import { createNote, deleteNote, findOrCreateNoteByPath, getNoteByFilePath, initDatabase } from '../src/database';
 import { Note } from '../src/models/Note';
 
