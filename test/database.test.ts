@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 const dbPath = path.join(__dirname, '..', '.chroma', 'chroma.db');
 
-import { initDatabase, createTables, createNote, getNoteById, getAllNotes, updateNote, deleteNote, createBoard, getBoardById, getAllBoards, updateBoard, deleteBoard, createColumn, getColumnById, getColumnsByBoardId, updateColumn, deleteColumn, createCard, getCardById, getCardsByColumnId, updateCard, deleteCard } from '../src/database';
+import { initDatabase, createTables, createNote, getNoteById, getAllNotes, updateNote, deleteNote, createBoard, getBoardById, getAllBoards, updateBoard, deleteBoard, createColumn, getColumnsByBoardId, createCard, getCardsByColumnId } from '../src/database';
 import { Note } from '../src/models/Note';
 import { Board } from '../src/models/Board';
 import { Column } from '../src/models/Column';
