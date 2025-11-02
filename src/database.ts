@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import Database from 'better-sqlite3';
+import { Note } from './models/Note';
 
 let db: Database.Database;
 
@@ -50,8 +51,6 @@ export function createTables(): void {
     `;
     db.exec(schema);
 }
-
-import { Note } from './models/Note';
 
 export function createNote(note: Partial<Note>): Note {
     const db = getDb();
