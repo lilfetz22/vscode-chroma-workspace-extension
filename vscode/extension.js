@@ -16,13 +16,16 @@ const {
 } = vscode;
 const { KanbanProvider } = require('./kanban/KanbanProvider');
 const { TaskProvider } = require('../out/src/views/TaskProvider');
+const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
 const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('../out/kanban/Board');
 const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
+const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
 
 let kanbanProvider;
 let taskProvider;
+let tagsProvider;
 
 // Define color for each part of speech
 const posColors = {
@@ -43,10 +46,15 @@ exports.activate = async function activate(context) {
   vscode.window.registerTreeDataProvider('kanban', kanbanProvider);
   taskProvider = new TaskProvider();
   vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
+  tagsProvider = new TagsProvider();
+  vscode.window.registerTreeDataProvider('tags', tagsProvider);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('chroma.refreshTasks', () => {
       taskProvider.refresh();
+    }),
+    vscode.commands.registerCommand('chroma.refreshTags', () => {
+      tagsProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
@@ -122,6 +130,33 @@ exports.activate = async function activate(context) {
       deleteTask(task).then(() => {
         taskProvider.refresh();
       });
+    }),
+    vscode.commands.registerCommand('chroma.addTag', () => {
+        addTag().then(() => {
+            tagsProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.editTag', (tag) => {
+        editTag(tag).then(() => {
+            tagsProvider.refresh();
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.deleteTag', (tag) => {
+        deleteTag(tag).then(() => {
+            tagsProvider.refresh();
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.assignTag', (card) => {
+        assignTag(card).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.removeTag', (card) => {
+        removeTag(card).then(() => {
+            kanbanProvider.refresh();
+        });
     })
   );
 

@@ -82,6 +82,27 @@ const migrations: Migration[] = [
                 CREATE INDEX idx_tasks_status ON tasks(status);
             `);
         }
+    },
+    {
+        version: 4,
+        name: 'add_tagging_system',
+        up: (db) => {
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS tags (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    color TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS card_tags (
+                    card_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (card_id, tag_id),
+                    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+            `);
+        }
     }
 ];
 

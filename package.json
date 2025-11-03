@@ -35,6 +35,10 @@
         {
           "id": "scheduledTasks",
           "name": "Scheduled Tasks"
+        },
+        {
+          "id": "tags",
+          "name": "Tags"
         }
       ]
     },
@@ -171,6 +175,26 @@
       {
         "command": "chroma.deleteTask",
         "title": "Delete Task"
+      },
+      {
+        "command": "chroma.addTag",
+        "title": "Add Tag"
+      },
+      {
+        "command": "chroma.editTag",
+        "title": "Edit Tag"
+      },
+      {
+        "command": "chroma.deleteTag",
+        "title": "Delete Tag"
+      },
+      {
+        "command": "chroma.assignTag",
+        "title": "Assign Tag to Card"
+      },
+      {
+        "command": "chroma.removeTag",
+        "title": "Remove Tag from Card"
       }
     ],
     "menus": {
@@ -178,6 +202,11 @@
         {
           "command": "chroma.addBoard",
           "when": "view == kanban",
+          "group": "navigation"
+        },
+        {
+          "command": "chroma.addTag",
+          "when": "view == tags",
           "group": "navigation"
         }
       ],
@@ -228,6 +257,16 @@
           "group": "inline"
         },
         {
+          "command": "chroma.assignTag",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.removeTag",
+          "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
           "command": "chroma.convertCardToTask",
           "when": "view == kanban && viewItem == card",
           "group": "inline"
@@ -245,6 +284,16 @@
         {
           "command": "chroma.deleteTask",
           "when": "view == scheduledTasks && viewItem == task",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editTag",
+          "when": "view == tags && viewItem == tag",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteTag",
+          "when": "view == tags && viewItem == tag",
           "group": "inline"
         }
       ]
@@ -329,7 +378,8 @@
     "mocha": "^11.7.4",
     "sinon": "^21.0.0",
     "ts-jest": "^29.4.5",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "test": "jest",
