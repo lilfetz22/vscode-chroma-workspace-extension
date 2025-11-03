@@ -5,6 +5,7 @@ import { Note } from './models/Note';
 import { Board } from './models/Board';
 import { Column } from './models/Column';
 import { Card } from './models/Card';
+import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 
@@ -300,4 +301,59 @@ export function updateCard(card: Partial<Card>): Card {
 export function deleteCard(id: string): void {
     const db = getDb();
     db.prepare('DELETE FROM cards WHERE id = ?').run(id);
+}
+
+// Tag CRUD
+export function createTag(tag: Partial<Tag>): Tag {
+    const db = getDb();
+    const id = randomBytes(16).toString('hex');
+    const stmt = db.prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)');
+    stmt.run(id, tag.name, tag.color);
+    return getTagById(id);
+}
+
+export function getTagById(id: string): Tag {
+    const db = getDb();
+    return db.prepare('SELECT * FROM tags WHERE id = ?').get(id) as Tag;
+}
+
+export function getAllTags(): Tag[] {
+    const db = getDb();
+    return db.prepare('SELECT * FROM tags ORDER BY name').all() as Tag[];
+}
+
+export function updateTag(tag: Partial<Tag>): Tag {
+    const db = getDb();
+    if (!tag.id) {
+        throw new Error("Tag id is required for update");
+    }
+    const stmt = db.prepare('UPDATE tags SET name = ?, color = ? WHERE id = ?');
+    stmt.run(tag.name, tag.color, tag.id);
+    return getTagById(tag.id as string);
+}
+
+export function deleteTag(id: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+}
+
+// Card-Tag Relationships
+export function addTagToCard(cardId: string, tagId: string): void {
+    const db = getDb();
+    db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+}
+
+export function removeTagFromCard(cardId: string, tagId: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM card_tags WHERE card_id = ? AND tag_id = ?').run(cardId, tagId);
+}
+
+export function getTagsByCardId(cardId: string): Tag[] {
+    const db = getDb();
+    const stmt = db.prepare(`
+        SELECT t.* FROM tags t
+        JOIN card_tags ct ON t.id = ct.tag_id
+        WHERE ct.card_id = ?
+    `);
+    return stmt.all(cardId) as Tag[];
 }

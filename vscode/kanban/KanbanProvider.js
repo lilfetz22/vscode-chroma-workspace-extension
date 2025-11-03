@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById } = require('../../out/database');
+const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/database');
 
 class KanbanProvider {
     constructor() {
@@ -50,7 +50,10 @@ class KanbanProvider {
     getCards(columnId) {
         const cards = getCardsByColumnId(columnId);
         return cards.map(card => {
-            const item = new vscode.TreeItem(card.title, vscode.TreeItemCollapsibleState.None);
+            const tags = getTagsByCardId(card.id);
+            const tagString = tags.map(t => t.name).join(', ');
+            const label = tagString ? `${card.title} [${tagString}]` : card.title;
+            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;
             item.columnId = columnId;
