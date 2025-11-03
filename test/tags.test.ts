@@ -2,7 +2,6 @@ import { initDatabase, getDb, createTag, getTagById, getAllTags, updateTag, dele
 import { Board } from '../src/models/Board';
 import { Card } from '../src/models/Card';
 import { Column } from '../src/models/Column';
-import { Tag } from '../src/models/Tag';
 import { randomBytes } from 'crypto';
 
 describe('Tagging System', () => {
