@@ -193,7 +193,7 @@ exports.activate = async function activate(context) {
               });
             }
           } else if (selected.result.type === 'card') {
-            const card = getCardById(selected.result.id);
+            const card = await getCardById(selected.result.id);
             if (card) {
               await kanbanTreeView.reveal(card, { select: true, focus: true });
             }
