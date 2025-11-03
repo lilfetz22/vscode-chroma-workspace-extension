@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { initDatabase, getDb, createTables, closeDb } from '../src/database';
+import { initDatabase, createTables } from '../src/database';
 import Database from 'better-sqlite3';
 
 describe('Database Functions', () => {
