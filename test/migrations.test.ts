@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { initDatabase, getDb, closeDb } from '../src/database';
+import { initDatabase } from '../src/database';
 import { runMigrations, getCurrentVersion } from '../src/migrations';
 import Database from 'better-sqlite3';
 
