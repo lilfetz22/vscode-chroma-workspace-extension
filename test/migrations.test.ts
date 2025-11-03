@@ -18,6 +18,6 @@ describe('Migration Functions', () => {
     it('should run migrations', () => {
         runMigrations();
         const version = getCurrentVersion();
-        expect(version).toBe(3);
+        expect(version).toBe(5);
     });
 });

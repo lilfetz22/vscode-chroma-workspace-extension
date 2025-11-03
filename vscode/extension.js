@@ -24,6 +24,7 @@ const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = requi
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
 
 let kanbanProvider;
+let kanbanTreeView;
 let taskProvider;
 let tagsProvider;
 
@@ -38,12 +39,13 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath } = require('../out/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById } = require('../out/database');
+const { search } = require('../out/logic/search');
 
 
 exports.activate = async function activate(context) {
   kanbanProvider = new KanbanProvider();
-  vscode.window.registerTreeDataProvider('kanban', kanbanProvider);
+  kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
   taskProvider = new TaskProvider();
   vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
   tagsProvider = new TagsProvider();
@@ -157,6 +159,47 @@ exports.activate = async function activate(context) {
         removeTag(card).then(() => {
             kanbanProvider.refresh();
         });
+    }),
+    vscode.commands.registerCommand('chroma.search', async () => {
+      const query = await vscode.window.showInputBox({
+        placeHolder: 'Search notes and cards...',
+        prompt: 'Enter your search query',
+      });
+
+      if (query) {
+        const results = await search(query);
+        if (results.length === 0) {
+          vscode.window.showInformationMessage('No results found.');
+          return;
+        }
+
+        const picks = results.map(result => ({
+          label: result.title,
+          description: result.type,
+          result: result,
+        }));
+
+        const selected = await vscode.window.showQuickPick(picks, {
+          matchOnDescription: true,
+        });
+
+        if (selected) {
+          if (selected.result.type === 'note') {
+            const note = getNoteById(selected.result.id);
+            if (note && note.file_path) {
+              const uri = vscode.Uri.file(note.file_path);
+              await vscode.workspace.openTextDocument(uri).then(doc => {
+                vscode.window.showTextDocument(doc);
+              });
+            }
+          } else if (selected.result.type === 'card') {
+            const card = getCardById(selected.result.id);
+            if (card) {
+              await kanbanTreeView.reveal(card, { select: true, focus: true });
+            }
+          }
+        }
+      }
     })
   );
 
