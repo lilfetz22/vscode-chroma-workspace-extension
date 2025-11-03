@@ -34,7 +34,7 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
 
   private async getGroupedTasks(): Promise<TaskGroup[]> {
     const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT * FROM tasks WHERE status = ? ORDER BY dueDate ASC').all('pending') as Task[];
+    const tasks: Task[] = db.prepare('SELECT * FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfWeek = new Date(today);
