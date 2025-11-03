@@ -39,7 +39,18 @@ async function assignTag(card) {
     if (tagName) {
         const tag = tags.find(t => t.name === tagName);
         if (tag) {
-            addTagToCard(card.id, tag.id);
+            // Check if tag is already assigned
+            const assignedTags = getTagsByCardId(card.id);
+            const alreadyAssigned = assignedTags.some(t => t.id === tag.id);
+            if (alreadyAssigned) {
+                vscode.window.showInformationMessage(`Tag "${tag.name}" is already assigned to this card.`);
+                return;
+            }
+            try {
+                addTagToCard(card.id, tag.id);
+            } catch (err) {
+                vscode.window.showErrorMessage(`Failed to assign tag: ${err.message || err}`);
+            }
         }
     }
 }
