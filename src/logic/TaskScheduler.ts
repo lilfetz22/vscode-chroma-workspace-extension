@@ -46,7 +46,7 @@ export class TaskScheduler {
         if (task.recurrence) {
           const nextDueDate = getNextDueDate(task);
           if (nextDueDate) {
-            db.prepare('UPDATE tasks SET dueDate = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
+            db.prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
           }
         } else {
           db.prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
