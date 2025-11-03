@@ -331,12 +331,12 @@
       },
       {
         "command": "chroma.search",
-        "key": "ctrl+k",
+        "key": "ctrl+shift+f",
         "when": "!isMac"
       },
       {
         "command": "chroma.search",
-        "key": "cmd+k",
+        "key": "cmd+shift+f",
         "when": "isMac"
       }
     ],
