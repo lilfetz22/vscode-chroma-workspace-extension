@@ -37,6 +37,8 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
     const tasks: Task[] = db.prepare('SELECT * FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
     const endOfWeek = new Date(today);
     endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
 
@@ -49,7 +51,7 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
       const dueDate = new Date(task.dueDate);
       if (dueDate < today) {
         overdue.push(task);
-      } else if (dueDate >= today && dueDate < new Date(today.getTime() + 24 * 60 * 60 * 1000)) {
+      } else if (dueDate >= today && dueDate < tomorrow) {
         todayTasks.push(task);
       } else if (dueDate > today && dueDate <= endOfWeek) {
         thisWeekTasks.push(task);
