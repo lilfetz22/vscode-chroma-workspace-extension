@@ -62,6 +62,10 @@ async function assignTag(card) {
 async function removeTag(card) {
     const tags = getTagsByCardId(card.id);
     const tagNames = tags.map(t => t.name);
+    if (tags.length === 0) {
+        vscode.window.showInformationMessage('This card has no tags to remove.');
+        return;
+    }
     const tagName = await vscode.window.showQuickPick(tagNames, { placeHolder: 'Select a tag to remove' });
     if (tagName) {
         const tag = tags.find(t => t.name === tagName);
