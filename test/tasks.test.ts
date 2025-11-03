@@ -10,17 +10,20 @@ jest.mock('vscode');
 describe('Task Scheduling', () => {
     describe('Recurrence Logic', () => {
         it('should calculate the next due date for a daily recurring task', () => {
+            const now = new Date();
             const task: Task = {
                 id: 1,
                 title: 'Daily Task',
-                dueDate: new Date('2025-01-01'),
+                dueDate: now,
                 recurrence: 'daily',
                 status: 'pending',
-                createdAt: new Date(),
-                updatedAt: new Date(),
+                createdAt: now,
+                updatedAt: now,
             };
             const nextDueDate = getNextDueDate(task);
-            expect(nextDueDate?.getDate()).toBe(new Date().getDate() + 1);
+            const expectedNextDueDate = new Date(now);
+            expectedNextDueDate.setDate(now.getDate() + 1);
+            expect(nextDueDate?.toISOString()).toBe(expectedNextDueDate.toISOString());
         });
     });
 
