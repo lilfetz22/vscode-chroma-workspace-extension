@@ -185,7 +185,7 @@ exports.activate = async function activate(context) {
 
         if (selected) {
           if (selected.result.type === 'note') {
-            const note = getNoteById(selected.result.id);
+            const note = await getNoteById(selected.result.id);
             if (note && note.file_path) {
               const uri = vscode.Uri.file(note.file_path);
               await vscode.workspace.openTextDocument(uri).then(doc => {
