@@ -15,10 +15,14 @@ const {
   window,
 } = vscode;
 const { KanbanProvider } = require('./kanban/KanbanProvider');
-const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
-const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
+const { TaskProvider } = require('../out/src/views/TaskProvider');
+const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('../out/kanban/Board');
+const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card');
+const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
 
 let kanbanProvider;
+let taskProvider;
 
 // Define color for each part of speech
 const posColors = {
@@ -37,8 +41,13 @@ const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNo
 exports.activate = async function activate(context) {
   kanbanProvider = new KanbanProvider();
   vscode.window.registerTreeDataProvider('kanban', kanbanProvider);
+  taskProvider = new TaskProvider();
+  vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('chroma.refreshTasks', () => {
+      taskProvider.refresh();
+    }),
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
             kanbanProvider.refresh();
@@ -87,6 +96,31 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.moveCard', (card) => {
       moveCard(card).then(() => {
         kanbanProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.convertCardToTask', (card) => {
+      convertCardToTask(card).then(() => {
+        taskProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.addTask', () => {
+      addTask().then(() => {
+        taskProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.editTask', (task) => {
+      editTask(task).then(() => {
+        taskProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.completeTask', (task) => {
+      completeTask(task).then(() => {
+        taskProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.deleteTask', (task) => {
+      deleteTask(task).then(() => {
+        taskProvider.refresh();
       });
     })
   );
@@ -507,4 +541,12 @@ exports.activate = async function activate(context) {
       legend
     )
   );
+
+  const taskScheduler = TaskScheduler.getInstance();
+  taskScheduler.start();
+  context.subscriptions.push({
+    dispose: () => {
+      taskScheduler.stop();
+    }
+  });
 };
