@@ -34,6 +34,10 @@ async function deleteTagWithConfirmation(tag) {
 
 async function assignTag(card) {
     const tags = getAllTags();
+    if (tags.length === 0) {
+        vscode.window.showInformationMessage('No tags available. Please create a tag first.');
+        return;
+    }
     const tagNames = tags.map(t => t.name);
     const tagName = await vscode.window.showQuickPick(tagNames, { placeHolder: 'Select a tag to assign' });
     if (tagName) {
