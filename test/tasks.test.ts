@@ -12,7 +12,7 @@ describe('Task Scheduling', () => {
         it('should calculate the next due date for a daily recurring task', () => {
             const now = new Date();
             const task: Task = {
-                id: 1,
+                id: 'test-task-1',
                 title: 'Daily Task',
                 dueDate: now,
                 recurrence: 'daily',
