@@ -56,10 +56,4 @@ async function removeTag(card) {
     }
 }
 
-module.exports = {
-    addTag,
-    editTag,
-    deleteTag: deleteTagWithConfirmation,
-    assignTag,
-    removeTag
-};
+export { addTag, editTag, deleteTagWithConfirmation as deleteTag, assignTag, removeTag };
