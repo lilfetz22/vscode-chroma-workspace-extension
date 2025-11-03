@@ -124,11 +124,13 @@ function createTestTables(db: any): void {
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
-            recurrence_pattern TEXT,
-            next_activation DATETIME,
-            status TEXT DEFAULT 'pending',
+            due_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            recurrence TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            card_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL
         );
 
         CREATE TABLE IF NOT EXISTS tags (

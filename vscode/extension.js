@@ -22,6 +22,7 @@ const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } 
 const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
+const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
 
 let kanbanProvider;
 let kanbanTreeView;
@@ -159,6 +160,9 @@ exports.activate = async function activate(context) {
         removeTag(card).then(() => {
             kanbanProvider.refresh();
         });
+    }),
+    vscode.commands.registerCommand('chroma.exportAccomplishments', async () => {
+      await exportAccomplishments();
     }),
     vscode.commands.registerCommand('chroma.search', async () => {
       const query = await vscode.window.showInputBox({
