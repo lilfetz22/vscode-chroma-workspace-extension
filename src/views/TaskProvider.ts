@@ -89,6 +89,7 @@ function isTaskGroup(item: any): item is TaskGroup {
 class TaskItem extends vscode.TreeItem {
     constructor(public readonly task: Task) {
         super(task.title, vscode.TreeItemCollapsibleState.None);
+        this.contextValue = "task";
         this.description = new Date(task.dueDate).toLocaleDateString();
         this.tooltip = `Due: ${new Date(task.dueDate).toLocaleString()}`;
     }
