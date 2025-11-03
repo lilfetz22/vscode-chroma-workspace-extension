@@ -369,6 +369,7 @@
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
     "@types/sinon": "^17.0.4",
+    "@types/sql.js": "^1.4.9",
     "@types/uuid": "^10.0.0",
     "@types/vscode": "^1.105.0",
     "chai": "^6.2.0",
@@ -377,6 +378,7 @@
     "jest-environment-jsdom": "^30.2.0",
     "mocha": "^11.7.4",
     "sinon": "^21.0.0",
+    "sql.js": "^1.13.0",
     "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
