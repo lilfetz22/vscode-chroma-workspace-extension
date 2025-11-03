@@ -103,6 +103,69 @@ const migrations: Migration[] = [
                 );
             `);
         }
+    },
+    {
+        version: 5,
+        name: 'add_full_text_search',
+        up: (db) => {
+            db.exec(`
+                -- Create FTS5 virtual table for searching notes and cards
+                CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
+                    title,
+                    content,
+                    entity_id UNINDEXED,
+                    entity_type UNINDEXED
+                );
+
+                -- Trigger to insert into search_index when a new note is created
+                CREATE TRIGGER IF NOT EXISTS notes_after_insert
+                AFTER INSERT ON notes
+                BEGIN
+                    INSERT INTO search_index (title, content, entity_id, entity_type)
+                    VALUES (new.title, new.content, new.id, 'note');
+                END;
+
+                -- Trigger to insert into search_index when a new card is created
+                CREATE TRIGGER IF NOT EXISTS cards_after_insert
+                AFTER INSERT ON cards
+                BEGIN
+                    INSERT INTO search_index (title, content, entity_id, entity_type)
+                    VALUES (new.title, new.content, new.id, 'card');
+                END;
+
+                -- Trigger to delete from search_index when a note is deleted
+                CREATE TRIGGER IF NOT EXISTS notes_after_delete
+                AFTER DELETE ON notes
+                BEGIN
+                    DELETE FROM search_index WHERE entity_id = old.id;
+                END;
+
+                -- Trigger to delete from search_index when a card is deleted
+                CREATE TRIGGER IF NOT EXISTS cards_after_delete
+                AFTER DELETE ON cards
+                BEGIN
+                    DELETE FROM search_index WHERE entity_id = old.id;
+                END;
+
+                -- Trigger to update search_index when a note is updated
+                CREATE TRIGGER IF NOT EXISTS notes_after_update
+                AFTER UPDATE ON notes
+                BEGIN
+                    UPDATE search_index
+                    SET title = new.title, content = new.content
+                    WHERE entity_id = new.id;
+                END;
+
+                -- Trigger to update search_index when a card is updated
+                CREATE TRIGGER IF NOT EXISTS cards_after_update
+                AFTER UPDATE ON cards
+                BEGIN
+                    UPDATE search_index
+                    SET title = new.title, content = new.content
+                    WHERE entity_id = new.id;
+                END;
+            `);
+        }
     }
 ];
 

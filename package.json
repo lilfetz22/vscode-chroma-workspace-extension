@@ -195,6 +195,10 @@
       {
         "command": "chroma.removeTag",
         "title": "Remove Tag from Card"
+      },
+      {
+        "command": "chroma.search",
+        "title": "Search"
       }
     ],
     "menus": {
@@ -324,6 +328,16 @@
         "command": "notesnlh.cycleTaskBackwardNew",
         "key": "ctrl+shift+l",
         "when": "editorTextFocus && !isMac"
+      },
+      {
+        "command": "chroma.search",
+        "key": "ctrl+shift+f",
+        "when": "!isMac"
+      },
+      {
+        "command": "chroma.search",
+        "key": "cmd+shift+f",
+        "when": "isMac"
       }
     ],
     "semanticTokenTypes": [
