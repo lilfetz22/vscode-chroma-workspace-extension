@@ -42,13 +42,16 @@ export class TaskScheduler {
     for (const task of tasks) {
       const dueDate = new Date(task.dueDate);
       if (dueDate <= now) {
-        vscode.window.showInformationMessage(`Task due: ${task.title}`);
         if (task.recurrence) {
           const nextDueDate = getNextDueDate(task);
           if (nextDueDate) {
+            // Update the due date BEFORE showing notification to prevent duplicate notifications
             db.prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
+            vscode.window.showInformationMessage(`Task due: ${task.title}`);
           }
         } else {
+          // For non-recurring tasks, show notification then mark as completed
+          vscode.window.showInformationMessage(`Task due: ${task.title}`);
           db.prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
         }
       }
