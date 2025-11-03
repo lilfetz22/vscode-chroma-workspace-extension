@@ -30,3 +30,6 @@ npm-debug.log*
 *.swo
 *~
 .chroma/
+
+# Test coverage
+coverage/

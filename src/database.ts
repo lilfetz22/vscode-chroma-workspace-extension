@@ -9,25 +9,30 @@ import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 
 let db: Database.Database | undefined;
+let memoryDb: Database.Database | undefined;
 
-export function initDatabase(): Database.Database {
-    if (db) {
-        return db;
-    }
-
-    const dbPath = path.join(__dirname, '..', '.chroma', 'chroma.db');
-    const chromaDir = path.dirname(dbPath);
-
-    try {
+export function initDatabase(memory: boolean = false): Database.Database {
+    if (memory) {
+        if (memoryDb) {
+            return memoryDb;
+        }
+        memoryDb = new Database(':memory:');
+        db = memoryDb;
+    } else {
+        if (db) {
+            return db;
+        }
+        const dbPath = path.join(__dirname, '..', '.chroma', 'chroma.db');
+        const chromaDir = path.dirname(dbPath);
         if (!fs.existsSync(chromaDir)) {
             fs.mkdirSync(chromaDir);
         }
-
         db = new Database(dbPath);
+    }
+
+    try {
         db.pragma('journal_mode = WAL');
 
-        console.log('Chroma database initialized at:', dbPath);
-        
         // Run migrations automatically on initialization
         runMigrations();
         
@@ -40,7 +45,7 @@ export function initDatabase(): Database.Database {
 
 export function getDb(): Database.Database {
     if (!db) {
-        return initDatabase();
+        return initDatabase(!!memoryDb);
     }
     return db;
 }
