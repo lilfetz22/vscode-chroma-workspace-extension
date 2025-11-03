@@ -150,6 +150,10 @@ function createTestTables(db: any): void {
             name TEXT NOT NULL UNIQUE,
             executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- NOTE: FTS5 search_index table cannot be created in sql.js test environment
+        -- The actual extension uses better-sqlite3 which supports FTS5
+        -- Search functionality must be tested manually in the extension
     `);
 }
 

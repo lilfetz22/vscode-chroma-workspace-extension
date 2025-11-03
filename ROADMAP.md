@@ -118,20 +118,26 @@
 ---
 
 ## Phase 7: Global Search (Week 13-14)
-**Status**:  PLANNED
+**Status**: ✅ COMPLETE
 
 ### Tasks:
-- [ ] Implement SQLite full-text search (FTS5)
-- [ ] Create search command with QuickPick UI
-- [ ] Add keyboard shortcut (Ctrl/Cmd+K)
-- [ ] Build search result navigation
-- [ ] Add search result previews
-- [ ] Implement search ranking
+- [x] Implement SQLite full-text search (FTS5)
+- [x] Create search command with QuickPick UI
+- [x] Add keyboard shortcut (Ctrl/Cmd+Shift+F)
+- [x] Build search result navigation
+- [x] Add search result previews
+- [x] Implement search ranking
 
 ### Deliverables:
-- Fast global search
-- Clean search UI
-- Jump-to-result navigation
+- Fast global search ✅
+- Clean search UI ✅
+- Jump-to-result navigation ✅
+
+### Technical Notes:
+- Implemented FTS5-based search with automatic index maintenance via database triggers
+- Search command accessible via `Ctrl+Shift+F` (Windows/Linux) or `Cmd+Shift+F` (Mac)
+- Searches both notes and cards with relevance ranking
+- Test suite notes: FTS5 tests skipped in Jest due to sql.js limitation (production uses better-sqlite3 which supports FTS5)
 
 ---
 
@@ -267,4 +273,4 @@
 ---
 
 **Last Updated**: November 3, 2025
-**Current Phase**: Phase 5 (Complete) → Phase 6 (Next)
+**Current Phase**: Phase 7 (Complete) → Phase 8 (Next)
