@@ -86,7 +86,7 @@ export class Logger {
         if (this.logLevel <= LogLevel.ERROR) {
             const errorMessage = error instanceof Error 
                 ? `${message}: ${error.message}\n${error.stack}` 
-                : `${message}: ${JSON.stringify(error)}`;
+                : `${message}: ${JSON.stringify(error) || ''}`;
             this.log(LogLevel.ERROR, errorMessage, ...args);
         }
     }
