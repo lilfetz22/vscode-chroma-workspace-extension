@@ -8,6 +8,9 @@ import { Card } from './models/Card';
 import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
+import { createLogger } from './logic/Logger';
+
+const logger = createLogger('Database');
 
 let db: Database.Database | undefined;
 let memoryDb: Database.Database | undefined;
@@ -19,8 +22,11 @@ let customDbPath: string | undefined;
  */
 export function setDatabasePath(relativePath: string): void {
     if (db) {
-        throw new Error('Cannot change database path after database has been initialized');
+        const error = new Error('Cannot change database path after database has been initialized');
+        logger.error('Attempted to change database path after initialization', error);
+        throw error;
     }
+    logger.info('Database path set to:', relativePath);
     customDbPath = relativePath;
 }
 
@@ -32,139 +38,206 @@ export function getDatabasePath(): string {
 }
 
 export function initDatabase(memory: boolean = false, workspaceRoot?: string): Database.Database {
-    if (memory) {
-        if (memoryDb) {
-            return memoryDb;
-        }
-        memoryDb = new Database(':memory:');
-        db = memoryDb;
-    } else {
-        if (db) {
-            return db;
-        }
-        
-        // Determine the database path
-        const relativePath = getDatabasePath();
-        let dbPath: string;
-        
-        if (workspaceRoot) {
-            // Use provided workspace root (for production)
-            dbPath = path.join(workspaceRoot, relativePath);
-        } else {
-            // Fallback to __dirname (for testing)
-            dbPath = path.join(__dirname, '..', relativePath);
-        }
-        
-        const chromaDir = path.dirname(dbPath);
-        if (!fs.existsSync(chromaDir)) {
-            fs.mkdirSync(chromaDir, { recursive: true });
-        }
-        db = new Database(dbPath);
-    }
-
     try {
+        logger.info('Initializing database', { memory, workspaceRoot });
+        
+        if (memory) {
+            if (memoryDb) {
+                logger.debug('Returning existing memory database');
+                return memoryDb;
+            }
+            logger.info('Creating new in-memory database');
+            memoryDb = new Database(':memory:');
+            db = memoryDb;
+        } else {
+            if (db) {
+                logger.debug('Returning existing database connection');
+                return db;
+            }
+            
+            // Determine the database path
+            const relativePath = getDatabasePath();
+            let dbPath: string;
+            
+            if (workspaceRoot) {
+                // Use provided workspace root (for production)
+                dbPath = path.join(workspaceRoot, relativePath);
+            } else {
+                // Fallback to __dirname (for testing)
+                dbPath = path.join(__dirname, '..', relativePath);
+            }
+            
+            logger.info('Database path resolved to:', dbPath);
+            
+            const chromaDir = path.dirname(dbPath);
+            if (!fs.existsSync(chromaDir)) {
+                logger.info('Creating database directory:', chromaDir);
+                fs.mkdirSync(chromaDir, { recursive: true });
+            }
+            
+            logger.info('Opening database connection');
+            db = new Database(dbPath);
+        }
+
         db.pragma('journal_mode = WAL');
+        logger.debug('Set journal_mode to WAL');
 
         // Run migrations automatically on initialization
+        logger.info('Running database migrations');
         runMigrations();
         
+        logger.info('Database initialized successfully');
         return db;
     } catch (error: any) {
-        console.error(`Failed to initialize Chroma database: ${error.message}`);
-        throw error;
+        logger.error('Failed to initialize database', error);
+        throw new Error(`Database initialization failed: ${error.message}`);
     }
 }
 
 export function getDb(): Database.Database {
     if (!db) {
+        logger.debug('Database not initialized, initializing now');
         return initDatabase(!!memoryDb);
     }
     return db;
 }
 
 export function createTables(): void {
-    const db = getDb();
-    const schema = `
-        CREATE TABLE IF NOT EXISTS notes (
-            id TEXT PRIMARY KEY,
-            title TEXT NOT NULL,
-            content TEXT,
-            file_path TEXT UNIQUE NOT NULL,
-            nlh_enabled BOOLEAN DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-    `;
-    db.exec(schema);
+    try {
+        logger.info('Creating database tables');
+        const db = getDb();
+        const schema = `
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT,
+                file_path TEXT UNIQUE NOT NULL,
+                nlh_enabled BOOLEAN DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+        `;
+        db.exec(schema);
+        logger.info('Database tables created successfully');
+    } catch (error: any) {
+        logger.error('Failed to create database tables', error);
+        throw new Error(`Table creation failed: ${error.message}`);
+    }
 }
 
 export function createNote(note: Partial<Note>): Note {
-    const db = getDb();
-    const stmt = db.prepare(
-        'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (@id, @title, @content, @file_path, @nlh_enabled)'
-    );
-    stmt.run({
-        ...note,
-        nlh_enabled: note.nlh_enabled ? 1 : 0,
-    });
-    return getNoteById(note.id as string);
+    try {
+        logger.debug('Creating note', { title: note.title, file_path: note.file_path });
+        const db = getDb();
+        const stmt = db.prepare(
+            'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (@id, @title, @content, @file_path, @nlh_enabled)'
+        );
+        stmt.run({
+            ...note,
+            nlh_enabled: note.nlh_enabled ? 1 : 0,
+        });
+        logger.info('Note created successfully', { id: note.id });
+        return getNoteById(note.id as string);
+    } catch (error: any) {
+        logger.error('Failed to create note', error, { note });
+        throw new Error(`Note creation failed: ${error.message}`);
+    }
 }
 
 export function getNoteById(id: string): Note {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM notes WHERE id = ?');
-    const note = stmt.get(id) as Note;
-    if (note) {
-        note.nlh_enabled = !!note.nlh_enabled;
+    try {
+        logger.debug('Fetching note by ID', { id });
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM notes WHERE id = ?');
+        const note = stmt.get(id) as Note;
+        if (note) {
+            note.nlh_enabled = !!note.nlh_enabled;
+            logger.debug('Note found', { id });
+        } else {
+            logger.warn('Note not found', { id });
+        }
+        return note;
+    } catch (error: any) {
+        logger.error('Failed to fetch note by ID', error, { id });
+        throw new Error(`Failed to fetch note: ${error.message}`);
     }
-    return note;
 }
 
 export function getNoteByFilePath(filePath: string): Note {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM notes WHERE file_path = ?');
-    const note = stmt.get(filePath) as Note;
-    if (note) {
-        note.nlh_enabled = !!note.nlh_enabled;
+    try {
+        logger.debug('Fetching note by file path', { filePath });
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM notes WHERE file_path = ?');
+        const note = stmt.get(filePath) as Note;
+        if (note) {
+            note.nlh_enabled = !!note.nlh_enabled;
+            logger.debug('Note found', { filePath });
+        } else {
+            logger.debug('Note not found', { filePath });
+        }
+        return note;
+    } catch (error: any) {
+        logger.error('Failed to fetch note by file path', error, { filePath });
+        throw new Error(`Failed to fetch note: ${error.message}`);
     }
-    return note;
 }
 
 export function findOrCreateNoteByPath(filePath: string): Note {
-    let note = getNoteByFilePath(filePath);
-    if (!note) {
-        const newNote: Partial<Note> = {
-            id: randomBytes(16).toString('hex'),
-            title: path.basename(filePath, '.notesnlh'),
-            content: '',
-            file_path: filePath,
-            nlh_enabled: true,
-        };
-        note = createNote(newNote);
+    try {
+        logger.debug('Finding or creating note by path', { filePath });
+        let note = getNoteByFilePath(filePath);
+        if (!note) {
+            logger.info('Note not found, creating new note', { filePath });
+            const newNote: Partial<Note> = {
+                id: randomBytes(16).toString('hex'),
+                title: path.basename(filePath, '.notesnlh'),
+                content: '',
+                file_path: filePath,
+                nlh_enabled: true,
+            };
+            note = createNote(newNote);
+        }
+        return note;
+    } catch (error: any) {
+        logger.error('Failed to find or create note', error, { filePath });
+        throw new Error(`Failed to find or create note: ${error.message}`);
     }
-    return note;
 }
 
 export function getAllNotes(): Note[] {
-    const db = getDb();
-    const stmt = db.prepare('SELECT * FROM notes');
-    const notes = stmt.all() as Note[];
-    return notes.map(note => ({
-        ...note,
-        nlh_enabled: !!note.nlh_enabled,
-    }));
+    try {
+        logger.debug('Fetching all notes');
+        const db = getDb();
+        const stmt = db.prepare('SELECT * FROM notes');
+        const notes = stmt.all() as Note[];
+        logger.info(`Found ${notes.length} notes`);
+        return notes.map(note => ({
+            ...note,
+            nlh_enabled: !!note.nlh_enabled,
+        }));
+    } catch (error: any) {
+        logger.error('Failed to fetch all notes', error);
+        throw new Error(`Failed to fetch notes: ${error.message}`);
+    }
 }
 
 export function updateNote(note: Partial<Note>): Note {
-    const db = getDb();
-    const stmt = db.prepare(
-        'UPDATE notes SET title = @title, content = @content, file_path = @file_path, nlh_enabled = @nlh_enabled, updated_at = CURRENT_TIMESTAMP WHERE id = @id'
-    );
-    stmt.run({
-        ...note,
-        nlh_enabled: note.nlh_enabled ? 1 : 0,
-    });
-    return getNoteById(note.id as string);
+    try {
+        logger.debug('Updating note', { id: note.id });
+        const db = getDb();
+        const stmt = db.prepare(
+            'UPDATE notes SET title = @title, content = @content, file_path = @file_path, nlh_enabled = @nlh_enabled, updated_at = CURRENT_TIMESTAMP WHERE id = @id'
+        );
+        stmt.run({
+            ...note,
+            nlh_enabled: note.nlh_enabled ? 1 : 0,
+        });
+        logger.info('Note updated successfully', { id: note.id });
+        return getNoteById(note.id as string);
+    } catch (error: any) {
+        logger.error('Failed to update note', error, { note });
+        throw new Error(`Note update failed: ${error.message}`);
+    }
 }
 
 export function deleteNote(id: string): void {

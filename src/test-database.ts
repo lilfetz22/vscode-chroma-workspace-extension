@@ -113,11 +113,13 @@ function createTestTables(db: any): void {
             title TEXT NOT NULL,
             content TEXT,
             column_id TEXT NOT NULL,
+            note_id TEXT,
             order_index INTEGER NOT NULL,
             priority TEXT DEFAULT 'medium',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE
+            FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+            FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
         );
 
         CREATE TABLE IF NOT EXISTS tasks (
@@ -221,19 +223,196 @@ export function getTagsByCardId(db: any, cardId: string): Tag[] {
     return stmt.all(cardId);
 }
 
+// Note-related functions
+export function createNote(db: any, note: Partial<Note>): any {
+    const id = note.id || randomBytes(16).toString('hex');
+    const stmt = db.prepare(
+        'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (?, ?, ?, ?, ?)'
+    );
+    stmt.run(id, note.title, note.content, note.file_path, note.nlh_enabled ? 1 : 0);
+    return {
+        id,
+        title: note.title!,
+        content: note.content || null,
+        file_path: note.file_path!,
+        nlh_enabled: note.nlh_enabled ? 1 : 0
+    };
+}
+
+export function getNoteById(db: any, id: string): Note | undefined {
+    const stmt = db.prepare('SELECT * FROM notes WHERE id = ?');
+    return stmt.get(id);
+}
+
+export function getNoteByPath(db: any, filePath: string): Note | undefined {
+    const stmt = db.prepare('SELECT * FROM notes WHERE file_path = ?');
+    return stmt.get(filePath);
+}
+
+export function getAllNotes(db: any): Note[] {
+    const stmt = db.prepare('SELECT * FROM notes ORDER BY created_at DESC');
+    return stmt.all();
+}
+
+export function updateNote(db: any, id: string, updates: Partial<Note>): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+    
+    if (updates.title !== undefined) {
+        fields.push('title = ?');
+        values.push(updates.title);
+    }
+    if (updates.content !== undefined) {
+        fields.push('content = ?');
+        values.push(updates.content);
+    }
+    if (updates.nlh_enabled !== undefined) {
+        fields.push('nlh_enabled = ?');
+        values.push(updates.nlh_enabled ? 1 : 0);
+    }
+    
+    if (fields.length > 0) {
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(id);
+        const sql = `UPDATE notes SET ${fields.join(', ')} WHERE id = ?`;
+        const stmt = db.prepare(sql);
+        stmt.run(...values);
+    }
+}
+
+export function deleteNote(db: any, id: string): void {
+    const stmt = db.prepare('DELETE FROM notes WHERE id = ?');
+    stmt.run(id);
+}
+
+// Board-related functions
+export function createBoard(db: any, board: Partial<Board>): Board {
+    const id = board.id || randomBytes(16).toString('hex');
+    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
+    stmt.run(id, board.name);
+    return { id, name: board.name! };
+}
+
+export function getBoardById(db: any, id: string): Board | undefined {
+    const stmt = db.prepare('SELECT * FROM boards WHERE id = ?');
+    return stmt.get(id);
+}
+
+export function getAllBoards(db: any): Board[] {
+    const stmt = db.prepare('SELECT * FROM boards ORDER BY created_at DESC');
+    return stmt.all();
+}
+
+// Column-related functions
+export function createColumn(db: any, column: Partial<Column>): Column {
+    const id = column.id || randomBytes(16).toString('hex');
+    const stmt = db.prepare(
+        'INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)'
+    );
+    stmt.run(id, column.name, column.board_id, column.order);
+    return {
+        id,
+        name: column.name!,
+        board_id: column.board_id!,
+        order: column.order!
+    };
+}
+
+export function getColumnsByBoardId(db: any, boardId: string): Column[] {
+    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index');
+    return stmt.all(boardId).map((col: any) => ({
+        id: col.id,
+        name: col.name,
+        board_id: col.board_id,
+        order: col.order_index
+    }));
+}
+
+// Card-related functions
 export function createCard(db: any, card: Partial<Card>): Card {
     const id = card.id || randomBytes(16).toString('hex');
     const stmt = db.prepare(
-        'INSERT INTO cards (id, title, content, column_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, card.title, card.content, card.column_id, card.order, card.priority);
+    stmt.run(id, card.title, card.content, card.column_id, card.note_id || null, card.order, card.priority);
     return {
         id,
         title: card.title!,
         content: card.content || '',
         column_id: card.column_id!,
-        note_id: null,
+        note_id: card.note_id || null,
         order: card.order!,
         priority: card.priority!,
     };
+}
+
+export function getCardById(db: any, id: string): Card | undefined {
+    const stmt = db.prepare('SELECT * FROM cards WHERE id = ?');
+    const row = stmt.get(id);
+    if (!row) return undefined;
+    return {
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        column_id: row.column_id,
+        note_id: row.note_id,
+        order: row.order_index,
+        priority: row.priority
+    };
+}
+
+export function getCardsByColumnId(db: any, columnId: string): Card[] {
+    const stmt = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index');
+    return stmt.all(columnId).map((row: any) => ({
+        id: row.id,
+        title: row.title,
+        content: row.content,
+        column_id: row.column_id,
+        note_id: row.note_id,
+        order: row.order_index,
+        priority: row.priority
+    }));
+}
+
+export function updateCard(db: any, id: string, updates: Partial<Card>): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+    
+    if (updates.title !== undefined) {
+        fields.push('title = ?');
+        values.push(updates.title);
+    }
+    if (updates.content !== undefined) {
+        fields.push('content = ?');
+        values.push(updates.content);
+    }
+    if (updates.priority !== undefined) {
+        fields.push('priority = ?');
+        values.push(updates.priority);
+    }
+    if (updates.column_id !== undefined) {
+        fields.push('column_id = ?');
+        values.push(updates.column_id);
+    }
+    if (updates.order !== undefined) {
+        fields.push('order_index = ?');
+        values.push(updates.order);
+    }
+    if (updates.note_id !== undefined) {
+        fields.push('note_id = ?');
+        values.push(updates.note_id);
+    }
+    
+    if (fields.length > 0) {
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(id);
+        const sql = `UPDATE cards SET ${fields.join(', ')} WHERE id = ?`;
+        const stmt = db.prepare(sql);
+        stmt.run(...values);
+    }
+}
+
+export function deleteCard(db: any, id: string): void {
+    const stmt = db.prepare('DELETE FROM cards WHERE id = ?');
+    stmt.run(id);
 }

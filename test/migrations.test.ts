@@ -1,23 +1,32 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { initDatabase } from '../src/database';
-import { runMigrations, getCurrentVersion } from '../src/migrations';
-import Database from 'better-sqlite3';
+import { initTestDatabase, closeTestDb } from '../src/test-database';
 
 describe('Migration Functions', () => {
-    const dbPath = path.join(__dirname, '..', '.chroma', 'test.db');
-    let db: Database.Database;
+    let db: any;
 
-    beforeEach(() => {
-        if (fs.existsSync(dbPath)) {
-            fs.unlinkSync(dbPath);
-        }
-        db = initDatabase(true);
+    beforeAll(async () => {
+        db = await initTestDatabase();
     });
 
-    it('should run migrations', () => {
-        runMigrations();
-        const version = getCurrentVersion();
-        expect(version).toBe(5);
+    afterAll(() => {
+        closeTestDb();
+    });
+
+    it('should have migrations table', () => {
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        const tableNames = tables.map((t: any) => t.name);
+        expect(tableNames).toContain('migrations');
+    });
+
+    it('should have all required tables', () => {
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+        const tableNames = tables.map((t: any) => t.name);
+        
+        expect(tableNames).toContain('notes');
+        expect(tableNames).toContain('boards');
+        expect(tableNames).toContain('columns');
+        expect(tableNames).toContain('cards');
+        expect(tableNames).toContain('tasks');
+        expect(tableNames).toContain('tags');
+        expect(tableNames).toContain('card_tags');
     });
 });

@@ -8,6 +8,14 @@ const vscode = {
             show: jest.fn(),
             text: '',
         })),
+        createOutputChannel: jest.fn(() => ({
+            appendLine: jest.fn(),
+            append: jest.fn(),
+            show: jest.fn(),
+            hide: jest.fn(),
+            clear: jest.fn(),
+            dispose: jest.fn(),
+        })),
     },
     commands: {
         registerCommand: jest.fn(),

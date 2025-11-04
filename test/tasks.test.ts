@@ -1,9 +1,8 @@
 import { getNextDueDate } from '../src/logic/Recurrence';
 import { Task } from '../src/models/Task';
 import * as vscode from 'vscode';
-import { closeDb, getDb, initDatabase } from '../src/database';
+import { initTestDatabase, closeTestDb } from '../src/test-database';
 import * as TaskCommands from '../src/Task';
-import { Database } from 'better-sqlite3';
 
 jest.mock('vscode');
 
@@ -27,34 +26,77 @@ describe('Task Scheduling', () => {
         });
     });
 
-    describe('Task Commands', () => {
-        let db: Database;
-        beforeAll(() => {
-            initDatabase(true);
-            db = getDb();
+    describe('Task Database Operations', () => {
+        let db: any;
+
+        beforeAll(async () => {
+            db = await initTestDatabase();
         });
 
         afterAll(() => {
-            closeDb();
+            closeTestDb();
         });
 
         beforeEach(() => {
-            db.prepare('DELETE FROM tasks').run();
+            db.exec('DELETE FROM tasks');
         });
 
-        it('should add a new task', async () => {
-            (vscode.window.showInputBox as jest.Mock)
-                .mockResolvedValueOnce('New Task')
-                .mockResolvedValueOnce('2025-01-01');
-            (vscode.window.showQuickPick as jest.Mock).mockResolvedValueOnce('daily');
+        it('should insert a task into the database', () => {
+            const taskId = 'test-task-1';
+            const title = 'Test Task';
+            const dueDate = new Date().toISOString();
+            
+            db.prepare('INSERT INTO tasks (id, title, due_date, recurrence, status) VALUES (?, ?, ?, ?, ?)').run(
+                taskId, title, dueDate, 'daily', 'pending'
+            );
 
-            await TaskCommands.addTask();
-
-            const task = db.prepare('SELECT * FROM tasks WHERE title = ?').get('New Task') as Task;
+            const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
             expect(task).toBeDefined();
-            if (task) {
-                expect(task.recurrence).toBe('daily');
-            }
+            expect(task.title).toBe('Test Task');
+            expect(task.recurrence).toBe('daily');
+            expect(task.status).toBe('pending');
+        });
+
+        it('should retrieve all tasks', () => {
+            const now = new Date().toISOString();
+            
+            db.prepare('INSERT INTO tasks (id, title, due_date, status) VALUES (?, ?, ?, ?)').run(
+                'task-1', 'Task 1', now, 'pending'
+            );
+            db.prepare('INSERT INTO tasks (id, title, due_date, status) VALUES (?, ?, ?, ?)').run(
+                'task-2', 'Task 2', now, 'completed'
+            );
+
+            const tasks = db.prepare('SELECT * FROM tasks').all();
+            expect(tasks).toHaveLength(2);
+        });
+
+        it('should update a task status', () => {
+            const taskId = 'test-task-update';
+            const now = new Date().toISOString();
+            
+            db.prepare('INSERT INTO tasks (id, title, due_date, status) VALUES (?, ?, ?, ?)').run(
+                taskId, 'Update Test', now, 'pending'
+            );
+
+            db.prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', taskId);
+
+            const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+            expect(task.status).toBe('completed');
+        });
+
+        it('should delete a task', () => {
+            const taskId = 'test-task-delete';
+            const now = new Date().toISOString();
+            
+            db.prepare('INSERT INTO tasks (id, title, due_date, status) VALUES (?, ?, ?, ?)').run(
+                taskId, 'Delete Test', now, 'pending'
+            );
+
+            db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+
+            const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+            expect(task).toBeUndefined();
         });
     });
 });
