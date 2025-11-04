@@ -41,7 +41,10 @@ Created a comprehensive settings service with:
 - **Getters**: Separate methods for each settings category
 - **Validation**: `validateSettings()` with detailed error reporting
 - **Update support**: `updateSetting()` for programmatic updates
-- **Change detection**: `onDidChangeSettings()` callback support
+- **Change detection**: `onDidChangeSettings()` callback support following VS Code's event pattern
+  - Returns `vscode.Disposable` for proper cleanup
+  - Supports multiple concurrent callbacks using Set
+  - Error handling prevents one callback from breaking others
 - **Validators**: 
   - `isValidHexColor()`: Validates hex color format
   - `isValidDatabasePath()`: Validates relative database paths
@@ -75,15 +78,18 @@ Created a comprehensive settings service with:
 - Enhanced directory creation with recursive support
 
 ### 4. Test Suite (test/settings.test.ts)
-Created comprehensive test suite with 26 tests covering:
+Created comprehensive test suite with 30 tests covering:
 - All getter methods
 - Setting updates
 - Validation (colors, paths, ranges)
 - Configuration change callbacks
+- **Multiple callback registration and disposal**
+- **Disposable cleanup**
+- **Error handling in callbacks**
 - Edge cases and boundary values
 - Default value handling
 
-**All 26 tests passing ✅**
+**All 30 tests passing ✅**
 
 ### 5. Updated Export Tests (test/export.test.ts)
 - Added vscode mock for settings service compatibility
@@ -117,7 +123,7 @@ Added comprehensive settings documentation:
 
 ## Test Results
 ```
-✅ Settings Tests: 26 passed
+✅ Settings Tests: 30 passed (26 original + 4 for callback improvements)
 ✅ Export Tests: 20 passed
 ✅ Search Tests: 1 passed (4 skipped - FTS5 limitation)
 ✅ Tags Tests: 7 passed
@@ -127,7 +133,7 @@ Added comprehensive settings documentation:
 ⚠️  Tasks Tests: Known failure (better-sqlite3 in Jest)
 ```
 
-**Total: 54 tests passing, 4 skipped, 6 known failures (pre-existing)**
+**Total: 58 tests passing (was 54), 4 skipped, 6 known failures (pre-existing)**
 
 ## Breaking Changes
 None. All existing functionality preserved and enhanced.
