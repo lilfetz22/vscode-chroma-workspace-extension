@@ -47,7 +47,6 @@ const { getSettingsService } = require('../out/logic/SettingsService');
 
 exports.activate = async function activate(context) {
   // Initialize settings service
-  const settingsService = getSettingsService();
   kanbanProvider = new KanbanProvider();
   kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
   taskProvider = new TaskProvider();
