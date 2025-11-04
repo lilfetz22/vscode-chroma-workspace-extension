@@ -56,7 +56,7 @@ describe('Note Functions', () => {
     });
 
     it('should delete a note', () => {
-        const note = createNote(db, {
+        createNote(db, {
             id: 'test-note-2',
             title: 'Test Note 2',
             content: 'This is another test note.',
