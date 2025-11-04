@@ -7,7 +7,7 @@ import {
     CompletedTask,
     GroupedTask
 } from '../src/logic/ExportAccomplishments';
-import { initTestDatabase, getTestDb, closeTestDb } from '../src/test-database';
+import { initTestDatabase, closeTestDb } from '../src/test-database';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('Export Accomplishments', () => {
