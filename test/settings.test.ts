@@ -194,10 +194,25 @@ describe('SettingsService', () => {
         });
 
         test('should reject invalid database paths', () => {
+            // Unix absolute paths
             expect(settingsService.isValidDatabasePath('/absolute/path.db')).toBe(false);
-            expect(settingsService.isValidDatabasePath('\\windows\\path.db')).toBe(false);
+            
+            // Windows absolute paths (various formats)
+            expect(settingsService.isValidDatabasePath('C:\\path\\to\\file.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('C:/path/to/file.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('\\\\network\\share\\file.db')).toBe(false);
+            
+            // Path traversal attacks
+            expect(settingsService.isValidDatabasePath('../../../etc/passwd.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('../../outside.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('folder/../../outside.db')).toBe(false);
+            
+            // Invalid extensions
             expect(settingsService.isValidDatabasePath('.chroma/chroma.txt')).toBe(false);
             expect(settingsService.isValidDatabasePath('no-extension')).toBe(false);
+            
+            // Null byte injection
+            expect(settingsService.isValidDatabasePath('evil\0.db')).toBe(false);
         });
     });
 
@@ -365,6 +380,33 @@ describe('SettingsService', () => {
 
             expect(callback1).not.toHaveBeenCalled();
             expect(callback2).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Disposal and Memory Management', () => {
+        test('should properly dispose of service and clean up callbacks', () => {
+            const callback = jest.fn();
+            settingsService.onDidChangeSettings(callback);
+
+            // Dispose the service
+            settingsService.dispose();
+
+            // Simulate configuration change - callback should not be invoked
+            if (configChangeCallback) {
+                const mockEvent = {
+                    affectsConfiguration: (section: string) => section === 'chroma'
+                } as vscode.ConfigurationChangeEvent;
+                configChangeCallback(mockEvent);
+            }
+
+            expect(callback).not.toHaveBeenCalled();
+        });
+
+        test('should handle multiple dispose calls safely', () => {
+            expect(() => {
+                settingsService.dispose();
+                settingsService.dispose(); // Should not throw
+            }).not.toThrow();
         });
     });
 

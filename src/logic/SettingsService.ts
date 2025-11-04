@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 /**
  * Type-safe interface for all Chroma Workspace settings
@@ -36,10 +37,11 @@ export interface ChromaSettings {
 export class SettingsService {
     private static readonly CONFIG_SECTION = 'chroma';
     private changeCallbacks: Set<() => void> = new Set();
+    private configChangeDisposable: vscode.Disposable;
 
-    constructor() {
+    constructor(context?: vscode.ExtensionContext) {
         // Listen for configuration changes
-        vscode.workspace.onDidChangeConfiguration((event) => {
+        this.configChangeDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration(SettingsService.CONFIG_SECTION)) {
                 // Invoke all registered callbacks
                 this.changeCallbacks.forEach(callback => {
@@ -51,6 +53,19 @@ export class SettingsService {
                 });
             }
         });
+
+        // If context is provided, add to subscriptions for automatic cleanup
+        if (context) {
+            context.subscriptions.push(this.configChangeDisposable);
+        }
+    }
+
+    /**
+     * Dispose of the settings service and clean up resources
+     */
+    public dispose(): void {
+        this.configChangeDisposable.dispose();
+        this.changeCallbacks.clear();
     }
 
     /**
@@ -188,9 +203,32 @@ export class SettingsService {
     /**
      * Validate database path
      */
-    public isValidDatabasePath(path: string): boolean {
-        // Path should be relative and end with .db
-        return !path.startsWith('/') && !path.startsWith('\\') && path.endsWith('.db');
+    public isValidDatabasePath(dbPath: string): boolean {
+        // Must end with .db extension
+        if (!dbPath.endsWith('.db')) {
+            return false;
+        }
+
+        // Must not be an absolute path
+        if (path.isAbsolute(dbPath)) {
+            return false;
+        }
+
+        // Normalize the path and check for path traversal attempts
+        const normalizedPath = path.normalize(dbPath);
+        
+        // After normalization, the path should not start with '..' or contain '../'
+        // This prevents traversal attacks like '../../../etc/passwd.db'
+        if (normalizedPath.startsWith('..') || normalizedPath.includes(`..${path.sep}`)) {
+            return false;
+        }
+
+        // Additional security: path should not contain null bytes
+        if (dbPath.includes('\0')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -242,8 +280,13 @@ export function getSettingsService(): SettingsService {
 
 /**
  * Initialize the settings service (called from extension activation)
+ * @param context Extension context for automatic disposal management
  */
-export function initializeSettingsService(): SettingsService {
-    settingsServiceInstance = new SettingsService();
+export function initializeSettingsService(context?: vscode.ExtensionContext): SettingsService {
+    // Dispose of existing instance if present
+    if (settingsServiceInstance) {
+        settingsServiceInstance.dispose();
+    }
+    settingsServiceInstance = new SettingsService(context);
     return settingsServiceInstance;
 }

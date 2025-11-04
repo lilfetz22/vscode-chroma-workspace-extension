@@ -74,7 +74,6 @@ export class TaskScheduler {
   }
 
   private recordNotification(taskId: string) {
-    this.notifiedTasks.add(taskId);
     this.lastNotificationTime.set(taskId, Date.now());
   }
 
@@ -137,7 +136,6 @@ export class TaskScheduler {
    * Reset notification tracking (useful for testing or manual reset)
    */
   public resetNotifications() {
-    this.notifiedTasks.clear();
     this.lastNotificationTime.clear();
   }
 }
