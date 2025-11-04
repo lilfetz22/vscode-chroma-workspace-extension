@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import { getDb } from '../database';
 
 export interface CompletedTask {
@@ -322,13 +323,14 @@ export async function exportAccomplishments(): Promise<void> {
         const csvContent = convertToCSV(groupedTasks);
 
         // Step 5: Prompt for save location
+        // Use workspace folder if available, otherwise use user's Documents folder
+        const defaultFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || 
+                             path.join(os.homedir(), 'Documents');
+        
+        const defaultFilename = `accomplishments_${dateRange.startDate.toISOString().split('T')[0]}_to_${dateRange.endDate.toISOString().split('T')[0]}.csv`;
+        
         const saveUri = await vscode.window.showSaveDialog({
-            defaultUri: vscode.Uri.file(
-                path.join(
-                    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd(),
-                    `accomplishments_${dateRange.startDate.toISOString().split('T')[0]}_to_${dateRange.endDate.toISOString().split('T')[0]}.csv`
-                )
-            ),
+            defaultUri: vscode.Uri.file(path.join(defaultFolder, defaultFilename)),
             filters: {
                 'CSV Files': ['csv'],
                 'All Files': ['*']
