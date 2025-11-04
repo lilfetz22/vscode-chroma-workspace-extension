@@ -1,3 +1,5 @@
+jest.mock('vscode');
+
 import {
     calculateDateRange,
     getCompletedTasks,
