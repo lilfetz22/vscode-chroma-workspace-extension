@@ -197,6 +197,10 @@
         "title": "Remove Tag from Card"
       },
       {
+        "command": "chroma.exportAccomplishments",
+        "title": "Export Accomplishments"
+      },
+      {
         "command": "chroma.search",
         "title": "Search"
       }
