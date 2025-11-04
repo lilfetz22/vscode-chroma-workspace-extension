@@ -35,22 +35,46 @@ export interface ChromaSettings {
  */
 export class SettingsService {
     private static readonly CONFIG_SECTION = 'chroma';
-    private onDidChangeCallback?: () => void;
+    private changeCallbacks: Set<() => void> = new Set();
 
     constructor() {
         // Listen for configuration changes
         vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration(SettingsService.CONFIG_SECTION)) {
-                this.onDidChangeCallback?.();
+                // Invoke all registered callbacks
+                this.changeCallbacks.forEach(callback => {
+                    try {
+                        callback();
+                    } catch (error) {
+                        console.error('Error in settings change callback:', error);
+                    }
+                });
             }
         });
     }
 
     /**
-     * Register a callback to be invoked when settings change
+     * Register a callback to be invoked when settings change.
+     * Returns a Disposable that can be used to unregister the callback.
+     * 
+     * @param callback Function to call when settings change
+     * @returns Disposable to unregister the callback
+     * 
+     * @example
+     * const disposable = settingsService.onDidChangeSettings(() => {
+     *     console.log('Settings changed!');
+     * });
+     * // Later, to unregister:
+     * disposable.dispose();
      */
-    public onDidChangeSettings(callback: () => void): void {
-        this.onDidChangeCallback = callback;
+    public onDidChangeSettings(callback: () => void): vscode.Disposable {
+        this.changeCallbacks.add(callback);
+        
+        return {
+            dispose: () => {
+                this.changeCallbacks.delete(callback);
+            }
+        };
     }
 
     /**

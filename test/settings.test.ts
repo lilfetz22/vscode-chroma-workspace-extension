@@ -250,9 +250,10 @@ describe('SettingsService', () => {
     describe('onDidChangeSettings', () => {
         test('should register callback for settings changes', () => {
             const callback = jest.fn();
-            settingsService.onDidChangeSettings(callback);
+            const disposable = settingsService.onDidChangeSettings(callback);
             
             expect(callback).not.toHaveBeenCalled();
+            expect(disposable).toHaveProperty('dispose');
         });
 
         test('should invoke callback when settings change', () => {
@@ -268,6 +269,102 @@ describe('SettingsService', () => {
             }
             
             expect(callback).toHaveBeenCalled();
+        });
+
+        test('should support multiple callbacks', () => {
+            const callback1 = jest.fn();
+            const callback2 = jest.fn();
+            const callback3 = jest.fn();
+
+            settingsService.onDidChangeSettings(callback1);
+            settingsService.onDidChangeSettings(callback2);
+            settingsService.onDidChangeSettings(callback3);
+
+            // Simulate configuration change
+            if (configChangeCallback) {
+                const mockEvent = {
+                    affectsConfiguration: (section: string) => section === 'chroma'
+                } as vscode.ConfigurationChangeEvent;
+                configChangeCallback(mockEvent);
+            }
+
+            expect(callback1).toHaveBeenCalledTimes(1);
+            expect(callback2).toHaveBeenCalledTimes(1);
+            expect(callback3).toHaveBeenCalledTimes(1);
+        });
+
+        test('should allow unregistering callbacks via dispose', () => {
+            const callback1 = jest.fn();
+            const callback2 = jest.fn();
+
+            const disposable1 = settingsService.onDidChangeSettings(callback1);
+            const disposable2 = settingsService.onDidChangeSettings(callback2);
+
+            // Dispose first callback
+            disposable1.dispose();
+
+            // Simulate configuration change
+            if (configChangeCallback) {
+                const mockEvent = {
+                    affectsConfiguration: (section: string) => section === 'chroma'
+                } as vscode.ConfigurationChangeEvent;
+                configChangeCallback(mockEvent);
+            }
+
+            expect(callback1).not.toHaveBeenCalled();
+            expect(callback2).toHaveBeenCalledTimes(1);
+        });
+
+        test('should handle callback errors without breaking other callbacks', () => {
+            const callback1 = jest.fn(() => { throw new Error('Test error'); });
+            const callback2 = jest.fn();
+            const callback3 = jest.fn();
+
+            settingsService.onDidChangeSettings(callback1);
+            settingsService.onDidChangeSettings(callback2);
+            settingsService.onDidChangeSettings(callback3);
+
+            // Mock console.error to suppress error output in tests
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+            // Simulate configuration change
+            if (configChangeCallback) {
+                const mockEvent = {
+                    affectsConfiguration: (section: string) => section === 'chroma'
+                } as vscode.ConfigurationChangeEvent;
+                configChangeCallback(mockEvent);
+            }
+
+            // All callbacks should be invoked despite error in callback1
+            expect(callback1).toHaveBeenCalled();
+            expect(callback2).toHaveBeenCalled();
+            expect(callback3).toHaveBeenCalled();
+            expect(consoleErrorSpy).toHaveBeenCalled();
+
+            consoleErrorSpy.mockRestore();
+        });
+
+        test('should not invoke callbacks after all are disposed', () => {
+            const callback1 = jest.fn();
+            const callback2 = jest.fn();
+
+            const disposable1 = settingsService.onDidChangeSettings(callback1);
+            const disposable2 = settingsService.onDidChangeSettings(callback2);
+
+            // Dispose both callbacks
+            disposable1.dispose();
+            disposable2.dispose();
+
+            // Simulate configuration change
+            if (configChangeCallback) {
+                const mockEvent = {
+                    affectsConfiguration: (section: string) => section === 'chroma'
+                } as vscode.ConfigurationChangeEvent;
+                configChangeCallback(mockEvent);
+            }
+
+            expect(callback1).not.toHaveBeenCalled();
+            expect(callback2).not.toHaveBeenCalled();
         });
     });
 
