@@ -229,7 +229,8 @@ export function createNote(db: any, note: Partial<Note>): any {
     const stmt = db.prepare(
         'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (?, ?, ?, ?, ?)'
     );
-    stmt.run(id, note.title, note.content, note.file_path, note.nlh_enabled ? 1 : 0);
+    // Explicitly coerce undefined to NULL while preserving empty strings
+    stmt.run(id, note.title, note.content ?? null, note.file_path, note.nlh_enabled ? 1 : 0);
     return {
         id,
         title: note.title!,
