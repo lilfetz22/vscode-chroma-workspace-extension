@@ -45,9 +45,17 @@ Created a comprehensive settings service with:
   - Returns `vscode.Disposable` for proper cleanup
   - Supports multiple concurrent callbacks using Set
   - Error handling prevents one callback from breaking others
+- **Memory management**: 
+  - `dispose()` method for proper resource cleanup
+  - Accepts optional `ExtensionContext` for automatic cleanup
+  - Prevents memory leaks from configuration change listeners
 - **Validators**: 
   - `isValidHexColor()`: Validates hex color format
-  - `isValidDatabasePath()`: Validates relative database paths
+  - `isValidDatabasePath()`: Comprehensive path validation
+    - Uses `path.isAbsolute()` for cross-platform absolute path detection
+    - Prevents path traversal attacks (e.g., `../../etc/passwd.db`)
+    - Detects null byte injection attempts
+    - Normalizes paths before validation
 - **Reset functionality**: `resetToDefaults()` to restore defaults
 
 ### 3. Integration with Existing Features
@@ -78,7 +86,7 @@ Created a comprehensive settings service with:
 - Enhanced directory creation with recursive support
 
 ### 4. Test Suite (test/settings.test.ts)
-Created comprehensive test suite with 30 tests covering:
+Created comprehensive test suite with 32 tests covering:
 - All getter methods
 - Setting updates
 - Validation (colors, paths, ranges)
@@ -86,10 +94,14 @@ Created comprehensive test suite with 30 tests covering:
 - **Multiple callback registration and disposal**
 - **Disposable cleanup**
 - **Error handling in callbacks**
+- **Memory management (service disposal)**
+- **Security: Path traversal prevention**
+- **Security: Windows absolute path detection**
+- **Security: Null byte injection prevention**
 - Edge cases and boundary values
 - Default value handling
 
-**All 30 tests passing ✅**
+**All 32 tests passing ✅**
 
 ### 5. Updated Export Tests (test/export.test.ts)
 - Added vscode mock for settings service compatibility
@@ -123,7 +135,7 @@ Added comprehensive settings documentation:
 
 ## Test Results
 ```
-✅ Settings Tests: 30 passed (26 original + 4 for callback improvements)
+✅ Settings Tests: 32 passed (26 original + 4 callback + 2 disposal)
 ✅ Export Tests: 20 passed
 ✅ Search Tests: 1 passed (4 skipped - FTS5 limitation)
 ✅ Tags Tests: 7 passed
@@ -133,7 +145,7 @@ Added comprehensive settings documentation:
 ⚠️  Tasks Tests: Known failure (better-sqlite3 in Jest)
 ```
 
-**Total: 58 tests passing (was 54), 4 skipped, 6 known failures (pre-existing)**
+**Total: 60 tests passing (was 54), 4 skipped, 6 known failures (pre-existing)**
 
 ## Breaking Changes
 None. All existing functionality preserved and enhanced.
