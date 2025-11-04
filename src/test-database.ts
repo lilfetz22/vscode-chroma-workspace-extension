@@ -233,7 +233,7 @@ export function createNote(db: any, note: Partial<Note>): any {
     return {
         id,
         title: note.title!,
-        content: note.content || null,
+        content: note.content ?? null,
         file_path: note.file_path!,
         nlh_enabled: note.nlh_enabled ? 1 : 0
     };
