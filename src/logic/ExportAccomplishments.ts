@@ -187,7 +187,7 @@ export function groupRecurringTasks(tasks: CompletedTask[]): (CompletedTask | Gr
     for (const [, group] of recurringGroups) {
         if (group.length > 1) {
             // Group multiple completions
-            const sortedGroup = group.sort((a, b) => 
+            const sortedGroup = [...group].sort((a, b) => 
                 new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
             );
             
