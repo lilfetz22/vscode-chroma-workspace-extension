@@ -8,7 +8,6 @@ export class TaskScheduler {
   private static instance: TaskScheduler;
   private timer: NodeJS.Timeout | undefined;
   private taskCountStatusBarItem: vscode.StatusBarItem;
-  private notifiedTasks: Set<string> = new Set(); // Track tasks we've already notified about
   private lastNotificationTime: Map<string, number> = new Map(); // Track when we last notified for each task
 
   private constructor() {
