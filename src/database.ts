@@ -11,8 +11,27 @@ import { randomBytes } from 'crypto';
 
 let db: Database.Database | undefined;
 let memoryDb: Database.Database | undefined;
+let customDbPath: string | undefined;
 
-export function initDatabase(memory: boolean = false): Database.Database {
+/**
+ * Set a custom database path (relative to workspace root)
+ * Must be called before initDatabase()
+ */
+export function setDatabasePath(relativePath: string): void {
+    if (db) {
+        throw new Error('Cannot change database path after database has been initialized');
+    }
+    customDbPath = relativePath;
+}
+
+/**
+ * Get the configured database path
+ */
+export function getDatabasePath(): string {
+    return customDbPath || '.chroma/chroma.db';
+}
+
+export function initDatabase(memory: boolean = false, workspaceRoot?: string): Database.Database {
     if (memory) {
         if (memoryDb) {
             return memoryDb;
@@ -23,10 +42,22 @@ export function initDatabase(memory: boolean = false): Database.Database {
         if (db) {
             return db;
         }
-        const dbPath = path.join(__dirname, '..', '.chroma', 'chroma.db');
+        
+        // Determine the database path
+        const relativePath = getDatabasePath();
+        let dbPath: string;
+        
+        if (workspaceRoot) {
+            // Use provided workspace root (for production)
+            dbPath = path.join(workspaceRoot, relativePath);
+        } else {
+            // Fallback to __dirname (for testing)
+            dbPath = path.join(__dirname, '..', relativePath);
+        }
+        
         const chromaDir = path.dirname(dbPath);
         if (!fs.existsSync(chromaDir)) {
-            fs.mkdirSync(chromaDir);
+            fs.mkdirSync(chromaDir, { recursive: true });
         }
         db = new Database(dbPath);
     }

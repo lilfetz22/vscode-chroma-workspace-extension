@@ -43,8 +43,81 @@
       ]
     },
     "configuration": {
-      "title": "Notes NLH",
+      "title": "Chroma Workspace",
       "properties": {
+        "chroma.nlh.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Natural Language Highlighting for notes"
+        },
+        "chroma.nlh.colors.nouns": {
+          "type": "string",
+          "default": "#569CD6",
+          "description": "Color for nouns in Natural Language Highlighting (hex color)"
+        },
+        "chroma.nlh.colors.verbs": {
+          "type": "string",
+          "default": "#4EC9B0",
+          "description": "Color for verbs in Natural Language Highlighting (hex color)"
+        },
+        "chroma.nlh.colors.adjectives": {
+          "type": "string",
+          "default": "#C586C0",
+          "description": "Color for adjectives in Natural Language Highlighting (hex color)"
+        },
+        "chroma.nlh.colors.adverbs": {
+          "type": "string",
+          "default": "#DCDCAA",
+          "description": "Color for adverbs in Natural Language Highlighting (hex color)"
+        },
+        "chroma.nlh.colors.numbers": {
+          "type": "string",
+          "default": "#B5CEA8",
+          "description": "Color for numbers in Natural Language Highlighting (hex color)"
+        },
+        "chroma.nlh.colors.properNouns": {
+          "type": "string",
+          "default": "#4FC1FF",
+          "description": "Color for proper nouns in Natural Language Highlighting (hex color)"
+        },
+        "chroma.tasks.enableNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notifications for due and overdue tasks"
+        },
+        "chroma.tasks.notificationFrequency": {
+          "type": "string",
+          "enum": ["once", "hourly", "daily"],
+          "default": "once",
+          "description": "How often to show notifications for overdue tasks"
+        },
+        "chroma.tasks.showInStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show task count in the status bar"
+        },
+        "chroma.export.defaultDateRangeMonths": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Default number of months for accomplishments export"
+        },
+        "chroma.export.includeDescriptions": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include task descriptions in accomplishments export"
+        },
+        "chroma.export.groupRecurringTasks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Group recurring tasks together in accomplishments export"
+        },
+        "chroma.database.path": {
+          "type": "string",
+          "default": ".chroma/chroma.db",
+          "description": "Relative path to the SQLite database file within the workspace"
+        },
         "notesnlh.linkPatterns": {
           "type": "object",
           "default": {},

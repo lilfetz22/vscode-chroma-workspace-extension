@@ -40,11 +40,13 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById } = require('../out/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/database');
 const { search } = require('../out/logic/search');
+const { getSettingsService } = require('../out/logic/SettingsService');
 
 
 exports.activate = async function activate(context) {
+  // Initialize settings service
   kanbanProvider = new KanbanProvider();
   kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
   taskProvider = new TaskProvider();
@@ -208,7 +210,15 @@ exports.activate = async function activate(context) {
   );
 
   try {
-    await initDatabase();
+    // Configure database path from settings
+    const settingsService = getSettingsService();
+    const dbSettings = settingsService.getDatabaseSettings();
+    setDatabasePath(dbSettings.path);
+    
+    // Get workspace root for database initialization
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    
+    await initDatabase(false, workspaceRoot);
     await createTables();
   } catch (err) {
     vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
@@ -267,7 +277,7 @@ exports.activate = async function activate(context) {
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (event.affectsConfiguration('notesnlh')) {
+      if (event.affectsConfiguration('notesnlh') || event.affectsConfiguration('chroma.nlh')) {
         // Trigger a re-highlight of all open documents
         vscode.workspace.textDocuments.forEach(doc => {
           if (doc.languageId === 'notesnlh') {
@@ -471,6 +481,12 @@ exports.activate = async function activate(context) {
   }
 
   function shouldHighlightPOS(pos, config) {
+    // First check if NLH is enabled
+    const chromaConfig = vscode.workspace.getConfiguration('chroma');
+    if (!chromaConfig.get('nlh.enabled', true)) {
+      return false;
+    }
+
     switch (pos.toLowerCase()) {
       case 'noun':
         return config.get('highlightNouns');
