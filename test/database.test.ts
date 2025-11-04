@@ -1,6 +1,5 @@
 import { 
     initTestDatabase, 
-    getTestDb, 
     closeTestDb,
     createNote,
     getNoteById,
