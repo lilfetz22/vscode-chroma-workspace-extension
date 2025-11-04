@@ -53,6 +53,13 @@ export class Logger {
     }
 
     /**
+     * Get the current context
+     */
+    public getContext(): string | undefined {
+        return this.context;
+    }
+
+    /**
      * Log a debug message
      */
     public debug(message: string, ...args: any[]): void {
