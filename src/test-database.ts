@@ -416,3 +416,91 @@ export function deleteCard(db: any, id: string): void {
     const stmt = db.prepare('DELETE FROM cards WHERE id = ?');
     stmt.run(id);
 }
+
+// Task-related functions
+export function createTask(db: any, task: any): any {
+    const id = task.id || randomBytes(16).toString('hex');
+    // Allow callers to pass either due_date (DB style) or dueDate (model style)
+    const dueDateInput = task.due_date ?? task.dueDate ?? new Date().toISOString();
+    const due_date = dueDateInput instanceof Date ? dueDateInput.toISOString() : dueDateInput;
+    const stmt = db.prepare(
+        'INSERT INTO tasks (id, title, description, due_date, recurrence, status, card_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    );
+    stmt.run(
+        id,
+        task.title,
+        task.description ?? null,
+        due_date,
+        task.recurrence ?? null,
+        task.status ?? 'pending',
+        task.card_id ?? null
+    );
+    return {
+        id,
+        title: task.title!,
+        description: task.description ?? null,
+        due_date,
+        recurrence: task.recurrence ?? null,
+        status: task.status ?? 'pending',
+        card_id: task.card_id ?? null
+    };
+}
+
+export function getTaskById(db: any, id: string): any | undefined {
+    const stmt = db.prepare('SELECT * FROM tasks WHERE id = ?');
+    return stmt.get(id);
+}
+
+export function getAllTasks(db: any): any[] {
+    const stmt = db.prepare('SELECT * FROM tasks');
+    return stmt.all();
+}
+
+export function updateTask(db: any, id: string, updates: any): void {
+    const fields: string[] = [];
+    const values: any[] = [];
+
+    if (updates.title !== undefined) {
+        fields.push('title = ?');
+        values.push(updates.title);
+    }
+    if (updates.description !== undefined) {
+        fields.push('description = ?');
+        values.push(updates.description);
+    }
+    if (updates.due_date !== undefined || updates.dueDate !== undefined) {
+        const dueInput = updates.due_date ?? updates.dueDate;
+        const due = dueInput instanceof Date ? dueInput.toISOString() : dueInput;
+        fields.push('due_date = ?');
+        values.push(due);
+    }
+    if (updates.recurrence !== undefined) {
+        fields.push('recurrence = ?');
+        values.push(updates.recurrence);
+    }
+    if (updates.status !== undefined) {
+        fields.push('status = ?');
+        values.push(updates.status);
+    }
+    if (updates.card_id !== undefined) {
+        fields.push('card_id = ?');
+        values.push(updates.card_id);
+    }
+
+    if (fields.length > 0) {
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(id);
+        const sql = `UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`;
+        const stmt = db.prepare(sql);
+        stmt.run(...values);
+    }
+}
+
+export function deleteTask(db: any, id: string): void {
+    const stmt = db.prepare('DELETE FROM tasks WHERE id = ?');
+    stmt.run(id);
+}
+
+export function clearTasks(db: any): void {
+    db.exec('DELETE FROM tasks');
+}
