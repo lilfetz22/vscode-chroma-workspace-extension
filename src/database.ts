@@ -18,7 +18,7 @@ let customDbPath: string | undefined;
  * Must be called before initDatabase()
  */
 export function setDatabasePath(relativePath: string): void {
-    if (db && !memoryDb) {
+    if (db) {
         throw new Error('Cannot change database path after database has been initialized');
     }
     customDbPath = relativePath;
