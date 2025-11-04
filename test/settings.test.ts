@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SettingsService, ChromaSettings } from '../src/logic/SettingsService';
+import { SettingsService } from '../src/logic/SettingsService';
 
 // Mock vscode configuration
 let mockConfig: { [key: string]: any } = {};
