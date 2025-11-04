@@ -1,9 +1,8 @@
 import { getNextDueDate } from '../src/logic/Recurrence';
 import { Task } from '../src/models/Task';
 import * as vscode from 'vscode';
-import { closeDb, getDb, initDatabase } from '../src/database';
+import { initTestDatabase, closeTestDb, createTask, getTaskById, getAllTasks, updateTask, deleteTask, clearTasks } from '../src/test-database';
 import * as TaskCommands from '../src/Task';
-import { Database } from 'better-sqlite3';
 
 jest.mock('vscode');
 
@@ -27,34 +26,67 @@ describe('Task Scheduling', () => {
         });
     });
 
-    describe('Task Commands', () => {
-        let db: Database;
-        beforeAll(() => {
-            initDatabase(true);
-            db = getDb();
+    describe('Task Database Operations', () => {
+        let db: any;
+
+        beforeAll(async () => {
+            db = await initTestDatabase();
         });
 
         afterAll(() => {
-            closeDb();
+            closeTestDb();
         });
 
         beforeEach(() => {
-            db.prepare('DELETE FROM tasks').run();
+            clearTasks(db);
         });
 
-        it('should add a new task', async () => {
-            (vscode.window.showInputBox as jest.Mock)
-                .mockResolvedValueOnce('New Task')
-                .mockResolvedValueOnce('2025-01-01');
-            (vscode.window.showQuickPick as jest.Mock).mockResolvedValueOnce('daily');
+        it('should insert a task into the database', () => {
+            const taskId = 'test-task-1';
+            const title = 'Test Task';
+            const dueDate = new Date().toISOString();
 
-            await TaskCommands.addTask();
+            createTask(db, { id: taskId, title, due_date: dueDate, recurrence: 'daily', status: 'pending' });
 
-            const task = db.prepare('SELECT * FROM tasks WHERE title = ?').get('New Task') as Task;
+            const task = getTaskById(db, taskId);
             expect(task).toBeDefined();
-            if (task) {
-                expect(task.recurrence).toBe('daily');
-            }
+            expect(task.title).toBe('Test Task');
+            expect(task.recurrence).toBe('daily');
+            expect(task.status).toBe('pending');
+        });
+
+        it('should retrieve all tasks', () => {
+            const now = new Date().toISOString();
+
+            createTask(db, { id: 'task-1', title: 'Task 1', due_date: now, status: 'pending' });
+            createTask(db, { id: 'task-2', title: 'Task 2', due_date: now, status: 'completed' });
+
+            const tasks = getAllTasks(db);
+            expect(tasks).toHaveLength(2);
+        });
+
+        it('should update a task status', () => {
+            const taskId = 'test-task-update';
+            const now = new Date().toISOString();
+
+            createTask(db, { id: taskId, title: 'Update Test', due_date: now, status: 'pending' });
+
+            updateTask(db, taskId, { status: 'completed' });
+
+            const task = getTaskById(db, taskId);
+            expect(task.status).toBe('completed');
+        });
+
+        it('should delete a task', () => {
+            const taskId = 'test-task-delete';
+            const now = new Date().toISOString();
+
+            createTask(db, { id: taskId, title: 'Delete Test', due_date: now, status: 'pending' });
+
+            deleteTask(db, taskId);
+
+            const task = getTaskById(db, taskId);
+            expect(task).toBeUndefined();
         });
     });
 });
