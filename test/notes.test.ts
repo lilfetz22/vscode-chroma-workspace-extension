@@ -3,8 +3,7 @@ import {
     closeTestDb, 
     createNote, 
     getNoteByPath, 
-    deleteNote, 
-    getAllNotes 
+    deleteNote 
 } from '../src/test-database';
 import { Note } from '../src/models/Note';
 
