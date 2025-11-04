@@ -3,6 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { getDb } from '../database';
+import { getSettingsService } from './SettingsService';
 
 export interface CompletedTask {
     id: string;
@@ -33,10 +34,14 @@ export interface DateRange {
  * Get predefined date ranges for quick selection
  */
 export function getDateRangeOptions(): { label: string; value: string }[] {
+    const settings = getSettingsService().getExportSettings();
+    const defaultMonths = settings.defaultDateRangeMonths;
+    
     return [
         { label: 'Last 3 Months', value: '3months' },
         { label: 'Last 6 Months', value: '6months' },
         { label: 'Last 12 Months', value: '12months' },
+        { label: `Last ${defaultMonths} Months (Default)`, value: 'default' },
         { label: 'Custom Range', value: 'custom' }
     ];
 }
@@ -48,6 +53,8 @@ export function calculateDateRange(option: string): DateRange | null {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
     let startDate: Date;
+
+    const settings = getSettingsService().getExportSettings();
 
     switch (option) {
         case '3months':
@@ -65,6 +72,11 @@ export function calculateDateRange(option: string): DateRange | null {
             startDate.setMonth(startDate.getMonth() - 12);
             startDate.setHours(0, 0, 0, 0);
             return { startDate, endDate, label: 'Last 12 Months' };
+        case 'default':
+            startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - settings.defaultDateRangeMonths);
+            startDate.setHours(0, 0, 0, 0);
+            return { startDate, endDate, label: `Last ${settings.defaultDateRangeMonths} Months` };
         case 'custom':
             return null; // Will prompt user for custom dates
         default:
@@ -164,6 +176,13 @@ export function getCompletedTasks(startDate: Date, endDate: Date, dbInstance?: a
  * Group recurring tasks together for cleaner export
  */
 export function groupRecurringTasks(tasks: CompletedTask[]): (CompletedTask | GroupedTask)[] {
+    const settings = getSettingsService().getExportSettings();
+    
+    // If grouping is disabled, return tasks as-is
+    if (!settings.groupRecurringTasks) {
+        return tasks;
+    }
+    
     const recurringGroups = new Map<string, CompletedTask[]>();
     const nonRecurringTasks: CompletedTask[] = [];
 
@@ -223,28 +242,43 @@ export function isGroupedTask(item: CompletedTask | GroupedTask): item is Groupe
  * Convert tasks to CSV format
  */
 export function convertToCSV(tasks: (CompletedTask | GroupedTask)[]): string {
-    const headers = ['Title', 'Description', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
+    const settings = getSettingsService().getExportSettings();
+    const includeDescriptions = settings.includeDescriptions;
+    
+    const headers = includeDescriptions 
+        ? ['Title', 'Description', 'Recurrence', 'Count', 'Completed Date', 'Date Range']
+        : ['Title', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
     const rows: string[][] = [headers];
 
     for (const task of tasks) {
         if (isGroupedTask(task)) {
-            rows.push([
+            const row = [
                 escapeCSV(task.title),
-                escapeCSV(task.description || ''),
+            ];
+            if (includeDescriptions) {
+                row.push(escapeCSV(task.description || ''));
+            }
+            row.push(
                 escapeCSV(task.recurrence || ''),
                 task.count.toString(),
                 formatDate(task.lastCompleted),
                 `${formatDate(task.firstCompleted)} - ${formatDate(task.lastCompleted)}`
-            ]);
+            );
+            rows.push(row);
         } else {
-            rows.push([
+            const row = [
                 escapeCSV(task.title),
-                escapeCSV(task.description || ''),
+            ];
+            if (includeDescriptions) {
+                row.push(escapeCSV(task.description || ''));
+            }
+            row.push(
                 escapeCSV(task.recurrence || ''),
                 '1',
                 formatDate(task.completed_at),
                 formatDate(task.completed_at)
-            ]);
+            );
+            rows.push(row);
         }
     }
 

@@ -10,6 +10,52 @@ import {
 import { initTestDatabase, closeTestDb } from '../src/test-database';
 import { v4 as uuidv4 } from 'uuid';
 
+// Mock vscode configuration for settings service
+let mockConfig: { [key: string]: any } = {
+    'nlh.enabled': true,
+    'nlh.colors.nouns': '#569CD6',
+    'nlh.colors.verbs': '#4EC9B0',
+    'nlh.colors.adjectives': '#C586C0',
+    'nlh.colors.adverbs': '#DCDCAA',
+    'nlh.colors.numbers': '#B5CEA8',
+    'nlh.colors.properNouns': '#4FC1FF',
+    'tasks.enableNotifications': true,
+    'tasks.notificationFrequency': 'once',
+    'tasks.showInStatusBar': true,
+    'export.defaultDateRangeMonths': 6,
+    'export.includeDescriptions': true,
+    'export.groupRecurringTasks': true,
+    'database.path': '.chroma/chroma.db'
+};
+
+jest.mock('vscode', () => {
+    const mockConfiguration = {
+        get: jest.fn((key: string, defaultValue?: any) => {
+            return mockConfig[key] !== undefined ? mockConfig[key] : defaultValue;
+        }),
+        update: jest.fn(async (key: string, value: any) => {
+            mockConfig[key] = value;
+            return Promise.resolve();
+        })
+    };
+
+    const mockWorkspace = {
+        getConfiguration: jest.fn(() => mockConfiguration),
+        onDidChangeConfiguration: jest.fn((callback: any) => {
+            return { dispose: jest.fn() };
+        })
+    };
+
+    return {
+        workspace: mockWorkspace,
+        ConfigurationTarget: {
+            Global: 1,
+            Workspace: 2,
+            WorkspaceFolder: 3
+        }
+    };
+});
+
 describe('Export Accomplishments', () => {
     let db: any;
 
@@ -24,6 +70,12 @@ describe('Export Accomplishments', () => {
     beforeEach(() => {
         // Clear tables before each test
         db.exec('DELETE FROM tasks');
+        // Reset mock config to defaults
+        mockConfig = {
+            'export.defaultDateRangeMonths': 6,
+            'export.includeDescriptions': true,
+            'export.groupRecurringTasks': true
+        };
     });
 
     describe('calculateDateRange', () => {

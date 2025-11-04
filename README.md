@@ -95,15 +95,78 @@ See full documentation below for detailed feature descriptions.
 
 ##  Configuration
 
-Configure in VS Code settings:
+Chroma Workspace can be extensively customized through VS Code settings. Access settings via:
+- **File > Preferences > Settings** (Windows/Linux)
+- **Code > Preferences > Settings** (macOS)
+- Or search for "Chroma" in the settings
+
+### Natural Language Highlighting Settings
+
+Control how notes are highlighted:
 
 ```json
 {
   "chroma.nlh.enabled": true,
-  "chroma.tasks.enableNotifications": true,
-  "chroma.export.defaultDateRangeMonths": 6
+  "chroma.nlh.colors.nouns": "#569CD6",
+  "chroma.nlh.colors.verbs": "#4EC9B0",
+  "chroma.nlh.colors.adjectives": "#C586C0",
+  "chroma.nlh.colors.adverbs": "#DCDCAA",
+  "chroma.nlh.colors.numbers": "#B5CEA8",
+  "chroma.nlh.colors.properNouns": "#4FC1FF"
 }
 ```
+
+- **`chroma.nlh.enabled`**: Enable/disable Natural Language Highlighting (default: `true`)
+- **`chroma.nlh.colors.*`**: Customize colors for each part of speech (hex format)
+
+### Task & Notification Settings
+
+Control task notifications and status bar display:
+
+```json
+{
+  "chroma.tasks.enableNotifications": true,
+  "chroma.tasks.notificationFrequency": "once",
+  "chroma.tasks.showInStatusBar": true
+}
+```
+
+- **`chroma.tasks.enableNotifications`**: Show notifications for due tasks (default: `true`)
+- **`chroma.tasks.notificationFrequency`**: How often to notify about overdue tasks
+  - `"once"`: Show notification only once per task (default)
+  - `"hourly"`: Remind every hour
+  - `"daily"`: Remind once per day
+- **`chroma.tasks.showInStatusBar`**: Display task count in status bar (default: `true`)
+
+### Export Settings
+
+Configure accomplishments export defaults:
+
+```json
+{
+  "chroma.export.defaultDateRangeMonths": 6,
+  "chroma.export.includeDescriptions": true,
+  "chroma.export.groupRecurringTasks": true
+}
+```
+
+- **`chroma.export.defaultDateRangeMonths`**: Default time range for exports (default: `6`, range: 1-60)
+- **`chroma.export.includeDescriptions`**: Include task descriptions in CSV export (default: `true`)
+- **`chroma.export.groupRecurringTasks`**: Group multiple completions of recurring tasks (default: `true`)
+
+### Database Settings
+
+Configure where your data is stored:
+
+```json
+{
+  "chroma.database.path": ".chroma/chroma.db"
+}
+```
+
+- **`chroma.database.path`**: Relative path to SQLite database within workspace (default: `".chroma/chroma.db"`)
+  - Must be a relative path ending in `.db`
+  - Changes require extension reload
 
 ---
 
