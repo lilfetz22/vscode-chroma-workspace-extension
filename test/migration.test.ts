@@ -7,7 +7,7 @@ import {
     exportToJson,
     SupabaseExportData 
 } from '../src/logic/Migration';
-import { initTestDatabase, closeTestDb, getTestDb } from '../src/test-database';
+import { initTestDatabase, closeTestDb } from '../src/test-database';
 
 describe('Migration', () => {
     let tempDir: string;
