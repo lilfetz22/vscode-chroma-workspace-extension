@@ -374,7 +374,15 @@ export async function importFromJson(
                 `);
 
                 for (const note of data.notes) {
-                    const filePath = path.join(workspaceRoot, 'notes', `${note.title.replace(/[^a-z0-9]/gi, '_')}.notesnlh`);
+                    const sanitizedTitle = note.title
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, '_') // collapse consecutive non-alphanumerics
+                        .replace(/^_+|_+$/g, '');    // trim leading/trailing underscores
+                    const filePath = path.join(
+                        workspaceRoot,
+                        'notes',
+                        `${sanitizedTitle}_${note.id}.notesnlh`
+                    );
                     insertNote.run(
                         note.id,
                         note.title,
