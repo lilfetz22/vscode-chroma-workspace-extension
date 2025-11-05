@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getDb } from '../database';
 import { createLogger } from './Logger';
-import { randomUUID } from 'crypto';
 
 const logger = createLogger('Migration');
 
