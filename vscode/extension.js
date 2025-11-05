@@ -23,6 +23,7 @@ const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card'
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
 const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
+const { importFromJson, exportToJson } = require('../out/logic/Migration');
 
 let kanbanProvider;
 let kanbanTreeView;
@@ -165,6 +166,114 @@ exports.activate = async function activate(context) {
     }),
     vscode.commands.registerCommand('chroma.exportAccomplishments', async () => {
       await exportAccomplishments();
+    }),
+    vscode.commands.registerCommand('chroma.importData', async () => {
+      // Select JSON file to import
+      const fileUri = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: {
+          'JSON Files': ['json']
+        },
+        title: 'Select Chroma Parse Notes Export File'
+      });
+
+      if (!fileUri || fileUri.length === 0) {
+        return;
+      }
+
+      const jsonPath = fileUri[0].fsPath;
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+      if (!workspaceRoot) {
+        vscode.window.showErrorMessage('No workspace folder is open. Please open a workspace first.');
+        return;
+      }
+
+      // Show confirmation dialog
+      const confirm = await vscode.window.showWarningMessage(
+        'This will import data from the selected file. Do you want to continue?',
+        { modal: true },
+        'Import'
+      );
+
+      if (confirm !== 'Import') {
+        return;
+      }
+
+      // Show progress
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Importing data...',
+        cancellable: false
+      }, async (progress) => {
+        const result = await importFromJson(jsonPath, workspaceRoot, (message, percentage) => {
+          progress.report({ message, increment: percentage });
+        });
+
+        if (result.success) {
+          vscode.window.showInformationMessage(result.message);
+          // Refresh all views
+          kanbanProvider.refresh();
+          taskProvider.refresh();
+          tagsProvider.refresh();
+        } else {
+          vscode.window.showErrorMessage(`Import failed: ${result.message}`);
+          if (result.errors) {
+            const showDetails = await vscode.window.showErrorMessage(
+              'Import validation errors occurred',
+              'Show Details'
+            );
+            if (showDetails === 'Show Details') {
+              const channel = vscode.window.createOutputChannel('Chroma Import Errors');
+              channel.appendLine('Import Validation Errors:');
+              result.errors.forEach(error => channel.appendLine(`- ${error}`));
+              channel.show();
+            }
+          }
+        }
+      });
+    }),
+    vscode.commands.registerCommand('chroma.exportData', async () => {
+      // Select output file
+      const fileUri = await vscode.window.showSaveDialog({
+        filters: {
+          'JSON Files': ['json']
+        },
+        title: 'Export Chroma Data',
+        defaultUri: vscode.Uri.file('chroma-export.json')
+      });
+
+      if (!fileUri) {
+        return;
+      }
+
+      const outputPath = fileUri.fsPath;
+
+      // Show progress
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: 'Exporting data...',
+        cancellable: false
+      }, async (progress) => {
+        const result = await exportToJson(outputPath, (message, percentage) => {
+          progress.report({ message, increment: percentage });
+        });
+
+        if (result.success) {
+          const openFile = await vscode.window.showInformationMessage(
+            result.message,
+            'Open File'
+          );
+          if (openFile === 'Open File') {
+            const doc = await vscode.workspace.openTextDocument(outputPath);
+            await vscode.window.showTextDocument(doc);
+          }
+        } else {
+          vscode.window.showErrorMessage(`Export failed: ${result.message}`);
+        }
+      });
     }),
     vscode.commands.registerCommand('chroma.search', async () => {
       const query = await vscode.window.showInputBox({
