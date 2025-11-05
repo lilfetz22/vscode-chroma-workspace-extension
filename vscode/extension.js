@@ -23,7 +23,7 @@ const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card'
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
 const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
-const { importFromJson, exportToJson, validateImportData } = require('../out/logic/Migration');
+const { importFromJson, exportToJson } = require('../out/logic/Migration');
 
 let kanbanProvider;
 let kanbanTreeView;
