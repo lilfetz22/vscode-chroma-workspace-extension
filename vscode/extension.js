@@ -15,13 +15,13 @@ const {
   window,
 } = vscode;
 const { KanbanProvider } = require('./kanban/KanbanProvider');
-const { TaskProvider } = require('../out/src/views/TaskProvider');
-const { TagsProvider } = require('../out/src/views/TagsProvider');
-const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
-const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('../out/kanban/Board');
-const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card');
-const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
-const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
+const { TaskProvider } = require('../out/views/TaskProvider');
+const { TagsProvider } = require('../out/views/TagsProvider');
+const { TaskScheduler } = require('../out/logic/TaskScheduler');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
+const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
+const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/Task');
+const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
 const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/logic/Migration');
 
