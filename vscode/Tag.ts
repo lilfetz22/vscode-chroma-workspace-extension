@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId } from '../database';
+import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId } from '../src/database';
 
 async function addTag() {
     const name = await vscode.window.showInputBox({ prompt: 'Enter tag name' });
