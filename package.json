@@ -1,13 +1,13 @@
 {
-  "name": "notesnlh",
-  "displayName": "Notes_NLH",
-  "description": "Syntax highlighting for simple notes with Natural Language Highlighting (NLP parts of speech) in Visual Studio Code",
+  "name": "chroma-workspace",
+  "displayName": "Chroma Workspace",
+  "description": "Comprehensive workspace management with Natural Language Highlighting, Kanban boards, task scheduling, and productivity analytics",
   "icon": "images/Natural_Language_Highlighting.png",
   "version": "0.0.1",
   "publisher": "lilfetz22",
-  "repository": "https://github.com/lilfetz22/vscode-notes",
+  "repository": "https://github.com/lilfetz22/vscode-chroma-workspace-extension",
   "engines": {
-    "vscode": "^1.10.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Programming Languages"
@@ -30,15 +30,18 @@
       "chroma-workspace": [
         {
           "id": "kanban",
-          "name": "Kanban"
+          "name": "Kanban",
+          "icon": "images/icon.svg"
         },
         {
           "id": "scheduledTasks",
-          "name": "Scheduled Tasks"
+          "name": "Scheduled Tasks",
+          "icon": "images/icon.svg"
         },
         {
           "id": "tags",
-          "name": "Tags"
+          "name": "Tags",
+          "icon": "images/icon.svg"
         }
       ]
     },
@@ -484,6 +487,10 @@
   },
   "scripts": {
     "test": "jest",
-    "compile": "tsc -p ./"
+    "compile": "tsc -p ./",
+    "build": "npm run compile && node esbuild.js",
+    "watch": "tsc -p ./ --watch",
+    "package": "vsce package",
+    "build-and-package": "npm run build && npm run package"
   }
 }
