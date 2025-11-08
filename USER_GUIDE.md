@@ -21,7 +21,10 @@ Welcome to Chroma Workspace! This comprehensive guide will help you get the most
 
 ### Installation & Setup
 
-1. **Install the Extension**: Install from the VS Code Marketplace or build from source
+1. **Install the Extension**: 
+   - **Pre-built VSIX**: Extensions view > `...` > Install from VSIX > select `chroma-workspace-0.0.1.vsix`
+   - **Build from source**: See [BUILD.md](BUILD.md) for comprehensive build instructions
+   - **VS Code Marketplace**: Coming soon
 2. **Open a Workspace**: The extension requires a workspace folder to be open
 3. **Automatic Setup**: The extension automatically creates a `.chroma` directory with a local SQLite database
 
