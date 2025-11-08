@@ -76,11 +76,50 @@ See full documentation below for detailed feature descriptions.
 
 ##  Installation
 
-### From Source
-1. Clone this repository
-2. Open in VS Code
-3. Run `npm install` to install dependencies
-4. Press `F5` to launch Extension Development Host
+### Option 1: From Pre-built VSIX (Recommended)
+
+If you have the `.vsix` file:
+
+1. Open VS Code
+2. Go to Extensions view (`Ctrl+Shift+X`)
+3. Click `...` menu > **Install from VSIX...**
+4. Select `chroma-workspace-0.0.1.vsix`
+5. Reload VS Code when prompted
+
+Or via command line:
+```powershell
+code --install-extension chroma-workspace-0.0.1.vsix
+```
+
+### Option 2: Build from Source
+
+For the complete build process, see **[BUILD.md](BUILD.md)**.
+
+**Quick steps:**
+```powershell
+# 1. Install dependencies
+npm install
+
+# 2. Compile TypeScript
+npm run compile
+
+# 3. Bundle with esbuild
+node esbuild.js
+
+# 4. Package as VSIX (requires vsce)
+npm install -g @vscode/vsce
+vsce package
+
+# 5. Install the generated .vsix file (see Option 1 above)
+```
+
+### Option 3: Development Mode
+
+Run without installing (for development/testing):
+
+1. Open this folder in VS Code
+2. Press `F5` to launch Extension Development Host
+3. Test the extension in the new window
 
 ---
 
