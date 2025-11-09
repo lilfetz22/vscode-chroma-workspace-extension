@@ -124,10 +124,15 @@ node esbuild.js
 ```
 
 This:
-- Bundles `vscode/extension.js` and all dependencies
+- Bundles `vscode/extension.js` and most dependencies
 - Creates `dist/extension_bundled.js` (the main extension file)
 - Generates source maps for debugging (`dist/extension_bundled.js.map`)
-- Excludes VS Code API (marked as external)
+- Excludes VS Code API and native modules (marked as external)
+
+Important:
+- The native module `better-sqlite3` and the compiled `out/database.js` are marked as external in `esbuild.js`.
+   This avoids bundling issues with the `bindings` package used by `better-sqlite3` and ensures the native addon
+   resolves correctly when loaded by the VS Code extension host.
 
 **Expected output:**
 ```
@@ -322,7 +327,20 @@ This has been fixed in the repository. If you see this error:
 3. **View Output logs**: `View > Output` > Select "Chroma Workspace" from dropdown
 4. **Verify installation**: `Ctrl+Shift+X` > Search for "Chroma Workspace" to confirm it's installed
 
-#### 6. Database initialization fails
+#### 6. Database initializes in the extension folder (wrong location)
+
+**Symptom:** Log shows database path like:
+
+```
+...\.vscode\extensions\lilfetz22.chroma-workspace-0.0.1\.chroma\chroma.db
+```
+
+**Cause:** The extension didn't receive a workspace root at startup.
+
+**Solution:** Open a folder/workspace in VS Code before activating the extension. The extension initializes
+the database using your workspace root and the configurable relative path `chroma.database.path` (default `.chroma/chroma.db`).
+
+#### 7. Database initialization fails
 
 **Error:**
 ```
@@ -335,7 +353,7 @@ Failed to initialize database
 3. Close other VS Code instances using the same workspace
 4. Delete `.chroma/` directory and let extension recreate it
 
-#### 7. better-sqlite3 binary compatibility issues
+#### 8. better-sqlite3 binary compatibility issues
 
 **Error:**
 ```

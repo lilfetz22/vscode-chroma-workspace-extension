@@ -55,6 +55,21 @@ exports.activate = async function activate(context) {
   tagsProvider = new TagsProvider();
   vscode.window.registerTreeDataProvider('tags', tagsProvider);
 
+  // Initialize database early with workspace root and configured relative path
+  try {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const config = vscode.workspace.getConfiguration('chroma');
+    const configuredPath = config.get('database.path');
+    if (configuredPath && typeof configuredPath === 'string') {
+      setDatabasePath(configuredPath);
+    }
+    if (workspaceRoot) {
+      initDatabase(false, workspaceRoot);
+    }
+  } catch (e) {
+    vscode.window.showErrorMessage(`Chroma: Database initialization failed: ${e?.message || e}`);
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('chroma.refreshTasks', () => {
       taskProvider.refresh();
