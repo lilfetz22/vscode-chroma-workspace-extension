@@ -239,3 +239,25 @@ MIT License
 ---
 
 **Your workspace. Your data. Your device.** 
+
+---
+
+## Releasing and versioning
+
+This repo uses semantic-release to automate versioning, changelog, GitHub releases, and VSIX packaging/publishing based on Conventional Commits.
+
+- Commit format: type(scope?): subject
+  - Common types: feat, fix, docs, refactor, perf, test, chore
+  - Breaking changes: add "!" after type/scope or include a footer: BREAKING CHANGE: description
+- Examples:
+  - feat(kanban): add swimlanes to board
+  - fix(tasks): correct timezone logic for daily schedule
+  - chore: update dependencies
+
+CI will run on pushes to main (and prerelease branches). To publish to the VS Code Marketplace, set a repository secret named VSCE_PAT containing a Personal Access Token from the VS Code Marketplace publisher account.
+
+Local (optional):
+- npm run build
+- npm run release
+
+Note: Local release requires GITHUB_TOKEN and optionally VSCE_PAT in your environment; normally releases are performed via GitHub Actions.
