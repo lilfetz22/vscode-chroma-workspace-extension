@@ -160,7 +160,7 @@ Based on your needs for Work Device:
 
 ##  Celebrate Progress!
 
-You''ve completed **Phase 1** successfully! The foundation is solid:
+You've completed **Phase 1** successfully! The foundation is solid:
 -  Clean codebase from proven notesnlh extension
 -  Comprehensive documentation
 -  Database schema designed
