@@ -391,17 +391,17 @@ exports.activate = async function activate(context) {
 
   context.subscriptions.push(
     commands.registerTextEditorCommand(
-      "notesnlh.cycleTaskForwardNew",
+      "chroma.cycleTaskForward",
       cycleTaskForwardNew
     ),
     commands.registerTextEditorCommand(
-      "notesnlh.cycleTaskBackwardNew",
+      "chroma.cycleTaskBackward",
       cycleTaskBackwardNew
     )
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (event.affectsConfiguration('notesnlh') || event.affectsConfiguration('chroma.nlh')) {
+      if (event.affectsConfiguration('chroma.nlh')) {
         // Trigger a re-highlight of all open documents
         vscode.workspace.textDocuments.forEach(doc => {
           if (doc.languageId === 'notesnlh') {
@@ -440,7 +440,7 @@ exports.activate = async function activate(context) {
       const externalPatterns = [];
 
       // use global link patterns from config
-      linkPatterns = vscode.workspace.getConfiguration("notesnlh")["linkPatterns"];
+      linkPatterns = vscode.workspace.getConfiguration("chroma.nlh")["linkPatterns"];
       if (linkPatterns) {
         for (let [regexp, link] of Object.entries(linkPatterns)) {
           externalPatterns.push({ regexp, link });
@@ -613,15 +613,15 @@ exports.activate = async function activate(context) {
 
     switch (pos.toLowerCase()) {
       case 'noun':
-        return config.get('highlightNouns');
+        return config.get('highlightNouns', true);
       case 'verb':
-        return config.get('highlightVerbs');
+        return config.get('highlightVerbs', true);
       case 'adjective':
-        return config.get('highlightAdjectives');
+        return config.get('highlightAdjectives', true);
       case 'adverb':
-        return config.get('highlightAdverbs');
+        return config.get('highlightAdverbs', true);
       case 'value':
-        return config.get('highlightNumbers');
+        return config.get('highlightNumbers', true);
       default:
         return false;
     }
@@ -667,7 +667,7 @@ exports.activate = async function activate(context) {
         let lineNumber = 0;
         let characterNumber = 0;
         // console.log('json:', json);
-        const config = vscode.workspace.getConfiguration('notesnlh');
+        const config = vscode.workspace.getConfiguration('chroma.nlh');
 
         for (const sentence of json) {
           for (const term of sentence.terms) {
