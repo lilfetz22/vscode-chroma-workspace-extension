@@ -130,6 +130,11 @@ async function deleteTagWithConfirmation(tag) {
 }
 
 async function assignTag(card) {
+    const cardId = card?.id || card?.cardId;
+    if (!cardId) {
+        vscode.window.showErrorMessage('Unable to assign tag: Missing card id.');
+        return;
+    }
     const tags = getAllTags();
     if (tags.length === 0) {
         vscode.window.showInformationMessage('No tags available. Please create a tag first.');
@@ -141,14 +146,14 @@ async function assignTag(card) {
         const tag = tags.find(t => t.name === tagName);
         if (tag) {
             // Check if tag is already assigned
-            const assignedTags = getTagsByCardId(card.id);
+            const assignedTags = getTagsByCardId(cardId);
             const alreadyAssigned = assignedTags.some(t => t.id === tag.id);
             if (alreadyAssigned) {
                 vscode.window.showInformationMessage(`Tag "${tag.name}" is already assigned to this card.`);
                 return;
             }
             try {
-                addTagToCard(card.id, tag.id);
+                addTagToCard(cardId, tag.id);
             } catch (err) {
                 vscode.window.showErrorMessage(`Failed to assign tag: ${err.message || err}`);
             }
@@ -157,7 +162,12 @@ async function assignTag(card) {
 }
 
 async function removeTag(card) {
-    const tags = getTagsByCardId(card.id);
+    const cardId = card?.id || card?.cardId;
+    if (!cardId) {
+        vscode.window.showErrorMessage('Unable to remove tag: Missing card id.');
+        return;
+    }
+    const tags = getTagsByCardId(cardId);
     const tagNames = tags.map(t => t.name);
     if (tags.length === 0) {
         vscode.window.showInformationMessage('This card has no tags to remove.');
@@ -167,7 +177,7 @@ async function removeTag(card) {
     if (tagName) {
         const tag = tags.find(t => t.name === tagName);
         if (tag) {
-            removeTagFromCard(card.id, tag.id);
+            removeTagFromCard(cardId, tag.id);
         }
     }
 }
