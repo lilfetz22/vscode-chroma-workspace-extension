@@ -79,7 +79,7 @@ export class TaskScheduler {
 
   private async checkTasks() {
     const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT * FROM tasks WHERE status = ?').all('pending') as Task[];
+    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
     const now = new Date();
     let dueTodayCount = 0;
 
