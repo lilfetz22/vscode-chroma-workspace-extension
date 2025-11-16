@@ -37,7 +37,9 @@ async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
     qp.activeItems = [items[0]];
 
     return await new Promise<string | undefined>((resolve) => {
+        let accepted = false;
         const acceptSub = qp.onDidAccept(async () => {
+            accepted = true;
             const sel = qp.selectedItems[0];
             let prefill: string;
             if (sel?.label.startsWith('Manual')) {
@@ -45,8 +47,7 @@ async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
             } else {
                 prefill = sel?.description || formatYMD(today);
             }
-            qp.hide();
-            qp.dispose();
+            // Avoid racing with onDidHide resolution; dispose after input
 
             const confirmed = await vscode.window.showInputBox({
                 prompt: 'Confirm due date (YYYY-MM-DD)',
@@ -54,6 +55,7 @@ async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
                 ignoreFocusOut: true,
                 validateInput: text => (/^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format')
             });
+            qp.dispose();
             resolve(confirmed || undefined);
         });
 
@@ -61,7 +63,9 @@ async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
             acceptSub.dispose();
             hideSub.dispose();
             qp.dispose();
-            resolve(undefined);
+            if (!accepted) {
+                resolve(undefined);
+            }
         });
 
         qp.show();
