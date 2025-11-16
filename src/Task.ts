@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
-import { getDb } from './database';
+import { getDb, addTagToTask, getTagsByCardId } from './database';
 import { v4 as uuidv4 } from 'uuid';
+import { selectOrCreateTags } from '../vscode/Tag';
 
 type Card = any;
 type Task = any;
@@ -102,6 +103,40 @@ export async function convertCardToTask(card: Card) {
         const id = uuidv4();
         db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
           .run(id, title, card.content, dueDate, recurrence || null, card.id);
+        
+        // Copy tags from the card to the task
+        const cardTagIds = getTagsByCardId(card.id || card.cardId).map(t => t.id);
+        for (const tagId of cardTagIds) {
+            try {
+                addTagToTask(id, tagId);
+            } catch (err: any) {
+                console.error(`Failed to copy tag ${tagId} from card to task:`, err);
+            }
+        }
+        
+        // Ask if user wants to add more tags
+        const addMoreTags = await vscode.window.showQuickPick(['Yes', 'No'], {
+            placeHolder: cardTagIds.length > 0 
+                ? `${cardTagIds.length} tag(s) copied from card. Add more tags?`
+                : 'Add tags to this task?'
+        });
+        
+        if (addMoreTags === 'Yes') {
+            const additionalTagIds = await selectOrCreateTags();
+            if (additionalTagIds && additionalTagIds.length > 0) {
+                for (const tagId of additionalTagIds) {
+                    // Only add if not already added from card
+                    if (!cardTagIds.includes(tagId)) {
+                        try {
+                            addTagToTask(id, tagId);
+                        } catch (err: any) {
+                            console.error(`Failed to add tag ${tagId} to task ${id}:`, err);
+                        }
+                    }
+                }
+            }
+        }
+        
         vscode.window.showInformationMessage('Card converted to task.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to convert card to task: ' + err.message);
@@ -134,8 +169,21 @@ export async function addTask() {
     try {
         const db = getDb();
         const id = uuidv4();
-                db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence) VALUES (?, ?, ?, ?, ?)')
-                    .run(id, title, description || null, dueDate, recurrence || null);
+        db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence) VALUES (?, ?, ?, ?, ?)')
+            .run(id, title, description || null, dueDate, recurrence || null);
+        
+        // Prompt for tags
+        const tagIds = await selectOrCreateTags();
+        if (tagIds && tagIds.length > 0) {
+            for (const tagId of tagIds) {
+                try {
+                    addTagToTask(id, tagId);
+                } catch (err: any) {
+                    console.error(`Failed to add tag ${tagId} to task ${id}:`, err);
+                }
+            }
+        }
+        
         vscode.window.showInformationMessage('Task added.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to add task: ' + err.message);

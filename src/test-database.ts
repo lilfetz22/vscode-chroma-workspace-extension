@@ -223,6 +223,26 @@ export function getTagsByCardId(db: any, cardId: string): Tag[] {
     return stmt.all(cardId);
 }
 
+// Task-Tag relationship functions
+export function addTagToTask(db: any, taskId: string, tagId: string): void {
+    const stmt = db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)');
+    stmt.run(taskId, tagId);
+}
+
+export function removeTagFromTask(db: any, taskId: string, tagId: string): void {
+    const stmt = db.prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?');
+    stmt.run(taskId, tagId);
+}
+
+export function getTagsByTaskId(db: any, taskId: string): Tag[] {
+    const stmt = db.prepare(`
+        SELECT t.* FROM tags t
+        INNER JOIN task_tags tt ON t.id = tt.tag_id
+        WHERE tt.task_id = ?
+    `);
+    return stmt.all(taskId);
+}
+
 // Note-related functions
 export function createNote(db: any, note: Partial<Note>): any {
     const id = note.id || randomBytes(16).toString('hex');

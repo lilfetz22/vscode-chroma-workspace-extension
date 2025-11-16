@@ -1,5 +1,6 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId } = require('../../out/database');
+const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard } = require('../../out/database');
+const { selectOrCreateTags } = require('../Tag');
 
 async function addCard(column) {
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });
@@ -7,7 +8,19 @@ async function addCard(column) {
         return;
     }
     const content = await vscode.window.showInputBox({ prompt: 'Optional: Enter content/context for this card' });
-    createCard({ title: cardTitle, content: content || '', column_id: column.columnId, order: 0, priority: 'medium' });
+    const newCard = createCard({ title: cardTitle, content: content || '', column_id: column.columnId, order: 0, priority: 'medium' });
+    
+    // Prompt for tags
+    const tagIds = await selectOrCreateTags();
+    if (tagIds && tagIds.length > 0) {
+        for (const tagId of tagIds) {
+            try {
+                addTagToCard(newCard.id, tagId);
+            } catch (err) {
+                console.error(`Failed to add tag ${tagId} to card ${newCard.id}:`, err);
+            }
+        }
+    }
 }
 
 async function editCard(card) {

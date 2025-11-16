@@ -478,3 +478,24 @@ export function getTagsByCardId(cardId: string): Tag[] {
     `);
     return stmt.all(cardId) as Tag[];
 }
+
+// Task-Tag Relationships
+export function addTagToTask(taskId: string, tagId: string): void {
+    const db = getDb();
+    db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
+}
+
+export function removeTagFromTask(taskId: string, tagId: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?').run(taskId, tagId);
+}
+
+export function getTagsByTaskId(taskId: string): Tag[] {
+    const db = getDb();
+    const stmt = db.prepare(`
+        SELECT t.* FROM tags t
+        JOIN task_tags tt ON t.id = tt.tag_id
+        WHERE tt.task_id = ?
+    `);
+    return stmt.all(taskId) as Tag[];
+}

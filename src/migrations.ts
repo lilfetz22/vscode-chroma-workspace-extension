@@ -166,6 +166,22 @@ const migrations: Migration[] = [
                 END;
             `);
         }
+    },
+    {
+        version: 6,
+        name: 'add_task_tags_table',
+        up: (db) => {
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS task_tags (
+                    task_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (task_id, tag_id),
+                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_task_tags_tag ON task_tags(tag_id);
+            `);
+        }
     }
 ];
 

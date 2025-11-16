@@ -87,14 +87,19 @@ async function promptForCustomColor(initial?: string): Promise<string | undefine
 }
 
 async function pickColor(initial?: string): Promise<string | undefined> {
-    const items: (vscode.QuickPickItem & { hex?: string; kind: 'classic' | 'custom' })[] = [
-        ...CLASSIC_COLORS.map(c => ({ label: c.name, description: c.hex, hex: c.hex, kind: 'classic' as const })),
-        { label: 'Custom color…', description: 'Type a color name or hex', kind: 'custom' as const }
+    interface ColorPickItem extends vscode.QuickPickItem {
+        hex?: string;
+        colorType: 'classic' | 'custom';
+    }
+    
+    const items: ColorPickItem[] = [
+        ...CLASSIC_COLORS.map(c => ({ label: c.name, description: c.hex, hex: c.hex, colorType: 'classic' as const })),
+        { label: 'Custom color…', description: 'Type a color name or hex', colorType: 'custom' as const }
     ];
 
     const pick = await vscode.window.showQuickPick(items, { placeHolder: 'Pick a color or choose Custom' });
     if (!pick) return undefined;
-    if (pick.kind === 'classic' && pick.hex) return pick.hex;
+    if (pick.colorType === 'classic' && pick.hex) return pick.hex;
     return promptForCustomColor(initial);
 }
 
@@ -110,7 +115,7 @@ async function addTag() {
     createTag({ name, color });
 }
 
-async function editTag(tag) {
+async function editTag(tag: any) {
     const newName = await vscode.window.showInputBox({ value: tag.name, prompt: 'Enter new tag name' });
     if (!newName) {
         return;
@@ -122,14 +127,14 @@ async function editTag(tag) {
     updateTag({ id: tag.id, name: newName, color: newColor });
 }
 
-async function deleteTagWithConfirmation(tag) {
+async function deleteTagWithConfirmation(tag: any) {
     const confirm = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: `Are you sure you want to delete the tag "${tag.name}"?` });
     if (confirm === 'Yes') {
         deleteTag(tag.id);
     }
 }
 
-async function assignTag(card) {
+async function assignTag(card: any) {
     const cardId = card?.id || card?.cardId;
     if (!cardId) {
         vscode.window.showErrorMessage('Unable to assign tag: Missing card id.');
@@ -154,14 +159,14 @@ async function assignTag(card) {
             }
             try {
                 addTagToCard(cardId, tag.id);
-            } catch (err) {
+            } catch (err: any) {
                 vscode.window.showErrorMessage(`Failed to assign tag: ${err.message || err}`);
             }
         }
     }
 }
 
-async function removeTag(card) {
+async function removeTag(card: any) {
     const cardId = card?.id || card?.cardId;
     if (!cardId) {
         vscode.window.showErrorMessage('Unable to remove tag: Missing card id.');
@@ -182,4 +187,71 @@ async function removeTag(card) {
     }
 }
 
-export { addTag, editTag, deleteTagWithConfirmation as deleteTag, assignTag, removeTag };
+/**
+ * Prompts user to select existing tag(s) or create new ones.
+ * Returns array of tag IDs that were selected/created.
+ */
+async function selectOrCreateTags(): Promise<string[] | undefined> {
+    const existingTags = getAllTags();
+    
+    // Build quick pick items
+    const items: (vscode.QuickPickItem & { tagId?: string; action?: 'create' | 'done' })[] = [
+        ...existingTags.map(t => ({ 
+            label: t.name, 
+            description: t.color,
+            tagId: t.id 
+        })),
+        { label: '$(add) Create new tag…', action: 'create' as const },
+        { label: '$(check) Done selecting tags', action: 'done' as const }
+    ];
+
+    const selectedTagIds: string[] = [];
+    let continueSelecting = true;
+
+    while (continueSelecting) {
+        const pick = await vscode.window.showQuickPick(items, { 
+            placeHolder: selectedTagIds.length === 0 
+                ? 'Select existing tags or create new ones (optional)' 
+                : `${selectedTagIds.length} tag(s) selected. Select more or choose Done`,
+            canPickMany: false
+        });
+        
+        if (!pick) {
+            // User cancelled
+            return undefined;
+        }
+
+        if (pick.action === 'done') {
+            continueSelecting = false;
+        } else if (pick.action === 'create') {
+            // Create new tag
+            const name = await vscode.window.showInputBox({ prompt: 'Enter tag name' });
+            if (!name) continue;
+            
+            const color = await pickColor();
+            if (!color) continue;
+            
+            const newTag = createTag({ name, color });
+            selectedTagIds.push(newTag.id);
+            
+            // Add the new tag to items list
+            items.splice(items.length - 2, 0, { 
+                label: newTag.name, 
+                description: newTag.color,
+                tagId: newTag.id 
+            });
+        } else if (pick.tagId) {
+            // Toggle tag selection
+            const idx = selectedTagIds.indexOf(pick.tagId);
+            if (idx >= 0) {
+                selectedTagIds.splice(idx, 1);
+            } else {
+                selectedTagIds.push(pick.tagId);
+            }
+        }
+    }
+
+    return selectedTagIds;
+}
+
+export { addTag, editTag, deleteTagWithConfirmation as deleteTag, assignTag, removeTag, selectOrCreateTags };
