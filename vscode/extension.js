@@ -440,7 +440,7 @@ exports.activate = async function activate(context) {
       const externalPatterns = [];
 
       // use global link patterns from config
-      linkPatterns = vscode.workspace.getConfiguration("chroma.nlh")["linkPatterns"];
+      const linkPatterns = vscode.workspace.getConfiguration("chroma.nlh")["linkPatterns"];
       if (linkPatterns) {
         for (let [regexp, link] of Object.entries(linkPatterns)) {
           externalPatterns.push({ regexp, link });
