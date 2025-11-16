@@ -5,6 +5,69 @@ import { v4 as uuidv4 } from 'uuid';
 type Card = any;
 type Task = any;
 
+function pad2(n: number) {
+    return n < 10 ? `0${n}` : `${n}`;
+}
+
+function formatYMD(date: Date) {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
+    const qp = vscode.window.createQuickPick();
+    qp.matchOnDescription = true;
+    qp.ignoreFocusOut = true;
+    qp.title = 'Pick due date';
+    qp.placeholder = 'Choose a quick option, then confirm/edit';
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const nextWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
+
+    const items: vscode.QuickPickItem[] = [
+        { label: 'Today', description: formatYMD(today) },
+        { label: 'Tomorrow', description: formatYMD(tomorrow) },
+        { label: 'Next Week', description: formatYMD(nextWeek) },
+        { label: 'Manual entry…', description: 'Type a date (YYYY-MM-DD)' }
+    ];
+    qp.items = items;
+
+    // Preselect Today
+    qp.activeItems = [items[0]];
+
+    return await new Promise<string | undefined>((resolve) => {
+        const acceptSub = qp.onDidAccept(async () => {
+            const sel = qp.selectedItems[0];
+            let prefill: string;
+            if (sel?.label.startsWith('Manual')) {
+                prefill = initialDate ? formatYMD(initialDate) : formatYMD(today);
+            } else {
+                prefill = sel?.description || formatYMD(today);
+            }
+            qp.hide();
+            qp.dispose();
+
+            const confirmed = await vscode.window.showInputBox({
+                prompt: 'Confirm due date (YYYY-MM-DD)',
+                value: prefill,
+                ignoreFocusOut: true,
+                validateInput: text => (/^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format')
+            });
+            resolve(confirmed || undefined);
+        });
+
+        const hideSub = qp.onDidHide(() => {
+            acceptSub.dispose();
+            hideSub.dispose();
+            qp.dispose();
+            resolve(undefined);
+        });
+
+        qp.show();
+    });
+}
+
 export async function convertCardToTask(card: Card) {
     if (!card) {
         vscode.window.showErrorMessage('No card selected.');
@@ -20,12 +83,7 @@ export async function convertCardToTask(card: Card) {
         return;
     }
 
-    const dueDate = await vscode.window.showInputBox({
-        prompt: 'Enter due date (YYYY-MM-DD)',
-        validateInput: text => {
-            return /^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format';
-        }
-    });
+    const dueDate = await pickDueDate();
 
     if (!dueDate) {
         return;
@@ -55,12 +113,7 @@ export async function addTask() {
         return;
     }
 
-    const dueDate = await vscode.window.showInputBox({
-        prompt: 'Enter due date (YYYY-MM-DD)',
-        validateInput: text => {
-            return /^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format';
-        }
-    });
+    const dueDate = await pickDueDate();
 
     if (!dueDate) {
         return;
@@ -96,13 +149,8 @@ export async function editTask(task: Task) {
         return;
     }
 
-    const dueDate = await vscode.window.showInputBox({
-        prompt: 'Enter due date (YYYY-MM-DD)',
-        value: new Date(task.dueDate).toISOString().split('T')[0],
-        validateInput: text => {
-            return /^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format';
-        }
-    });
+    const initial = new Date(task.dueDate);
+    const dueDate = await pickDueDate(initial);
 
     if (!dueDate) {
         return;

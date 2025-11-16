@@ -297,6 +297,11 @@
           "group": "navigation"
         },
         {
+          "command": "chroma.addTask",
+          "when": "view == scheduledTasks",
+          "group": "navigation"
+        },
+        {
           "command": "chroma.addTag",
           "when": "view == tags",
           "group": "navigation"
