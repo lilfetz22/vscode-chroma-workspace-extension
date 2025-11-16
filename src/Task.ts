@@ -117,6 +117,10 @@ export async function addTask() {
         return;
     }
 
+    const description = await vscode.window.showInputBox({
+        prompt: 'Optional: Enter content/context for this task'
+    });
+
     const dueDate = await pickDueDate();
 
     if (!dueDate) {
@@ -130,8 +134,8 @@ export async function addTask() {
     try {
         const db = getDb();
         const id = uuidv4();
-        db.prepare('INSERT INTO tasks (id, title, due_date, recurrence) VALUES (?, ?, ?, ?)')
-          .run(id, title, dueDate, recurrence || null);
+                db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence) VALUES (?, ?, ?, ?, ?)')
+                    .run(id, title, description || null, dueDate, recurrence || null);
         vscode.window.showInformationMessage('Task added.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to add task: ' + err.message);
@@ -164,10 +168,15 @@ export async function editTask(task: Task) {
         placeHolder: 'Select recurrence (optional)',
     });
 
+    const description = await vscode.window.showInputBox({
+        prompt: 'Optional: Edit content/context for this task',
+        value: task.description || ''
+    });
+
     try {
         const db = getDb();
-        db.prepare('UPDATE tasks SET title = ?, due_date = ?, recurrence = ? WHERE id = ?')
-          .run(title, dueDate, recurrence || null, task.id);
+        db.prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ? WHERE id = ?')
+          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrence || null, task.id);
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);

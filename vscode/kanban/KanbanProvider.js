@@ -59,6 +59,9 @@ class KanbanProvider {
             item.columnId = columnId;
             const column = getColumnById(columnId);
             item.boardId = column.board_id;
+            if (card?.content) {
+                item.tooltip = `Content:\n${card.content}`;
+            }
             return item;
         });
     }

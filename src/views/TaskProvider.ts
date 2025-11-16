@@ -93,7 +93,11 @@ class TaskItem extends vscode.TreeItem {
         super(task.title, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "task";
         this.description = new Date(task.dueDate).toLocaleDateString();
-        this.tooltip = `Due: ${new Date(task.dueDate).toLocaleString()}`;
+    const parts: string[] = [`Due: ${new Date(task.dueDate).toLocaleString()}`];
+    if (task.description && task.description.trim().length > 0) {
+      parts.push('', 'Content:', task.description);
+    }
+    this.tooltip = parts.join('\n');
     }
 }
 

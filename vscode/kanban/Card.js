@@ -3,16 +3,32 @@ const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId } 
 
 async function addCard(column) {
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });
-    if (cardTitle) {
-        createCard({ title: cardTitle, column_id: column.columnId, order: 0, priority: 'medium' });
+    if (!cardTitle) {
+        return;
     }
+    const content = await vscode.window.showInputBox({ prompt: 'Optional: Enter content/context for this card' });
+    createCard({ title: cardTitle, content: content || '', column_id: column.columnId, order: 0, priority: 'medium' });
 }
 
 async function editCard(card) {
-    const newCardTitle = await vscode.window.showInputBox({ value: card.label });
-    if (newCardTitle) {
-        updateCard({ id: card.cardId, title: newCardTitle });
+    // Fetch current card to prefill content if available
+    let current;
+    try {
+        const { getCardById } = require('../../out/database');
+        current = getCardById(card.cardId);
+    } catch (e) {
+        current = undefined;
     }
+
+    const newCardTitle = await vscode.window.showInputBox({ value: card.label, prompt: 'Edit card title' });
+    if (!newCardTitle) {
+        return;
+    }
+    const newContent = await vscode.window.showInputBox({
+        value: current?.content || '',
+        prompt: 'Optional: Edit content/context for this card'
+    });
+    updateCard({ id: card.cardId, title: newCardTitle, content: newContent !== undefined ? newContent : current?.content });
 }
 
 async function deleteCard(card) {
