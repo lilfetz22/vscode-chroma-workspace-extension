@@ -14,7 +14,7 @@ module.exports = {
     "transform": {
         "^.+\\.tsx?$": ["ts-jest", { "diagnostics": false }]
     },
-    "collectCoverage": true,
+    "collectCoverage": false,
     "coverageReporters": ["json", "lcov", "text", "clover"],
     "verbose": true,
     "moduleNameMapper": {
