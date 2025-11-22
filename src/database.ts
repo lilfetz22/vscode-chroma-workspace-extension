@@ -98,6 +98,9 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
 
         db.pragma('journal_mode = WAL');
         getLogger().debug('Set journal_mode to WAL');
+        
+        db.pragma('foreign_keys = ON');
+        getLogger().debug('Enabled foreign key constraints');
 
         // Run migrations automatically on initialization
         getLogger().info('Running database migrations');

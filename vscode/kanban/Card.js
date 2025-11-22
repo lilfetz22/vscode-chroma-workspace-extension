@@ -1,6 +1,6 @@
 const vscode = require('vscode');
 const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard } = require('../../out/database');
-const { selectOrCreateTags } = require('../Tag');
+const { selectOrCreateTags } = require('../../out/vscode/Tag');
 
 async function addCard(column) {
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });

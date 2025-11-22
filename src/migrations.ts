@@ -250,10 +250,11 @@ const migrations: Migration[] = [
                     activated_at DATETIME,
                     completed_at DATETIME,
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
                     FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
                 );
-                INSERT INTO cards_new (id, column_id, position, card_type, title, content, note_id, priority, completed_at, created_at)
+                INSERT INTO cards_new (id, column_id, position, card_type, title, content, note_id, priority, completed_at, created_at, updated_at)
                 SELECT 
                     id, 
                     column_id, 
@@ -269,7 +270,8 @@ const migrations: Migration[] = [
                         ELSE 0
                     END,
                     completed_at,
-                    created_at
+                    created_at,
+                    COALESCE(updated_at, created_at)
                 FROM cards;
                 DROP TABLE cards;
                 ALTER TABLE cards_new RENAME TO cards;
