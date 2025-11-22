@@ -409,7 +409,7 @@ export async function importFromJson(
                 progressStep += stepIncrement;
 
                 const insertBoard = db.prepare(`
-                    INSERT INTO boards (id, name, created_at)
+                    INSERT INTO boards (id, title, created_at)
                     VALUES (?, ?, ?)
                 `);
 
@@ -431,16 +431,17 @@ export async function importFromJson(
                 progressStep += stepIncrement;
 
                 const insertColumn = db.prepare(`
-                    INSERT INTO columns (id, board_id, name, order_index)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO columns (id, board_id, title, position, created_at)
+                    VALUES (?, ?, ?, ?, ?)
                 `);
 
                 for (const column of data.columns) {
                     insertColumn.run(
                         column.id,
                         column.board_id,
-                        column.title,  // Supabase uses 'title', local DB uses 'name'
-                        column.position  // Supabase uses 'position', local DB uses 'order_index'
+                        column.title,
+                        column.position,
+                        column.created_at || new Date().toISOString()
                     );
                 }
                 logger.info(`Imported ${data.columns.length} columns`);
@@ -455,26 +456,26 @@ export async function importFromJson(
 
                 const insertCard = db.prepare(`
                     INSERT INTO cards (
-                        id, column_id, order_index, title, content, note_id, 
-                        priority, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        id, column_id, position, card_type, title, content, note_id,
+                        summary, priority, scheduled_at, recurrence, activated_at, completed_at, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
 
                 for (const card of data.cards) {
-                    // Map priority number to text (0=low, 1=medium, 2=high)
-                    let priorityText = 'medium';
-                    if (typeof card.priority === 'number') {
-                        priorityText = card.priority === 0 ? 'low' : card.priority === 1 ? 'medium' : 'high';
-                    }
                     insertCard.run(
                         card.id,
                         card.column_id,
-                        card.position,  // Supabase uses 'position', local DB uses 'order_index'
+                        card.position,
+                        card.card_type || 'simple',
                         card.title,
-                        card.content,
-                        card.note_id,
-                        priorityText,
-                        card.created_at || new Date().toISOString(),
+                        card.content || null,
+                        card.note_id || null,
+                        card.summary || null,
+                        typeof card.priority === 'number' ? card.priority : 0,
+                        card.scheduled_at || null,
+                        card.recurrence || null,
+                        card.activated_at || null,
+                        card.completed_at || null,
                         card.created_at || new Date().toISOString()
                     );
                 }
@@ -616,36 +617,23 @@ export async function exportToJson(
             progressCallback('Exporting boards...', 30);
         }
         const boards = db.prepare('SELECT * FROM boards ORDER BY created_at').all();
-        // Map local schema (name) to Supabase format (title)
-        exportData.boards = boards.map((board: any) => ({
-            ...board,
-            title: board.name
-        })) as SupabaseBoard[];
+        exportData.boards = boards as SupabaseBoard[];
         logger.info(`Exported ${boards.length} boards`);
 
         // Export columns
         if (progressCallback) {
             progressCallback('Exporting columns...', 45);
         }
-        const columns = db.prepare('SELECT * FROM columns ORDER BY board_id, order_index').all();
-        // Map local schema (name, order_index) to Supabase format (title, position)
-        exportData.columns = columns.map((col: any) => ({
-            ...col,
-            title: col.name,
-            position: col.order_index
-        })) as SupabaseColumn[];
+        const columns = db.prepare('SELECT * FROM columns ORDER BY board_id, position').all();
+        exportData.columns = columns as SupabaseColumn[];
         logger.info(`Exported ${columns.length} columns`);
 
         // Export cards
         if (progressCallback) {
             progressCallback('Exporting cards...', 60);
         }
-        const cards = db.prepare('SELECT * FROM cards ORDER BY column_id, order_index').all();
-        // Map local schema (order_index) to Supabase format (position)
-        exportData.cards = cards.map((card: any) => ({
-            ...card,
-            position: card.order_index
-        })) as SupabaseCard[];
+        const cards = db.prepare('SELECT * FROM cards ORDER BY column_id, position').all();
+        exportData.cards = cards as SupabaseCard[];
         logger.info(`Exported ${cards.length} cards`);
 
         // Export tags
