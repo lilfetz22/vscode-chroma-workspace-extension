@@ -197,51 +197,138 @@ const migrations: Migration[] = [
         version: 8,
         name: 'align_schema_with_documentation',
         up: (db) => {
-            // Rename columns in boards table
+            // Drop FTS triggers that reference cards table
             db.exec(`
-                ALTER TABLE boards RENAME COLUMN name TO title;
-                ALTER TABLE boards ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+                DROP TRIGGER IF EXISTS cards_after_insert;
+                DROP TRIGGER IF EXISTS cards_after_delete;
+                DROP TRIGGER IF EXISTS cards_after_update;
             `);
             
-            // Rename columns in columns table
+            // Recreate boards table with correct schema
             db.exec(`
-                ALTER TABLE columns RENAME COLUMN name TO title;
-                ALTER TABLE columns RENAME COLUMN order_index TO position;
-                ALTER TABLE columns ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+                CREATE TABLE boards_new (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO boards_new (id, title) SELECT id, name FROM boards;
+                DROP TABLE boards;
+                ALTER TABLE boards_new RENAME TO boards;
             `);
             
-            // Add missing columns to cards table and rename order_index to position
+            // Recreate columns table with correct schema
             db.exec(`
-                ALTER TABLE cards RENAME COLUMN order_index TO position;
-                ALTER TABLE cards ADD COLUMN card_type TEXT CHECK(card_type IN ('simple', 'linked')) DEFAULT 'simple' NOT NULL;
-                ALTER TABLE cards ADD COLUMN summary TEXT;
-                ALTER TABLE cards ADD COLUMN scheduled_at DATETIME;
-                ALTER TABLE cards ADD COLUMN recurrence TEXT;
-                ALTER TABLE cards ADD COLUMN activated_at DATETIME;
+                CREATE TABLE columns_new (
+                    id TEXT PRIMARY KEY,
+                    board_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    position INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
+                );
+                INSERT INTO columns_new (id, board_id, title, position)
+                SELECT id, board_id, name, order_index FROM columns;
+                DROP TABLE columns;
+                ALTER TABLE columns_new RENAME TO columns;
+                CREATE INDEX idx_columns_board ON columns(board_id, position);
             `);
             
-            // Update priority column type (SQLite doesn't support ALTER COLUMN TYPE, so we document the change)
-            // Note: existing data with 'low', 'medium', 'high' will need to be converted
+            // Recreate cards table with correct schema
             db.exec(`
-                -- Convert text priority to integer if needed
-                UPDATE cards SET priority = 
+                CREATE TABLE cards_new (
+                    id TEXT PRIMARY KEY,
+                    column_id TEXT NOT NULL,
+                    position INTEGER NOT NULL,
+                    card_type TEXT CHECK(card_type IN ('simple', 'linked')) NOT NULL,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    note_id TEXT,
+                    summary TEXT,
+                    priority INTEGER DEFAULT 0,
+                    scheduled_at DATETIME,
+                    recurrence TEXT,
+                    activated_at DATETIME,
+                    completed_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+                    FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
+                );
+                INSERT INTO cards_new (id, column_id, position, card_type, title, content, note_id, priority, completed_at, created_at)
+                SELECT 
+                    id, 
+                    column_id, 
+                    order_index,
+                    'simple',
+                    title, 
+                    content, 
+                    note_id, 
                     CASE priority
                         WHEN 'low' THEN 0
                         WHEN 'medium' THEN 1
                         WHEN 'high' THEN 2
                         ELSE 0
-                    END
-                WHERE typeof(priority) = 'text';
+                    END,
+                    completed_at,
+                    created_at
+                FROM cards;
+                DROP TABLE cards;
+                ALTER TABLE cards_new RENAME TO cards;
+                CREATE INDEX idx_cards_column ON cards(column_id, position);
+                CREATE INDEX idx_cards_scheduled ON cards(scheduled_at);
+                CREATE INDEX idx_cards_completed ON cards(completed_at);
             `);
             
-            // Add created_at to tags table
+            // Recreate FTS triggers for cards
             db.exec(`
-                ALTER TABLE tags ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+                CREATE TRIGGER IF NOT EXISTS cards_after_insert
+                AFTER INSERT ON cards
+                BEGIN
+                    INSERT INTO search_index (title, content, entity_id, entity_type)
+                    VALUES (new.title, new.content, new.id, 'card');
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS cards_after_delete
+                AFTER DELETE ON cards
+                BEGIN
+                    DELETE FROM search_index WHERE entity_id = old.id;
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS cards_after_update
+                AFTER UPDATE ON cards
+                BEGIN
+                    UPDATE search_index
+                    SET title = new.title, content = new.content
+                    WHERE entity_id = new.id;
+                END;
             `);
             
-            // Create indexes mentioned in schema
+            // Recreate tags table with created_at column
             db.exec(`
-                CREATE INDEX IF NOT EXISTS idx_cards_scheduled ON cards(scheduled_at);
+                CREATE TABLE tags_new (
+                    id TEXT PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL,
+                    color TEXT NOT NULL DEFAULT '#808080',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO tags_new (id, name, color) SELECT id, name, color FROM tags;
+                DROP TABLE tags;
+                ALTER TABLE tags_new RENAME TO tags;
+                CREATE INDEX idx_tags_name ON tags(name);
+            `);
+            
+            // Recreate card_tags with proper indexes
+            db.exec(`
+                CREATE TABLE card_tags_new (
+                    card_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (card_id, tag_id),
+                    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+                INSERT INTO card_tags_new SELECT * FROM card_tags;
+                DROP TABLE card_tags;
+                ALTER TABLE card_tags_new RENAME TO card_tags;
+                CREATE INDEX idx_card_tags_tag ON card_tags(tag_id);
             `);
         }
     }
