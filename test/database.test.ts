@@ -183,25 +183,25 @@ describe('Database Functions', () => {
 
     describe('Board CRUD Operations', () => {
         it('should create a new board', () => {
-            const board = createBoard(db, { name: 'Test Board' });
+            const board = createBoard(db, { title: 'Test Board' });
 
             expect(board).toBeDefined();
-            expect(board.name).toBe('Test Board');
+            expect(board.title).toBe('Test Board');
             expect(board.id).toBeDefined();
         });
 
         it('should get a board by ID', () => {
-            const board = createBoard(db, { name: 'Test Board' });
+            const board = createBoard(db, { title: 'Test Board' });
             const fetchedBoard = getBoardById(db, board.id);
 
             expect(fetchedBoard).toBeDefined();
             expect(fetchedBoard?.id).toBe(board.id);
-            expect(fetchedBoard?.name).toBe('Test Board');
+            expect(fetchedBoard?.title).toBe('Test Board');
         });
 
         it('should get all boards', () => {
-            createBoard(db, { name: 'Board 1' });
-            createBoard(db, { name: 'Board 2' });
+            createBoard(db, { title: 'Board 1' });
+            createBoard(db, { title: 'Board 2' });
 
             const boards = getAllBoards(db);
             expect(boards).toHaveLength(2);
@@ -212,44 +212,44 @@ describe('Database Functions', () => {
         let boardId: string;
 
         beforeEach(() => {
-            const board = createBoard(db, { name: 'Test Board' });
+            const board = createBoard(db, { title: 'Test Board' });
             boardId = board.id;
         });
 
         it('should create a new column', () => {
             const column = createColumn(db, {
-                name: 'To Do',
+                title: 'To Do',
                 board_id: boardId,
-                order: 0
+                position: 0
             });
 
             expect(column).toBeDefined();
-            expect(column.name).toBe('To Do');
+            expect(column.title).toBe('To Do');
             expect(column.board_id).toBe(boardId);
-            expect(column.order).toBe(0);
+            expect(column.position).toBe(0);
         });
 
         it('should get columns by board ID', () => {
-            createColumn(db, { name: 'To Do', board_id: boardId, order: 0 });
-            createColumn(db, { name: 'In Progress', board_id: boardId, order: 1 });
-            createColumn(db, { name: 'Done', board_id: boardId, order: 2 });
+            createColumn(db, { title: 'To Do', board_id: boardId, position: 0 });
+            createColumn(db, { title: 'In Progress', board_id: boardId, position: 1 });
+            createColumn(db, { title: 'Done', board_id: boardId, position: 2 });
 
             const columns = getColumnsByBoardId(db, boardId);
             expect(columns).toHaveLength(3);
-            expect(columns[0].name).toBe('To Do');
-            expect(columns[1].name).toBe('In Progress');
-            expect(columns[2].name).toBe('Done');
+            expect(columns[0].title).toBe('To Do');
+            expect(columns[1].title).toBe('In Progress');
+            expect(columns[2].title).toBe('Done');
         });
 
         it('should maintain column order', () => {
-            createColumn(db, { name: 'Column C', board_id: boardId, order: 2 });
-            createColumn(db, { name: 'Column A', board_id: boardId, order: 0 });
-            createColumn(db, { name: 'Column B', board_id: boardId, order: 1 });
+            createColumn(db, { title: 'Column C', board_id: boardId, position: 2 });
+            createColumn(db, { title: 'Column A', board_id: boardId, position: 0 });
+            createColumn(db, { title: 'Column B', board_id: boardId, position: 1 });
 
             const columns = getColumnsByBoardId(db, boardId);
-            expect(columns[0].name).toBe('Column A');
-            expect(columns[1].name).toBe('Column B');
-            expect(columns[2].name).toBe('Column C');
+            expect(columns[0].title).toBe('Column A');
+            expect(columns[1].title).toBe('Column B');
+            expect(columns[2].title).toBe('Column C');
         });
     });
 
@@ -258,9 +258,9 @@ describe('Database Functions', () => {
         let columnId: string;
 
         beforeEach(() => {
-            const board = createBoard(db, { name: 'Test Board' });
+            const board = createBoard(db, { title: 'Test Board' });
             boardId = board.id;
-            const column = createColumn(db, { name: 'To Do', board_id: boardId, order: 0 });
+            const column = createColumn(db, { title: 'To Do', board_id: boardId, position: 0 });
             columnId = column.id;
         });
 
@@ -269,8 +269,8 @@ describe('Database Functions', () => {
                 title: 'Test Card',
                 content: 'Test content',
                 column_id: columnId,
-                order: 0,
-                priority: 'medium',
+                position: 0,
+                priority: 1,
                 note_id: null
             });
 
@@ -285,8 +285,8 @@ describe('Database Functions', () => {
                 title: 'Test Card',
                 content: 'Test content',
                 column_id: columnId,
-                order: 0,
-                priority: 'medium',
+                position: 0,
+                priority: 1,
                 note_id: null
             });
 
@@ -297,8 +297,8 @@ describe('Database Functions', () => {
         });
 
         it('should get cards by column ID', () => {
-            createCard(db, { title: 'Card 1', content: '', column_id: columnId, order: 0, priority: 'low', note_id: null });
-            createCard(db, { title: 'Card 2', content: '', column_id: columnId, order: 1, priority: 'high', note_id: null });
+            createCard(db, { title: 'Card 1', content: '', column_id: columnId, position: 0, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 2', content: '', column_id: columnId, position: 1, priority: 2, note_id: null });
 
             const cards = getCardsByColumnId(db, columnId);
             expect(cards).toHaveLength(2);
@@ -311,19 +311,19 @@ describe('Database Functions', () => {
                 title: 'Original Title',
                 content: 'Original content',
                 column_id: columnId,
-                order: 0,
-                priority: 'medium',
+                position: 0,
+                priority: 1,
                 note_id: null
             });
 
             updateCard(db, card.id, {
                 title: 'Updated Title',
-                priority: 'high'
+                priority: 2
             });
 
             const updatedCard = getCardById(db, card.id);
             expect(updatedCard?.title).toBe('Updated Title');
-            expect(updatedCard?.priority).toBe('high');
+            expect(updatedCard?.priority).toBe(2);
             expect(updatedCard?.content).toBe('Original content');
         });
 
@@ -332,8 +332,8 @@ describe('Database Functions', () => {
                 title: 'Test Card',
                 content: 'Test content',
                 column_id: columnId,
-                order: 0,
-                priority: 'medium',
+                position: 0,
+                priority: 1,
                 note_id: null
             });
 
@@ -355,8 +355,8 @@ describe('Database Functions', () => {
                 title: 'Test Card',
                 content: 'Card content',
                 column_id: columnId,
-                order: 0,
-                priority: 'medium',
+                position: 0,
+                priority: 1,
                 note_id: note.id
             });
 
@@ -367,9 +367,9 @@ describe('Database Functions', () => {
         });
 
         it('should maintain card order within column', () => {
-            createCard(db, { title: 'Card C', content: '', column_id: columnId, order: 2, priority: 'low', note_id: null });
-            createCard(db, { title: 'Card A', content: '', column_id: columnId, order: 0, priority: 'low', note_id: null });
-            createCard(db, { title: 'Card B', content: '', column_id: columnId, order: 1, priority: 'low', note_id: null });
+            createCard(db, { title: 'Card C', content: '', column_id: columnId, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Card A', content: '', column_id: columnId, position: 0, priority: 0, note_id: null });
+            createCard(db, { title: 'Card B', content: '', column_id: columnId, position: 1, priority: 0, note_id: null });
 
             const cards = getCardsByColumnId(db, columnId);
             expect(cards[0].title).toBe('Card A');
@@ -378,13 +378,13 @@ describe('Database Functions', () => {
         });
 
         it('should handle different priority levels', () => {
-            const lowCard = createCard(db, { title: 'Low', content: '', column_id: columnId, order: 0, priority: 'low', note_id: null });
-            const medCard = createCard(db, { title: 'Medium', content: '', column_id: columnId, order: 1, priority: 'medium', note_id: null });
-            const highCard = createCard(db, { title: 'High', content: '', column_id: columnId, order: 2, priority: 'high', note_id: null });
+            const lowCard = createCard(db, { title: 'Low', content: '', column_id: columnId, position: 0, priority: 0, note_id: null });
+            const medCard = createCard(db, { title: 'Medium', content: '', column_id: columnId, position: 1, priority: 1, note_id: null });
+            const highCard = createCard(db, { title: 'High', content: '', column_id: columnId, position: 2, priority: 2, note_id: null });
 
-            expect(lowCard.priority).toBe('low');
-            expect(medCard.priority).toBe('medium');
-            expect(highCard.priority).toBe('high');
+            expect(lowCard.priority).toBe(0);
+            expect(medCard.priority).toBe(1);
+            expect(highCard.priority).toBe(2);
         });
     });
 
