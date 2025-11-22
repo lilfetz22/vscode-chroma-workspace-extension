@@ -478,7 +478,7 @@ describe('Migration', () => {
             expect(card).toBeDefined();
             expect(card.title).toBe('Test Card');
             expect(card.content).toBe('Card content');
-            expect(card.priority).toBe('medium');  // Priority is stored as text: low/medium/high
+            expect(card.priority).toBe(1);  // Priority stored as integer: 0=low,1=medium,2=high
             // Note: recurrence is not stored in cards table in local schema
         });
 
@@ -604,7 +604,7 @@ describe('Migration', () => {
             // Insert test data
             db.prepare('INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (?, ?, ?, ?, ?)')
                 .run('note-1', 'Test Note', 'Content', '/test/note.notesnlh', 1);
-            db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)').run('board-1', 'Test Board');
+            db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)').run('board-1', 'Test Board');
             db.prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)').run('tag-1', 'Tag', '#FF0000');
 
             const outputPath = path.join(tempDir, 'export.json');
@@ -671,7 +671,7 @@ describe('Migration', () => {
             // Insert original data
             db.prepare('INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (?, ?, ?, ?, ?)')
                 .run('note-1', 'Original_Note', 'Original content', '/test.notesnlh', 1);
-            db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)').run('board-1', 'Original Board');
+            db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)').run('board-1', 'Original Board');
             db.prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)').run('tag-1', 'Original Tag', '#00FF00');
 
             // Export
@@ -697,7 +697,7 @@ describe('Migration', () => {
             expect(boards).toHaveLength(1);
             expect(tags).toHaveLength(1);
             expect((notes[0] as any).title).toBe('Original_Note');
-            expect((boards[0] as any).name).toBe('Original Board');  // Boards use 'name' not 'title'
+            expect((boards[0] as any).title).toBe('Original Board');  // Boards use 'title' column
             expect((tags[0] as any).name).toBe('Original Tag');
         });
     });
