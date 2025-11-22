@@ -8,7 +8,7 @@ async function addCard(column) {
         return;
     }
     const content = await vscode.window.showInputBox({ prompt: 'Optional: Enter content/context for this card' });
-    const newCard = createCard({ title: cardTitle, content: content || '', column_id: column.columnId, order: 0, priority: 'medium' });
+    const newCard = createCard({ title: cardTitle, content: content || '', column_id: column.columnId, position: 0, card_type: 'simple', priority: 0 });
     
     // Prompt for tags
     const tagIds = await selectOrCreateTags();
@@ -53,12 +53,29 @@ async function deleteCard(card) {
 
 async function moveCard(card) {
     const columns = getColumnsByBoardId(card.boardId);
-    const columnNames = columns.map(column => column.name);
+    const columnNames = columns.map(column => column.title);
     const selectedColumnName = await vscode.window.showQuickPick(columnNames, { placeHolder: 'Select a column to move the card to' });
     if (selectedColumnName) {
-        const selectedColumn = columns.find(column => column.name === selectedColumnName);
+        const selectedColumn = columns.find(column => column.title === selectedColumnName);
         if (selectedColumn) {
-            updateCard({ id: card.cardId, column_id: selectedColumn.id });
+            // Check if moving to or from "Done" column
+            const { getColumnById } = require('../../out/database');
+            const currentColumn = getColumnById(card.columnId);
+            
+            const movingToDone = selectedColumn.title === 'Done';
+            const movingFromDone = currentColumn.title === 'Done';
+            
+            const updateData = { id: card.cardId, column_id: selectedColumn.id };
+            
+            if (movingToDone) {
+                // Set completed_at to current datetime
+                updateData.completed_at = new Date().toISOString();
+            } else if (movingFromDone) {
+                // Clear completed_at
+                updateData.completed_at = null;
+            }
+            
+            updateCard(updateData);
         }
     }
 }

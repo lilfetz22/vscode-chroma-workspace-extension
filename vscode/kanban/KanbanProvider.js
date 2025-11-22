@@ -29,7 +29,7 @@ class KanbanProvider {
     getBoards() {
         const boards = getAllBoards();
         return boards.map(board => {
-            const item = new vscode.TreeItem(board.name, vscode.TreeItemCollapsibleState.Collapsed);
+            const item = new vscode.TreeItem(board.title, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'board';
             item.boardId = board.id;
             return item;
@@ -39,7 +39,7 @@ class KanbanProvider {
     getColumns(boardId) {
         const columns = getColumnsByBoardId(boardId);
         return columns.map(column => {
-            const item = new vscode.TreeItem(column.name, vscode.TreeItemCollapsibleState.Collapsed);
+            const item = new vscode.TreeItem(column.title, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'column';
             item.columnId = column.id;
             item.boardId = boardId;
@@ -52,7 +52,21 @@ class KanbanProvider {
         return cards.map(card => {
             const tags = getTagsByCardId(card.id);
             const tagString = tags.map(t => t.name).join(', ');
-            const label = tagString ? `${card.title} [${tagString}]` : card.title;
+            
+            // Format completed date if present
+            let completedDateString = '';
+            if (card.completed_at) {
+                const date = new Date(card.completed_at);
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const year = String(date.getFullYear()).slice(-2);
+                completedDateString = ` [${month}-${day}-${year}]`;
+            }
+            
+            const label = tagString 
+                ? `${card.title} [${tagString}]${completedDateString}` 
+                : `${card.title}${completedDateString}`;
+            
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;

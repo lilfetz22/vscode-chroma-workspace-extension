@@ -309,9 +309,9 @@ export function deleteNote(db: any, id: string): void {
 // Board-related functions
 export function createBoard(db: any, board: Partial<Board>): Board {
     const id = board.id || randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
-    stmt.run(id, board.name);
-    return { id, name: board.name! };
+    const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
+    stmt.run(id, board.title);
+    return { id, title: board.title! };
 }
 
 export function getBoardById(db: any, id: string): Board | undefined {
@@ -328,14 +328,14 @@ export function getAllBoards(db: any): Board[] {
 export function createColumn(db: any, column: Partial<Column>): Column {
     const id = column.id || randomBytes(16).toString('hex');
     const stmt = db.prepare(
-        'INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)'
+        'INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)'
     );
-    stmt.run(id, column.name, column.board_id, column.order);
+    stmt.run(id, column.title, column.board_id, column.position);
     return {
         id,
-        name: column.name!,
+        title: column.title!,
         board_id: column.board_id!,
-        order: column.order!
+        position: column.position!
     };
 }
 
@@ -353,17 +353,23 @@ export function getColumnsByBoardId(db: any, boardId: string): Column[] {
 export function createCard(db: any, card: Partial<Card>): Card {
     const id = card.id || randomBytes(16).toString('hex');
     const stmt = db.prepare(
-        'INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, card.title, card.content, card.column_id, card.note_id || null, card.order, card.priority);
+    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null);
     return {
         id,
-        title: card.title!,
-        content: card.content || '',
         column_id: card.column_id!,
-        note_id: card.note_id || null,
-        order: card.order!,
-        priority: card.priority!,
+        position: card.position ?? 0,
+        card_type: card.card_type ?? 'simple',
+        title: card.title!,
+        content: card.content ?? null,
+        note_id: card.note_id ?? null,
+        summary: card.summary ?? null,
+        priority: card.priority ?? 0,
+        scheduled_at: card.scheduled_at ?? null,
+        recurrence: card.recurrence ?? null,
+        activated_at: card.activated_at ?? null,
+        completed_at: card.completed_at ?? null,
     };
 }
 
@@ -371,28 +377,12 @@ export function getCardById(db: any, id: string): Card | undefined {
     const stmt = db.prepare('SELECT * FROM cards WHERE id = ?');
     const row = stmt.get(id);
     if (!row) return undefined;
-    return {
-        id: row.id,
-        title: row.title,
-        content: row.content,
-        column_id: row.column_id,
-        note_id: row.note_id,
-        order: row.order_index,
-        priority: row.priority
-    };
+    return row as Card;
 }
 
 export function getCardsByColumnId(db: any, columnId: string): Card[] {
-    const stmt = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index');
-    return stmt.all(columnId).map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        content: row.content,
-        column_id: row.column_id,
-        note_id: row.note_id,
-        order: row.order_index,
-        priority: row.priority
-    }));
+    const stmt = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position');
+    return stmt.all(columnId) as Card[];
 }
 
 export function updateCard(db: any, id: string, updates: Partial<Card>): void {
@@ -415,9 +405,33 @@ export function updateCard(db: any, id: string, updates: Partial<Card>): void {
         fields.push('column_id = ?');
         values.push(updates.column_id);
     }
-    if (updates.order !== undefined) {
-        fields.push('order_index = ?');
-        values.push(updates.order);
+    if (updates.position !== undefined) {
+        fields.push('position = ?');
+        values.push(updates.position);
+    }
+    if (updates.card_type !== undefined) {
+        fields.push('card_type = ?');
+        values.push(updates.card_type);
+    }
+    if (updates.summary !== undefined) {
+        fields.push('summary = ?');
+        values.push(updates.summary);
+    }
+    if (updates.scheduled_at !== undefined) {
+        fields.push('scheduled_at = ?');
+        values.push(updates.scheduled_at);
+    }
+    if (updates.recurrence !== undefined) {
+        fields.push('recurrence = ?');
+        values.push(updates.recurrence);
+    }
+    if (updates.activated_at !== undefined) {
+        fields.push('activated_at = ?');
+        values.push(updates.activated_at);
+    }
+    if (updates.completed_at !== undefined) {
+        fields.push('completed_at = ?');
+        values.push(updates.completed_at);
     }
     if (updates.note_id !== undefined) {
         fields.push('note_id = ?');

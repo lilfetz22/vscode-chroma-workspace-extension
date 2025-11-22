@@ -182,6 +182,68 @@ const migrations: Migration[] = [
                 CREATE INDEX IF NOT EXISTS idx_task_tags_tag ON task_tags(tag_id);
             `);
         }
+    },
+    {
+        version: 7,
+        name: 'add_completed_at_to_cards',
+        up: (db) => {
+            db.exec(`
+                ALTER TABLE cards ADD COLUMN completed_at DATETIME;
+                CREATE INDEX IF NOT EXISTS idx_cards_completed ON cards(completed_at);
+            `);
+        }
+    },
+    {
+        version: 8,
+        name: 'align_schema_with_documentation',
+        up: (db) => {
+            // Rename columns in boards table
+            db.exec(`
+                ALTER TABLE boards RENAME COLUMN name TO title;
+                ALTER TABLE boards ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+            `);
+            
+            // Rename columns in columns table
+            db.exec(`
+                ALTER TABLE columns RENAME COLUMN name TO title;
+                ALTER TABLE columns RENAME COLUMN order_index TO position;
+                ALTER TABLE columns ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+            `);
+            
+            // Add missing columns to cards table and rename order_index to position
+            db.exec(`
+                ALTER TABLE cards RENAME COLUMN order_index TO position;
+                ALTER TABLE cards ADD COLUMN card_type TEXT CHECK(card_type IN ('simple', 'linked')) DEFAULT 'simple' NOT NULL;
+                ALTER TABLE cards ADD COLUMN summary TEXT;
+                ALTER TABLE cards ADD COLUMN scheduled_at DATETIME;
+                ALTER TABLE cards ADD COLUMN recurrence TEXT;
+                ALTER TABLE cards ADD COLUMN activated_at DATETIME;
+            `);
+            
+            // Update priority column type (SQLite doesn't support ALTER COLUMN TYPE, so we document the change)
+            // Note: existing data with 'low', 'medium', 'high' will need to be converted
+            db.exec(`
+                -- Convert text priority to integer if needed
+                UPDATE cards SET priority = 
+                    CASE priority
+                        WHEN 'low' THEN 0
+                        WHEN 'medium' THEN 1
+                        WHEN 'high' THEN 2
+                        ELSE 0
+                    END
+                WHERE typeof(priority) = 'text';
+            `);
+            
+            // Add created_at to tags table
+            db.exec(`
+                ALTER TABLE tags ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+            `);
+            
+            // Create indexes mentioned in schema
+            db.exec(`
+                CREATE INDEX IF NOT EXISTS idx_cards_scheduled ON cards(scheduled_at);
+            `);
+        }
     }
 ];
 

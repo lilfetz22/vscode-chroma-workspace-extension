@@ -274,8 +274,8 @@ export function closeDb(): void {
 export function createBoard(board: Partial<Board>): Board {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
-    stmt.run(id, board.name);
+    const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
+    stmt.run(id, board.title);
     return getBoardById(id);
 }
 
@@ -291,8 +291,8 @@ export function getAllBoards(): Board[] {
 
 export function updateBoard(board: Partial<Board>): Board {
     const db = getDb();
-    const stmt = db.prepare('UPDATE boards SET name = ? WHERE id = ?');
-    stmt.run(board.name, board.id);
+    const stmt = db.prepare('UPDATE boards SET title = ? WHERE id = ?');
+    stmt.run(board.title, board.id);
     return getBoardById(board.id as string);
 }
 
@@ -304,15 +304,14 @@ export function deleteBoard(id: string): void {
 // Column CRUD
 const rowToColumn = (row: any): Column => {
     if (!row) return row;
-    const { order_index, ...rest } = row;
-    return { ...rest, order: order_index };
+    return row as Column;
 };
 
 export function createColumn(column: Partial<Column>): Column {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)');
-    stmt.run(id, column.name, column.board_id, column.order);
+    const stmt = db.prepare('INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)');
+    stmt.run(id, column.title, column.board_id, column.position);
     return getColumnById(id);
 }
 
@@ -324,7 +323,7 @@ export function getColumnById(id: string): Column {
 
 export function getColumnsByBoardId(boardId: string): Column[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index').all(boardId);
+    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position').all(boardId);
     return rows.map(rowToColumn);
 }
 
@@ -335,13 +334,13 @@ export function updateColumn(column: Partial<Column>): Column {
     }
     const fields: string[] = [];
     const values: any[] = [];
-    if (column.name !== undefined) {
-        fields.push("name = ?");
-        values.push(column.name);
+    if (column.title !== undefined) {
+        fields.push("title = ?");
+        values.push(column.title);
     }
-    if (column.order !== undefined) {
-        fields.push("order_index = ?");
-        values.push(column.order);
+    if (column.position !== undefined) {
+        fields.push("position = ?");
+        values.push(column.position);
     }
     if (fields.length === 0) {
         // Nothing to update
@@ -362,15 +361,14 @@ export function deleteColumn(id: string): void {
 // Card CRUD
 const rowToCard = (row: any): Card => {
     if (!row) return row;
-    const { id, title, content, column_id, note_id, order_index, priority } = row;
-    return { id, title, content, column_id, note_id, order: order_index, priority };
+    return row as Card;
 }
 
 export function createCard(card: Partial<Card>): Card {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(id, card.title, card.content, card.column_id, card.note_id, card.order, card.priority);
+    const stmt = db.prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null);
     return getCardById(id);
 }
 
@@ -382,7 +380,7 @@ export function getCardById(id: string): Card {
 
 export function getCardsByColumnId(columnId: string): Card[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index').all(columnId);
+    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position').all(columnId);
     return rows.map(rowToCard);
 }
 
@@ -396,9 +394,15 @@ export function updateCard(card: Partial<Card>): Card {
         title: card.title,
         content: card.content,
         column_id: card.column_id,
+        position: card.position,
+        card_type: card.card_type,
         note_id: card.note_id,
-        order_index: card.order,
+        summary: card.summary,
         priority: card.priority,
+        scheduled_at: card.scheduled_at,
+        recurrence: card.recurrence,
+        activated_at: card.activated_at,
+        completed_at: card.completed_at,
     };
     const setClauses: string[] = [];
     const values: any[] = [];

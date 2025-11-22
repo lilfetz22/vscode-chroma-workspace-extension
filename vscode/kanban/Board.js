@@ -4,14 +4,14 @@ const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, upda
 async function addBoard() {
     const boardName = await vscode.window.showInputBox({ prompt: 'Enter a name for the new board' });
     if (boardName) {
-        createBoard({ name: boardName });
+        createBoard({ title: boardName });
     }
 }
 
 async function editBoard(board) {
     const newBoardName = await vscode.window.showInputBox({ value: board.label });
     if (newBoardName) {
-        updateBoard({ id: board.boardId, name: newBoardName });
+        updateBoard({ id: board.boardId, title: newBoardName });
     }
 }
 
@@ -25,14 +25,14 @@ async function deleteBoard(board) {
 async function addColumn(board) {
     const columnName = await vscode.window.showInputBox({ prompt: 'Enter a name for the new column' });
     if (columnName) {
-        createColumn({ name: columnName, board_id: board.boardId, order: 0 });
+        createColumn({ title: columnName, board_id: board.boardId, position: 0 });
     }
 }
 
 async function editColumn(column) {
     const newColumnName = await vscode.window.showInputBox({ value: column.label });
     if (newColumnName) {
-        updateColumn({ id: column.columnId, name: newColumnName });
+        updateColumn({ id: column.columnId, title: newColumnName });
     }
 }
 
