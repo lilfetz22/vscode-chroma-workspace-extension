@@ -82,7 +82,7 @@ export async function initTestDatabase(): Promise<any> {
 }
 
 function createTestTables(db: any): void {
-    // Create all tables needed for testing
+    // Create all tables needed for testing - schema matches DATABASE_SCHEMA.md
     db.exec(`
         CREATE TABLE IF NOT EXISTS notes (
             id TEXT PRIMARY KEY,
@@ -96,28 +96,34 @@ function createTestTables(db: any): void {
 
         CREATE TABLE IF NOT EXISTS boards (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
+            title TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS columns (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
             board_id TEXT NOT NULL,
-            order_index INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS cards (
             id TEXT PRIMARY KEY,
+            column_id TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            card_type TEXT CHECK(card_type IN ('simple', 'linked')) NOT NULL,
             title TEXT NOT NULL,
             content TEXT,
-            column_id TEXT NOT NULL,
             note_id TEXT,
-            order_index INTEGER NOT NULL,
-            priority TEXT DEFAULT 'medium',
+            summary TEXT,
+            priority INTEGER DEFAULT 0,
+            scheduled_at DATETIME,
+            recurrence TEXT,
+            activated_at DATETIME,
+            completed_at DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
             FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
         );
@@ -126,7 +132,7 @@ function createTestTables(db: any): void {
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
-            due_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            due_date DATETIME NOT NULL,
             recurrence TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
             card_id TEXT,
@@ -137,8 +143,9 @@ function createTestTables(db: any): void {
 
         CREATE TABLE IF NOT EXISTS tags (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL UNIQUE,
-            color TEXT NOT NULL
+            name TEXT UNIQUE NOT NULL,
+            color TEXT NOT NULL DEFAULT '#808080',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS card_tags (
@@ -340,13 +347,16 @@ export function createColumn(db: any, column: Partial<Column>): Column {
 }
 
 export function getColumnsByBoardId(db: any, boardId: string): Column[] {
-    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index');
-    return stmt.all(boardId).map((col: any) => ({
-        id: col.id,
-        name: col.name,
-        board_id: col.board_id,
-        order: col.order_index
-    }));
+    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position');
+        const rows = stmt.all(boardId) as any[];
+        // Fallback mapping if legacy schema (name/order_index) still present in an existing test DB
+        return rows.map(r => ({
+            id: r.id,
+            board_id: r.board_id,
+            title: r.title !== undefined ? r.title : r.name,
+            position: r.position !== undefined ? r.position : r.order_index,
+            created_at: r.created_at
+        })) as Column[];
 }
 
 // Card-related functions
@@ -439,7 +449,6 @@ export function updateCard(db: any, id: string, updates: Partial<Card>): void {
     }
     
     if (fields.length > 0) {
-        fields.push('updated_at = CURRENT_TIMESTAMP');
         values.push(id);
         const sql = `UPDATE cards SET ${fields.join(', ')} WHERE id = ?`;
         const stmt = db.prepare(sql);
