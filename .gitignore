@@ -1,4 +1,6 @@
 to_do.notesnlh
+import_jsons/
+import_notes_txts/
 
 # Dependencies
 node_modules/
