@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Task } from '../models/Task';
-import { getDb } from '../database';
+import { getDb, getTagsByTaskId } from '../database';
 
 export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
   private _onDidChangeTreeData: vscode.EventEmitter<Task | TaskGroup | undefined | null | void> = new vscode.EventEmitter<Task | TaskGroup | undefined | null | void>();
@@ -90,10 +90,21 @@ function isTaskGroup(item: any): item is TaskGroup {
 
 class TaskItem extends vscode.TreeItem {
     constructor(public readonly task: Task) {
-        super(task.title, vscode.TreeItemCollapsibleState.None);
+        // Get tags for this task
+        const tags = getTagsByTaskId(task.id);
+        const tagString = tags.length > 0 ? tags.map(t => `#${t.name}`).join(' ') : '';
+        
+        // Construct label with tags
+        const label = tagString ? `${task.title} ${tagString}` : task.title;
+        
+        super(label, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "task";
         this.description = new Date(task.dueDate).toLocaleDateString();
     const parts: string[] = [`Due: ${new Date(task.dueDate).toLocaleString()}`];
+    if (task.recurrence) {
+      const recurrenceLabel = task.recurrence.charAt(0).toUpperCase() + task.recurrence.slice(1);
+      parts.push(`Recurrence: ${recurrenceLabel}`);
+    }
     if (task.description && task.description.trim().length > 0) {
       parts.push('', 'Content:', task.description);
     }
