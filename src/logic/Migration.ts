@@ -107,6 +107,73 @@ export interface ValidationResult {
 export type ProgressCallback = (message: string, percentage: number) => void;
 
 /**
+ * Auto-detect array type based on properties
+ */
+function detectArrayType(arr: any[]): 'boards' | 'columns' | 'cards' | 'notes' | 'tags' | 'tasks' | 'unknown' {
+    if (arr.length === 0) return 'unknown';
+    
+    const firstItem = arr[0];
+    
+    // Boards: have title, created_at, and optionally user_id/project_id (but NOT board_id or column_id)
+    if (firstItem.title && firstItem.created_at && !firstItem.board_id && !firstItem.column_id && !firstItem.content && !firstItem.due_date) {
+        return 'boards';
+    }
+    
+    // Columns: have board_id, title, position
+    if (firstItem.board_id && firstItem.title && typeof firstItem.position === 'number') {
+        return 'columns';
+    }
+    
+    // Cards: have column_id, title, position
+    if (firstItem.column_id && firstItem.title !== undefined) {
+        return 'cards';
+    }
+    
+    // Notes: have title and content
+    if (firstItem.title && firstItem.content !== undefined && !firstItem.board_id && !firstItem.column_id) {
+        return 'notes';
+    }
+    
+    // Tags: have name and color
+    if (firstItem.name && firstItem.color) {
+        return 'tags';
+    }
+    
+    // Tasks: have due_date
+    if (firstItem.due_date) {
+        return 'tasks';
+    }
+    
+    return 'unknown';
+}
+
+/**
+ * Normalize import data - convert array to object format if needed
+ */
+function normalizeImportData(data: any): SupabaseExportData {
+    // If data is already an object with known properties, return as-is
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+        return data;
+    }
+    
+    // If data is an array, detect type and wrap it
+    if (Array.isArray(data)) {
+        const arrayType = detectArrayType(data);
+        logger.info(`Detected array type: ${arrayType}`);
+        
+        if (arrayType === 'unknown') {
+            logger.warn('Could not detect array type, treating as empty import');
+            return {};
+        }
+        
+        // Wrap the array in an object with the appropriate property name
+        return { [arrayType]: data };
+    }
+    
+    return {};
+}
+
+/**
  * Validate JSON data structure before import
  */
 export function validateImportData(data: any): ValidationResult {
@@ -130,7 +197,7 @@ export function validateImportData(data: any): ValidationResult {
     // Check if data is an object
     if (!data || typeof data !== 'object') {
         result.valid = false;
-        result.errors.push('Import data must be a JSON object');
+        result.errors.push('Import data must be a JSON object or array');
         return result;
     }
 
@@ -327,7 +394,18 @@ export async function importFromJson(
 
         // Read and parse JSON file
         const jsonContent = fs.readFileSync(jsonPath, 'utf-8');
-        const data: SupabaseExportData = JSON.parse(jsonContent);
+        const rawData = JSON.parse(jsonContent);
+        
+        // Normalize data (convert arrays to proper format if needed)
+        const data: SupabaseExportData = normalizeImportData(rawData);
+        logger.info('Normalized import data', { 
+            hasBoards: !!data.boards, 
+            hasColumns: !!data.columns,
+            hasCards: !!data.cards,
+            hasNotes: !!data.notes,
+            hasTags: !!data.tags,
+            hasTasks: !!data.tasks
+        });
 
         // Validate data
         if (progressCallback) {
@@ -454,6 +532,9 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
+                // Prepare statement to check if a note exists
+                const checkNote = db.prepare('SELECT id FROM notes WHERE id = ?');
+
                 const insertCard = db.prepare(`
                     INSERT INTO cards (
                         id, column_id, position, card_type, title, content, note_id,
@@ -461,7 +542,19 @@ export async function importFromJson(
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `);
 
+                let skippedNoteRefs = 0;
                 for (const card of data.cards) {
+                    // Validate note_id if present
+                    let noteId = card.note_id || null;
+                    if (noteId) {
+                        const noteExists = checkNote.get(noteId);
+                        if (!noteExists) {
+                            logger.warn(`Card ${card.id}: note_id ${noteId} does not exist, setting to null`);
+                            noteId = null;
+                            skippedNoteRefs++;
+                        }
+                    }
+
                     insertCard.run(
                         card.id,
                         card.column_id,
@@ -469,7 +562,7 @@ export async function importFromJson(
                         card.card_type || 'simple',
                         card.title,
                         card.content || null,
-                        card.note_id || null,
+                        noteId,
                         card.summary || null,
                         typeof card.priority === 'number' ? card.priority : 0,
                         card.scheduled_at || null,
@@ -479,7 +572,7 @@ export async function importFromJson(
                         card.created_at || new Date().toISOString()
                     );
                 }
-                logger.info(`Imported ${data.cards.length} cards`);
+                logger.info(`Imported ${data.cards.length} cards${skippedNoteRefs > 0 ? ` (${skippedNoteRefs} cards had invalid note_id references)` : ''}`);
             }
 
             // Import tags
