@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb } from '../database';
+import { getDb, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard } from '../database';
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
@@ -77,38 +77,96 @@ export class TaskScheduler {
     this.lastNotificationTime.set(taskId, Date.now());
   }
 
+  private getOrCreateToDoColumn(): string | null {
+    try {
+      const db = getDb();
+      const boards = getAllBoards();
+      
+      // If no boards exist, create a default one
+      if (boards.length === 0) {
+        const newBoard = createBoard({ title: 'My Board' });
+        const column = createColumn({ title: 'To Do', board_id: newBoard.id, position: 0 });
+        return column.id;
+      }
+
+      // Use the first board
+      const firstBoard = boards[0];
+      const columns = getColumnsByBoardId(firstBoard.id);
+      
+      // Look for a "To Do" column
+      const todoColumn = columns.find(col => col.title.toLowerCase() === 'to do');
+      if (todoColumn) {
+        return todoColumn.id;
+      }
+
+      // If no "To Do" column exists, create one at the beginning
+      const column = createColumn({ title: 'To Do', board_id: firstBoard.id, position: 0 });
+      return column.id;
+    } catch (error) {
+      console.error('Failed to get/create To Do column:', error);
+      return null;
+    }
+  }
+
   private async checkTasks() {
     const db = getDb();
     const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
     const now = new Date();
     let dueTodayCount = 0;
+    let cardsCreated = false;
 
     for (const task of tasks) {
       let dueDate = new Date(task.dueDate);
       if (dueDate <= now) {
-        if (task.recurrence) {
-          const nextDueDate = getNextDueDate(task);
-          if (nextDueDate) {
-            // Update the due date BEFORE showing notification to prevent duplicate notifications
-            db.prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
-            
+        // Task is due - create a card in the "To Do" column
+        const todoColumnId = this.getOrCreateToDoColumn();
+        
+        if (todoColumnId) {
+          try {
+            // Create the card
+            const cardTitle = task.title;
+            const cardContent = task.description || '';
+            const newCard = createCard({ 
+              title: cardTitle, 
+              content: cardContent, 
+              column_id: todoColumnId, 
+              position: 0, 
+              card_type: 'simple', 
+              priority: 0 
+            });
+
+            // Copy tags from task to card
+            const taskTags = getTagsByTaskId(task.id);
+            for (const tag of taskTags) {
+              addTagToCard(newCard.id, tag.id);
+            }
+
+            cardsCreated = true;
+
             if (this.shouldShowNotification(task.id)) {
-              vscode.window.showInformationMessage(`Task due: ${task.title}`);
+              vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
               this.recordNotification(task.id);
             }
-            
+          } catch (error) {
+            console.error('Failed to create card for task:', error);
+          }
+        }
+
+        if (task.recurrence) {
+          // For recurring tasks, calculate the next due date and update the task
+          const nextDueDate = getNextDueDate(task);
+          if (nextDueDate) {
+            db.prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
             // Update dueDate to reflect the new due date for "due today" count
             dueDate = nextDueDate;
+          } else {
+            // If no next due date, delete the task
+            db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+            continue;
           }
         } else {
-          // For non-recurring tasks, show notification then mark as completed
-          if (this.shouldShowNotification(task.id)) {
-            vscode.window.showInformationMessage(`Task due: ${task.title}`);
-            this.recordNotification(task.id);
-          }
-          
-          db.prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
-          // Completed tasks should not be counted as "due today"
+          // For non-recurring tasks, delete the task after creating the card
+          db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
           continue;
         }
       }
@@ -118,6 +176,12 @@ export class TaskScheduler {
       }
     }
     this.updateTaskCount(dueTodayCount);
+    
+    // Refresh both task and kanban views if cards were created
+    if (cardsCreated) {
+      vscode.commands.executeCommand('chroma.refreshTasks');
+      vscode.commands.executeCommand('chroma.refreshKanban');
+    }
   }
 
   private isDueToday(date: Date): boolean {
