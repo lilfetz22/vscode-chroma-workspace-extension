@@ -285,6 +285,22 @@ export function createBoard(board: Partial<Board>): Board {
     const id = randomBytes(16).toString('hex');
     const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
     stmt.run(id, board.title);
+    
+    // Automatically create default columns
+    const defaultColumns = [
+        { title: 'To Do', position: 0 },
+        { title: 'In Progress', position: 1 },
+        { title: 'Done', position: 2 }
+    ];
+    
+    for (const col of defaultColumns) {
+        createColumn({ 
+            title: col.title, 
+            board_id: id, 
+            position: col.position 
+        });
+    }
+    
     return getBoardById(id);
 }
 
