@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, updateColumn, deleteColumn: dbDeleteColumn } = require('../../out/database');
+const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, updateColumn, deleteColumn: dbDeleteColumn } = require('../../out/src/database');
 
 async function addBoard() {
     const boardName = await vscode.window.showInputBox({ prompt: 'Enter a name for the new board' });
