@@ -78,7 +78,11 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Database initialized successfully');
     }
   } catch (e) {
-    getDebugLogger().log('Database initialization failed:', e);
+    getDebugLogger().log('ERROR: Database initialization failed');
+    getDebugLogger().log('Error message:', e?.message || String(e));
+    if (e?.stack) {
+      getDebugLogger().log('Stack trace:', e.stack);
+    }
     vscode.window.showErrorMessage(`Chroma: Database initialization failed: ${e?.message || e}`);
   }
 
@@ -348,22 +352,8 @@ exports.activate = async function activate(context) {
     })
   );
 
-  try {
-    // Configure database path from settings
-    const settingsService = getSettingsService();
-    const dbSettings = settingsService.getDatabaseSettings();
-    setDatabasePath(dbSettings.path);
-    
-    // Get workspace root for database initialization
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    
-    await initDatabase(false, workspaceRoot);
-    await createTables();
-  } catch (err) {
-    vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
-    // Optionally, log error to console for debugging
-    console.error("Database initialization error:", err);
-  }
+  // Note: Database initialization is already handled earlier in the activate function (lines 68-82)
+  // This duplicate initialization block has been removed to prevent conflicts
 
   vscode.workspace.onDidOpenTextDocument((document) => {
     if (document.languageId === 'notesnlh') {
