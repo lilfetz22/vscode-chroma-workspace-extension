@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId } from '../src/database';
+import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId, getCardById, getDb } from '../src/database';
+import { getDebugLogger } from '../src/logic/DebugLogger';
 
 // Classic color set and common CSS color names mapping to hex
 const CSS_COLOR_MAP: Record<string, string> = {
@@ -135,11 +136,17 @@ async function deleteTagWithConfirmation(tag: any) {
 }
 
 async function assignTag(card: any) {
+    const debugLog = getDebugLogger();
+    debugLog.log('=== assignTag called ===');
+    debugLog.log('Card object:', card);
     const cardId = card?.id || card?.cardId;
+    debugLog.log('Extracted cardId:', cardId);
+    
     if (!cardId) {
         vscode.window.showErrorMessage('Unable to assign tag: Missing card id.');
         return;
     }
+    
     const tags = getAllTags();
     if (tags.length === 0) {
         vscode.window.showInformationMessage('No tags available. Please create a tag first.');
@@ -158,8 +165,12 @@ async function assignTag(card: any) {
                 return;
             }
             try {
+                debugLog.log(`Attempting to add tag ${tag.id} to card ${cardId}`);
                 addTagToCard(cardId, tag.id);
+                debugLog.log(`Successfully added tag ${tag.id} to card ${cardId}`);
+                vscode.window.showInformationMessage(`Tag "${tag.name}" assigned successfully.`);
             } catch (err: any) {
+                debugLog.log(`ERROR: Failed to add tag ${tag.id} to card ${cardId}:`, err);
                 vscode.window.showErrorMessage(`Failed to assign tag: ${err.message || err}`);
             }
         }
