@@ -56,7 +56,8 @@ export function getDatabasePath(): string {
 
 export function initDatabase(memory: boolean = false, workspaceRoot?: string): Database.Database {
     try {
-        getLogger().info('Initializing database', { memory, workspaceRoot });
+        const caller = new Error().stack?.split('\n')[2]?.trim();
+        getLogger().info('initDatabase called', { memory, workspaceRoot, caller });
         
         if (memory) {
             if (memoryDb) {
@@ -82,9 +83,12 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
             } else {
                 // Fallback to __dirname (for testing)
                 dbPath = path.join(__dirname, '..', relativePath);
+                getLogger().warn('No workspaceRoot provided, using fallback path');
             }
             
             getLogger().info('Database path resolved to:', dbPath);
+            getLogger().info('Database file exists:', fs.existsSync(dbPath));
+            getLogger().info('__dirname is:', __dirname);
             
             const chromaDir = path.dirname(dbPath);
             if (!fs.existsSync(chromaDir)) {
@@ -116,9 +120,11 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
 
 export function getDb(): Database.Database {
     if (!db) {
-        getLogger().debug('Database not initialized, initializing now');
+        getLogger().warn('Database not initialized when getDb() called, initializing now');
+        getLogger().warn('This may indicate a module loading issue');
         return initDatabase(!!memoryDb);
     }
+    getLogger().debug('getDb() returning existing database instance');
     return db;
 }
 
@@ -468,7 +474,46 @@ export function deleteTag(id: string): void {
 // Card-Tag Relationships
 export function addTagToCard(cardId: string, tagId: string): void {
     const db = getDb();
-    db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+    const logger = getLogger();
+    
+    // Log database information
+    logger.info(`addTagToCard: Database instance:`, db.name);
+    logger.info(`addTagToCard: Database in WAL mode:`, db.inTransaction);
+    
+    // Count total cards
+    const cardCount = db.prepare('SELECT COUNT(*) as count FROM cards').get() as any;
+    logger.info(`addTagToCard: Total cards in database: ${cardCount.count}`);
+    
+    // List all card IDs
+    const allCardIds = db.prepare('SELECT id, title FROM cards LIMIT 10').all();
+    logger.info(`addTagToCard: First 10 cards:`, allCardIds);
+    
+    // Verify card exists
+    const card = db.prepare('SELECT id FROM cards WHERE id = ?').get(cardId);
+    logger.info(`addTagToCard: Checking card ${cardId}, found:`, card);
+    if (!card) {
+        const error = new Error(`Card with ID ${cardId} does not exist`);
+        logger.error('addTagToCard failed:', error);
+        throw error;
+    }
+    
+    // Verify tag exists
+    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    logger.info(`addTagToCard: Checking tag ${tagId}, found:`, tag);
+    if (!tag) {
+        const error = new Error(`Tag with ID ${tagId} does not exist`);
+        logger.error('addTagToCard failed:', error);
+        throw error;
+    }
+    
+    logger.info(`addTagToCard: Inserting card_id=${cardId}, tag_id=${tagId}`);
+    try {
+        db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+        logger.info(`addTagToCard: Successfully inserted`);
+    } catch (err) {
+        logger.error(`addTagToCard: Insert failed:`, err);
+        throw err;
+    }
 }
 
 export function removeTagFromCard(cardId: string, tagId: string): void {
