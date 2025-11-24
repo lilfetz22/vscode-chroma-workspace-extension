@@ -230,10 +230,7 @@ describe('Database Functions', () => {
         });
 
         it('should get columns by board ID', () => {
-            createColumn(db, { title: 'To Do', board_id: boardId, position: 0 });
-            createColumn(db, { title: 'In Progress', board_id: boardId, position: 1 });
-            createColumn(db, { title: 'Done', board_id: boardId, position: 2 });
-
+            // createBoard automatically creates 3 default columns, so this test verifies that
             const columns = getColumnsByBoardId(db, boardId);
             expect(columns).toHaveLength(3);
             expect(columns[0].title).toBe('To Do');
@@ -242,6 +239,9 @@ describe('Database Functions', () => {
         });
 
         it('should maintain column order', () => {
+            // Clear default columns first to test ordering
+            db.exec(`DELETE FROM columns WHERE board_id = '${boardId}'`);
+            
             createColumn(db, { title: 'Column C', board_id: boardId, position: 2 });
             createColumn(db, { title: 'Column A', board_id: boardId, position: 0 });
             createColumn(db, { title: 'Column B', board_id: boardId, position: 1 });
