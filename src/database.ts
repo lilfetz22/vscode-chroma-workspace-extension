@@ -8,6 +8,7 @@ import { Card } from './models/Card';
 import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
+import { getDebugLogger } from './logic/DebugLogger';
 
 let logger: any;
 
@@ -41,9 +42,11 @@ export function setDatabasePath(relativePath: string): void {
     if (db) {
         const error = new Error('Cannot change database path after database has been initialized');
         getLogger().error('Attempted to change database path after initialization', error);
+        getDebugLogger().log('ERROR: Attempted to change database path after initialization:', error.message);
         throw error;
     }
     getLogger().info('Database path set to:', relativePath);
+    getDebugLogger().log('Database path set to:', relativePath);
     customDbPath = relativePath;
 }
 
@@ -114,6 +117,7 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
         return db;
     } catch (error: any) {
         getLogger().error('Failed to initialize database', error);
+        getDebugLogger().log('ERROR: Database initialization failed:', error.message, error.stack);
         throw new Error(`Database initialization failed: ${error.message}`);
     }
 }
