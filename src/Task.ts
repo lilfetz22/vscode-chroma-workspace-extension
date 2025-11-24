@@ -14,6 +14,21 @@ function formatYMD(date: Date) {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
+async function pickTime(defaultTime: string = '00:00'): Promise<string | undefined> {
+    const timeInput = await vscode.window.showInputBox({
+        prompt: 'Enter time (HH:MM in 24-hour format)',
+        value: defaultTime,
+        ignoreFocusOut: true,
+        validateInput: text => {
+            if (!/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(text)) {
+                return 'Invalid time format. Use HH:MM (e.g., 09:30, 14:00, 00:00)';
+            }
+            return null;
+        }
+    });
+    return timeInput;
+}
+
 async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
     const qp = vscode.window.createQuickPick();
     qp.matchOnDescription = true;
@@ -57,7 +72,29 @@ async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
                 validateInput: text => (/^\d{4}-\d{2}-\d{2}$/.test(text) ? null : 'Invalid date format')
             });
             qp.dispose();
-            resolve(confirmed || undefined);
+            
+            if (!confirmed) {
+                resolve(undefined);
+                return;
+            }
+            
+            // Extract time from initialDate if available and date matches, else default to midnight
+            let defaultTime = '00:00';
+            if (initialDate && formatYMD(initialDate) === confirmed) {
+                defaultTime = `${pad2(initialDate.getHours())}:${pad2(initialDate.getMinutes())}`;
+            }
+            
+            // Now ask for time
+            const time = await pickTime(defaultTime);
+            if (!time) {
+                resolve(undefined);
+                return;
+            }
+            
+            // Combine date and time into ISO datetime string
+            // Parse as local time to avoid timezone issues
+            const dateTimeStr = `${confirmed}T${time}:00`;
+            resolve(dateTimeStr);
         });
 
         const hideSub = qp.onDidHide(() => {
@@ -94,15 +131,18 @@ export async function convertCardToTask(card: Card) {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['daily', 'weekly', 'monthly', 'yearly'], {
-        placeHolder: 'Select recurrence (optional)',
+    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
+        placeHolder: 'Select recurrence',
     });
+
+    // Convert 'Once' to null, and lowercase other options
+    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
 
     try {
         const db = getDb();
         const id = uuidv4();
         db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
-          .run(id, title, card.content, dueDate, recurrence || null, card.id);
+          .run(id, title, card.content, dueDate, recurrenceValue, card.id);
         
         // Copy tags from the card to the task
         const cardTagIds = getTagsByCardId(card.id || card.cardId).map(t => t.id);
@@ -162,15 +202,18 @@ export async function addTask() {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['daily', 'weekly', 'monthly', 'yearly'], {
-        placeHolder: 'Select recurrence (optional)',
+    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
+        placeHolder: 'Select recurrence',
     });
+
+    // Convert 'Once' to null, and lowercase other options
+    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
 
     try {
         const db = getDb();
         const id = uuidv4();
         db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence) VALUES (?, ?, ?, ?, ?)')
-            .run(id, title, description || null, dueDate, recurrence || null);
+            .run(id, title, description || null, dueDate, recurrenceValue);
         
         // Prompt for tags
         const tagIds = await selectOrCreateTags();
@@ -212,9 +255,12 @@ export async function editTask(task: Task) {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['daily', 'weekly', 'monthly', 'yearly'], {
-        placeHolder: 'Select recurrence (optional)',
+    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
+        placeHolder: 'Select recurrence',
     });
+
+    // Convert 'Once' to null, and lowercase other options
+    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
 
     const description = await vscode.window.showInputBox({
         prompt: 'Optional: Edit content/context for this task',
@@ -224,7 +270,7 @@ export async function editTask(task: Task) {
     try {
         const db = getDb();
         db.prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ? WHERE id = ?')
-          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrence || null, task.id);
+          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrenceValue, task.id);
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);
