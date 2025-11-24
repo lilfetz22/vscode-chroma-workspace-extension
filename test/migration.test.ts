@@ -123,7 +123,7 @@ describe('Migration', () => {
             const result = validateImportData(null);
 
             expect(result.valid).toBe(false);
-            expect(result.errors).toContain('Import data must be a JSON object');
+            expect(result.errors).toContain('Import data must be a JSON object or array');
         });
 
         test('should reject notes with missing id', () => {
@@ -381,6 +381,72 @@ describe('Migration', () => {
             const result = await importFromJson('/nonexistent/file.json', tempDir);
 
             expect(result.success).toBe(false);
+        });
+
+        test('should import array of boards directly', async () => {
+            const boardsArray = [
+                {
+                    id: 'board-1',
+                    title: 'Test Board 1',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 'board-2',
+                    title: 'Test Board 2',
+                    created_at: new Date().toISOString()
+                }
+            ];
+
+            fs.writeFileSync(testJsonPath, JSON.stringify(boardsArray), 'utf-8');
+
+            const result = await importFromJson(testJsonPath, tempDir, undefined, db);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Successfully imported');
+            expect(result.message).toContain('2 boards');
+
+            // Verify boards were imported
+            const boards = db.prepare('SELECT * FROM boards').all();
+            expect(boards.length).toBe(2);
+            expect(boards.find((b: any) => b.id === 'board-1')).toBeDefined();
+            expect(boards.find((b: any) => b.id === 'board-2')).toBeDefined();
+        });
+
+        test('should import array of columns directly', async () => {
+            // First create a board for the columns
+            db.prepare('INSERT INTO boards (id, title, created_at) VALUES (?, ?, ?)').run(
+                'board-1',
+                'Test Board',
+                new Date().toISOString()
+            );
+
+            const columnsArray = [
+                {
+                    id: 'col-1',
+                    board_id: 'board-1',
+                    title: 'Column 1',
+                    position: 0,
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 'col-2',
+                    board_id: 'board-1',
+                    title: 'Column 2',
+                    position: 1,
+                    created_at: new Date().toISOString()
+                }
+            ];
+
+            fs.writeFileSync(testJsonPath, JSON.stringify(columnsArray), 'utf-8');
+
+            const result = await importFromJson(testJsonPath, tempDir, undefined, db);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('2 columns');
+
+            // Verify columns were imported
+            const columns = db.prepare('SELECT * FROM columns').all();
+            expect(columns.length).toBe(2);
         });
 
         test('should fail on invalid data structure', async () => {
