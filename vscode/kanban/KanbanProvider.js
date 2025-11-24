@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/database');
+const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/src/database');
 
 class KanbanProvider {
     constructor() {
@@ -51,7 +51,7 @@ class KanbanProvider {
         const cards = getCardsByColumnId(columnId);
         return cards.map(card => {
             const tags = getTagsByCardId(card.id);
-            const tagString = tags.map(t => t.name).join(', ');
+            const tagString = tags.length > 0 ? tags.map(t => `#${t.name}`).join(' ') : '';
             
             // Format completed date if present
             let completedDateString = '';
@@ -64,12 +64,13 @@ class KanbanProvider {
             }
             
             const label = tagString 
-                ? `${card.title} [${tagString}]${completedDateString}` 
+                ? `${card.title} ${tagString}${completedDateString}` 
                 : `${card.title}${completedDateString}`;
             
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;
+            item.label = label;
             item.columnId = columnId;
             const column = getColumnById(columnId);
             item.boardId = column.board_id;
