@@ -15,15 +15,15 @@ const {
   window,
 } = vscode;
 const { KanbanProvider } = require('./kanban/KanbanProvider');
-const { TaskProvider } = require('../out/views/TaskProvider');
-const { TagsProvider } = require('../out/views/TagsProvider');
-const { TaskScheduler } = require('../out/logic/TaskScheduler');
+const { TaskProvider } = require('../out/src/views/TaskProvider');
+const { TagsProvider } = require('../out/src/views/TagsProvider');
+const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
 const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
-const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/Task');
+const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
-const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
-const { importFromJson, exportToJson } = require('../out/logic/Migration');
+const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
+const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 
 let kanbanProvider;
 let kanbanTreeView;
@@ -41,12 +41,21 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/database');
-const { search } = require('../out/logic/search');
-const { getSettingsService } = require('../out/logic/SettingsService');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/src/database');
+const { search } = require('../out/src/logic/search');
+const { getSettingsService } = require('../out/src/logic/SettingsService');
+const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
 
 
 exports.activate = async function activate(context) {
+  // Initialize debug logger first
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (workspaceRoot) {
+    initDebugLogger(workspaceRoot);
+    getDebugLogger().log('=== Extension Activated ===');
+    getDebugLogger().log('Workspace root:', workspaceRoot);
+  }
+
   // Initialize settings service
   kanbanProvider = new KanbanProvider();
   kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
@@ -57,16 +66,19 @@ exports.activate = async function activate(context) {
 
   // Initialize database early with workspace root and configured relative path
   try {
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const config = vscode.workspace.getConfiguration('chroma');
     const configuredPath = config.get('database.path');
+    getDebugLogger().log('Configured database path:', configuredPath);
     if (configuredPath && typeof configuredPath === 'string') {
       setDatabasePath(configuredPath);
     }
     if (workspaceRoot) {
+      getDebugLogger().log('Initializing database with workspace root');
       initDatabase(false, workspaceRoot);
+      getDebugLogger().log('Database initialized successfully');
     }
   } catch (e) {
+    getDebugLogger().log('Database initialization failed:', e);
     vscode.window.showErrorMessage(`Chroma: Database initialization failed: ${e?.message || e}`);
   }
 
@@ -76,6 +88,9 @@ exports.activate = async function activate(context) {
     }),
     vscode.commands.registerCommand('chroma.refreshTags', () => {
       tagsProvider.refresh();
+    }),
+    vscode.commands.registerCommand('chroma.refreshKanban', () => {
+      kanbanProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
