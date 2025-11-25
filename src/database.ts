@@ -396,8 +396,8 @@ const rowToCard = (row: any): Card => {
 export function createCard(card: Partial<Card>): Card {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null);
+    const stmt = db.prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at, converted_from_task_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null, card.converted_from_task_at ?? null);
     return getCardById(id);
 }
 
@@ -432,6 +432,7 @@ export function updateCard(card: Partial<Card>): Card {
         recurrence: card.recurrence,
         activated_at: card.activated_at,
         completed_at: card.completed_at,
+        converted_from_task_at: card.converted_from_task_at,
     };
     const setClauses: string[] = [];
     const values: any[] = [];
