@@ -35,3 +35,4 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+next_task_instructions.md
