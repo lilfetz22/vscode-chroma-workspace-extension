@@ -18,12 +18,12 @@ const { KanbanProvider } = require('./kanban/KanbanProvider');
 const { TaskProvider } = require('../out/src/views/TaskProvider');
 const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
-const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('../out/kanban/Board');
-const { addCard, editCard, moveCard, deleteCard } = require('../out/kanban/Card');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
+const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
-const { addTag, editTag, deleteTag, assignTag, removeTag } = require('../out/Tag');
-const { exportAccomplishments } = require('../out/logic/ExportAccomplishments');
-const { importFromJson, exportToJson } = require('../out/logic/Migration');
+const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
+const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
+const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 
 let kanbanProvider;
 let kanbanTreeView;
@@ -41,12 +41,21 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/database');
-const { search } = require('../out/logic/search');
-const { getSettingsService } = require('../out/logic/SettingsService');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/src/database');
+const { search } = require('../out/src/logic/search');
+const { getSettingsService } = require('../out/src/logic/SettingsService');
+const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
 
 
 exports.activate = async function activate(context) {
+  // Initialize debug logger first
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (workspaceRoot) {
+    initDebugLogger(workspaceRoot);
+    getDebugLogger().log('=== Extension Activated ===');
+    getDebugLogger().log('Workspace root:', workspaceRoot);
+  }
+
   // Initialize settings service
   kanbanProvider = new KanbanProvider();
   kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
@@ -55,12 +64,37 @@ exports.activate = async function activate(context) {
   tagsProvider = new TagsProvider();
   vscode.window.registerTreeDataProvider('tags', tagsProvider);
 
+  // Initialize database early with workspace root and configured relative path
+  try {
+    const config = vscode.workspace.getConfiguration('chroma');
+    const configuredPath = config.get('database.path');
+    getDebugLogger().log('Configured database path:', configuredPath);
+    if (configuredPath && typeof configuredPath === 'string') {
+      setDatabasePath(configuredPath);
+    }
+    if (workspaceRoot) {
+      getDebugLogger().log('Initializing database with workspace root');
+      initDatabase(false, workspaceRoot);
+      getDebugLogger().log('Database initialized successfully');
+    }
+  } catch (e) {
+    getDebugLogger().log('ERROR: Database initialization failed');
+    getDebugLogger().log('Error message:', e?.message || String(e));
+    if (e?.stack) {
+      getDebugLogger().log('Stack trace:', e.stack);
+    }
+    vscode.window.showErrorMessage(`Chroma: Database initialization failed: ${e?.message || e}`);
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand('chroma.refreshTasks', () => {
       taskProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.refreshTags', () => {
       tagsProvider.refresh();
+    }),
+    vscode.commands.registerCommand('chroma.refreshKanban', () => {
+      kanbanProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
@@ -318,22 +352,8 @@ exports.activate = async function activate(context) {
     })
   );
 
-  try {
-    // Configure database path from settings
-    const settingsService = getSettingsService();
-    const dbSettings = settingsService.getDatabaseSettings();
-    setDatabasePath(dbSettings.path);
-    
-    // Get workspace root for database initialization
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    
-    await initDatabase(false, workspaceRoot);
-    await createTables();
-  } catch (err) {
-    vscode.window.showErrorMessage("Database initialization failed: " + (err && err.message ? err.message : err));
-    // Optionally, log error to console for debugging
-    console.error("Database initialization error:", err);
-  }
+  // Note: Database initialization is already handled earlier in the activate function (lines 68-82)
+  // This duplicate initialization block has been removed to prevent conflicts
 
   vscode.workspace.onDidOpenTextDocument((document) => {
     if (document.languageId === 'notesnlh') {
@@ -376,17 +396,17 @@ exports.activate = async function activate(context) {
 
   context.subscriptions.push(
     commands.registerTextEditorCommand(
-      "notesnlh.cycleTaskForwardNew",
+      "chroma.cycleTaskForward",
       cycleTaskForwardNew
     ),
     commands.registerTextEditorCommand(
-      "notesnlh.cycleTaskBackwardNew",
+      "chroma.cycleTaskBackward",
       cycleTaskBackwardNew
     )
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(event => {
-      if (event.affectsConfiguration('notesnlh') || event.affectsConfiguration('chroma.nlh')) {
+      if (event.affectsConfiguration('chroma.nlh')) {
         // Trigger a re-highlight of all open documents
         vscode.workspace.textDocuments.forEach(doc => {
           if (doc.languageId === 'notesnlh') {
@@ -425,7 +445,7 @@ exports.activate = async function activate(context) {
       const externalPatterns = [];
 
       // use global link patterns from config
-      linkPatterns = vscode.workspace.getConfiguration("notesnlh")["linkPatterns"];
+      const linkPatterns = vscode.workspace.getConfiguration("chroma.nlh")["linkPatterns"];
       if (linkPatterns) {
         for (let [regexp, link] of Object.entries(linkPatterns)) {
           externalPatterns.push({ regexp, link });
@@ -598,15 +618,15 @@ exports.activate = async function activate(context) {
 
     switch (pos.toLowerCase()) {
       case 'noun':
-        return config.get('highlightNouns');
+        return config.get('highlightNouns', true);
       case 'verb':
-        return config.get('highlightVerbs');
+        return config.get('highlightVerbs', true);
       case 'adjective':
-        return config.get('highlightAdjectives');
+        return config.get('highlightAdjectives', true);
       case 'adverb':
-        return config.get('highlightAdverbs');
+        return config.get('highlightAdverbs', true);
       case 'value':
-        return config.get('highlightNumbers');
+        return config.get('highlightNumbers', true);
       default:
         return false;
     }
@@ -652,7 +672,7 @@ exports.activate = async function activate(context) {
         let lineNumber = 0;
         let characterNumber = 0;
         // console.log('json:', json);
-        const config = vscode.workspace.getConfiguration('notesnlh');
+        const config = vscode.workspace.getConfiguration('chroma.nlh');
 
         for (const sentence of json) {
           for (const term of sentence.terms) {

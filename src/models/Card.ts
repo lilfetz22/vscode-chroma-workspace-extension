@@ -1,9 +1,17 @@
 export interface Card {
     id: string;
-    title: string;
-    content: string;
     column_id: string;
-    note_id: string | null;
-    order: number;
-    priority: 'low' | 'medium' | 'high';
+    position: number;
+    card_type: 'simple' | 'linked';
+    title: string;
+    content?: string | null;
+    note_id?: string | null;
+    summary?: string | null;
+    priority?: number;
+    scheduled_at?: string | null;
+    recurrence?: string | null;
+    activated_at?: string | null;
+    completed_at?: string | null;
+    converted_from_task_at?: string | null;
+    created_at?: string;
 }

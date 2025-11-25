@@ -8,6 +8,7 @@ import { Card } from './models/Card';
 import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
+import { getDebugLogger } from './logic/DebugLogger';
 
 let logger: any;
 
@@ -41,9 +42,11 @@ export function setDatabasePath(relativePath: string): void {
     if (db) {
         const error = new Error('Cannot change database path after database has been initialized');
         getLogger().error('Attempted to change database path after initialization', error);
+        getDebugLogger().log('ERROR: Attempted to change database path after initialization:', error.message);
         throw error;
     }
     getLogger().info('Database path set to:', relativePath);
+    getDebugLogger().log('Database path set to:', relativePath);
     customDbPath = relativePath;
 }
 
@@ -56,7 +59,8 @@ export function getDatabasePath(): string {
 
 export function initDatabase(memory: boolean = false, workspaceRoot?: string): Database.Database {
     try {
-        getLogger().info('Initializing database', { memory, workspaceRoot });
+        const caller = new Error().stack?.split('\n')[2]?.trim();
+        getLogger().info('initDatabase called', { memory, workspaceRoot, caller });
         
         if (memory) {
             if (memoryDb) {
@@ -82,9 +86,12 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
             } else {
                 // Fallback to __dirname (for testing)
                 dbPath = path.join(__dirname, '..', relativePath);
+                getLogger().warn('No workspaceRoot provided, using fallback path');
             }
             
             getLogger().info('Database path resolved to:', dbPath);
+            getLogger().info('Database file exists:', fs.existsSync(dbPath));
+            getLogger().info('__dirname is:', __dirname);
             
             const chromaDir = path.dirname(dbPath);
             if (!fs.existsSync(chromaDir)) {
@@ -98,6 +105,9 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
 
         db.pragma('journal_mode = WAL');
         getLogger().debug('Set journal_mode to WAL');
+        
+        db.pragma('foreign_keys = ON');
+        getLogger().debug('Enabled foreign key constraints');
 
         // Run migrations automatically on initialization
         getLogger().info('Running database migrations');
@@ -107,15 +117,18 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
         return db;
     } catch (error: any) {
         getLogger().error('Failed to initialize database', error);
+        getDebugLogger().log('ERROR: Database initialization failed:', error.message, error.stack);
         throw new Error(`Database initialization failed: ${error.message}`);
     }
 }
 
 export function getDb(): Database.Database {
     if (!db) {
-        getLogger().debug('Database not initialized, initializing now');
+        getLogger().warn('Database not initialized when getDb() called, initializing now');
+        getLogger().warn('This may indicate a module loading issue');
         return initDatabase(!!memoryDb);
     }
+    getLogger().debug('getDb() returning existing database instance');
     return db;
 }
 
@@ -274,8 +287,24 @@ export function closeDb(): void {
 export function createBoard(board: Partial<Board>): Board {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
-    stmt.run(id, board.name);
+    const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
+    stmt.run(id, board.title);
+    
+    // Automatically create default columns
+    const defaultColumns = [
+        { title: 'To Do', position: 0 },
+        { title: 'In Progress', position: 1 },
+        { title: 'Done', position: 2 }
+    ];
+    
+    for (const col of defaultColumns) {
+        createColumn({ 
+            title: col.title, 
+            board_id: id, 
+            position: col.position 
+        });
+    }
+    
     return getBoardById(id);
 }
 
@@ -291,8 +320,8 @@ export function getAllBoards(): Board[] {
 
 export function updateBoard(board: Partial<Board>): Board {
     const db = getDb();
-    const stmt = db.prepare('UPDATE boards SET name = ? WHERE id = ?');
-    stmt.run(board.name, board.id);
+    const stmt = db.prepare('UPDATE boards SET title = ? WHERE id = ?');
+    stmt.run(board.title, board.id);
     return getBoardById(board.id as string);
 }
 
@@ -304,15 +333,14 @@ export function deleteBoard(id: string): void {
 // Column CRUD
 const rowToColumn = (row: any): Column => {
     if (!row) return row;
-    const { order_index, ...rest } = row;
-    return { ...rest, order: order_index };
+    return row as Column;
 };
 
 export function createColumn(column: Partial<Column>): Column {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)');
-    stmt.run(id, column.name, column.board_id, column.order);
+    const stmt = db.prepare('INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)');
+    stmt.run(id, column.title, column.board_id, column.position);
     return getColumnById(id);
 }
 
@@ -324,7 +352,7 @@ export function getColumnById(id: string): Column {
 
 export function getColumnsByBoardId(boardId: string): Column[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index').all(boardId);
+    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position').all(boardId);
     return rows.map(rowToColumn);
 }
 
@@ -335,13 +363,13 @@ export function updateColumn(column: Partial<Column>): Column {
     }
     const fields: string[] = [];
     const values: any[] = [];
-    if (column.name !== undefined) {
-        fields.push("name = ?");
-        values.push(column.name);
+    if (column.title !== undefined) {
+        fields.push("title = ?");
+        values.push(column.title);
     }
-    if (column.order !== undefined) {
-        fields.push("order_index = ?");
-        values.push(column.order);
+    if (column.position !== undefined) {
+        fields.push("position = ?");
+        values.push(column.position);
     }
     if (fields.length === 0) {
         // Nothing to update
@@ -362,15 +390,14 @@ export function deleteColumn(id: string): void {
 // Card CRUD
 const rowToCard = (row: any): Card => {
     if (!row) return row;
-    const { id, title, content, column_id, note_id, order_index, priority } = row;
-    return { id, title, content, column_id, note_id, order: order_index, priority };
+    return row as Card;
 }
 
 export function createCard(card: Partial<Card>): Card {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    stmt.run(id, card.title, card.content, card.column_id, card.note_id, card.order, card.priority);
+    const stmt = db.prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at, converted_from_task_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null, card.converted_from_task_at ?? null);
     return getCardById(id);
 }
 
@@ -382,7 +409,7 @@ export function getCardById(id: string): Card {
 
 export function getCardsByColumnId(columnId: string): Card[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index').all(columnId);
+    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position').all(columnId);
     return rows.map(rowToCard);
 }
 
@@ -396,9 +423,16 @@ export function updateCard(card: Partial<Card>): Card {
         title: card.title,
         content: card.content,
         column_id: card.column_id,
+        position: card.position,
+        card_type: card.card_type,
         note_id: card.note_id,
-        order_index: card.order,
+        summary: card.summary,
         priority: card.priority,
+        scheduled_at: card.scheduled_at,
+        recurrence: card.recurrence,
+        activated_at: card.activated_at,
+        completed_at: card.completed_at,
+        converted_from_task_at: card.converted_from_task_at,
     };
     const setClauses: string[] = [];
     const values: any[] = [];
@@ -461,7 +495,40 @@ export function deleteTag(id: string): void {
 // Card-Tag Relationships
 export function addTagToCard(cardId: string, tagId: string): void {
     const db = getDb();
-    db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+    const logger = getLogger();
+    
+    // Verify card exists
+    const card = db.prepare('SELECT id FROM cards WHERE id = ?').get(cardId);
+    if (!card) {
+        const error = new Error(`Card with ID ${cardId} does not exist`);
+        logger.error('addTagToCard failed: Card not found', error);
+        throw error;
+    }
+    
+    // Verify tag exists
+    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    if (!tag) {
+        const error = new Error(`Tag with ID ${tagId} does not exist`);
+        logger.error('addTagToCard failed: Tag not found', error);
+        throw error;
+    }
+    
+    // Debug logging (only logged when debug level is enabled)
+    logger.debug(`addTagToCard: Database instance: ${db.name}`);
+    logger.debug(`addTagToCard: Database in transaction: ${db.inTransaction}`);
+    const cardCount = db.prepare('SELECT COUNT(*) as count FROM cards').get() as any;
+    logger.debug(`addTagToCard: Total cards in database: ${cardCount.count}`);
+    const allCardIds = db.prepare('SELECT id, title FROM cards LIMIT 10').all();
+    logger.debug(`addTagToCard: First 10 cards: ${JSON.stringify(allCardIds)}`);
+    logger.debug(`addTagToCard: Inserting card_id=${cardId}, tag_id=${tagId}`);
+    
+    try {
+        db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+        logger.debug(`addTagToCard: Successfully inserted tag ${tagId} to card ${cardId}`);
+    } catch (err) {
+        logger.error(`addTagToCard: Insert failed`, err);
+        throw err;
+    }
 }
 
 export function removeTagFromCard(cardId: string, tagId: string): void {
@@ -477,4 +544,52 @@ export function getTagsByCardId(cardId: string): Tag[] {
         WHERE ct.card_id = ?
     `);
     return stmt.all(cardId) as Tag[];
+}
+
+// Task-Tag Relationships
+export function addTagToTask(taskId: string, tagId: string): void {
+    const db = getDb();
+    const logger = getLogger();
+    
+    // Verify task exists
+    const task = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+    if (!task) {
+        const error = new Error(`Task with ID ${taskId} does not exist`);
+        logger.error('addTagToTask failed: Task not found', error);
+        throw error;
+    }
+    
+    // Verify tag exists
+    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    if (!tag) {
+        const error = new Error(`Tag with ID ${tagId} does not exist`);
+        logger.error('addTagToTask failed: Tag not found', error);
+        throw error;
+    }
+    
+    // Debug logging (only logged when debug level is enabled)
+    logger.debug(`addTagToTask: Inserting task_id=${taskId}, tag_id=${tagId}`);
+    
+    try {
+        db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
+        logger.debug(`addTagToTask: Successfully inserted tag ${tagId} to task ${taskId}`);
+    } catch (err) {
+        logger.error(`addTagToTask: Insert failed`, err);
+        throw err;
+    }
+}
+
+export function removeTagFromTask(taskId: string, tagId: string): void {
+    const db = getDb();
+    db.prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?').run(taskId, tagId);
+}
+
+export function getTagsByTaskId(taskId: string): Tag[] {
+    const db = getDb();
+    const stmt = db.prepare(`
+        SELECT t.* FROM tags t
+        JOIN task_tags tt ON t.id = tt.tag_id
+        WHERE tt.task_id = ?
+    `);
+    return stmt.all(taskId) as Tag[];
 }

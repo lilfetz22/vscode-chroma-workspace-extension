@@ -8,7 +8,10 @@ The Chroma Workspace extension provides migration tools to import your existing 
 
 ## Prerequisites
 
-- Visual Studio Code with Chroma Workspace extension installed
+- Visual Studio Code (version 1.105.0 or higher)
+- Chroma Workspace extension installed
+  - **From source**: See [BUILD.md](BUILD.md) for complete build and installation instructions
+  - **Quick install**: If you have the `.vsix` file, install via Extensions view > `...` > Install from VSIX
 - A workspace folder open in VS Code
 - Export file from Chroma Parse Notes (JSON format)
 

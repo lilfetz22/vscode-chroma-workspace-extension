@@ -6,6 +6,7 @@ export interface Task {
   recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   status: 'pending' | 'completed';
   cardId?: number;
+  boardId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

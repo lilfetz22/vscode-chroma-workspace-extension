@@ -278,6 +278,11 @@
 
 ## Future Enhancements (Post-Release)
 
+### Mobile Companion
+- Read-only mobile access
+- Quick task creation
+- Notification sync
+
 ### WebView Kanban Board
 - Rich drag-and-drop interface
 - Visual board designer
@@ -288,20 +293,10 @@
 - Store in `.chroma/attachments/`
 - Image preview in hover
 
-### Team Collaboration
-- Git-based sync workflow
-- Conflict resolution
-- Shared boards
-
 ### Advanced Analytics
 - Task completion trends
 - Time tracking
 - Productivity reports
-
-### Mobile Companion
-- Read-only mobile access
-- Quick task creation
-- Notification sync
 
 ---
 

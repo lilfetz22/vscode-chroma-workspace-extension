@@ -47,7 +47,6 @@ Visual task tracking with full VS Code integration:
 - **Two Card Types**:
   - **Simple Cards**: Standalone tasks with rich descriptions
   - **Linked Cards**: Cards connected to existing notes
-- **Priority System**: Assign priority levels (Low, Medium, High)
 - **Command-Based Movement**: Move cards with VS Code commands
 - **Tag Support**: Organize cards with flexible tagging
 
@@ -60,8 +59,9 @@ Advanced scheduling capabilities for recurring and time-based tasks:
 - **Time-Based Activation**: Set specific times for tasks to appear on your board
 - **Status Bar Integration**: Quick view of upcoming tasks
 - **Notifications**: Reminders for due tasks
+- **Board Assignment**: Tasks can be targeted to a specific board; you'll be prompted to pick a board when multiple boards exist, one board is auto-selected, and a default board+column is created if none exist.
 
-###  Accomplishments Export
+###  Accomplishments Export (FUTURE FEATURE)
 
 Performance review made easy with intelligent task aggregation:
 
@@ -76,11 +76,50 @@ See full documentation below for detailed feature descriptions.
 
 ##  Installation
 
-### From Source
-1. Clone this repository
-2. Open in VS Code
-3. Run `npm install` to install dependencies
-4. Press `F5` to launch Extension Development Host
+### Option 1: From Pre-built VSIX (Recommended)
+
+If you have the `.vsix` file:
+
+1. Open VS Code
+2. Go to Extensions view (`Ctrl+Shift+X`)
+3. Click `...` menu > **Install from VSIX...**
+4. Select `chroma-workspace-0.0.1.vsix`
+5. Reload VS Code when prompted
+
+Or via command line:
+```powershell
+code --install-extension chroma-workspace-0.0.1.vsix
+```
+
+### Option 2: Build from Source
+
+For the complete build process, see **[BUILD.md](BUILD.md)**.
+
+**Quick steps:**
+```powershell
+# 1. Install dependencies
+npm install
+
+# 2. Compile TypeScript
+npm run compile
+
+# 3. Bundle with esbuild
+node esbuild.js
+
+# 4. Package as VSIX (requires vsce)
+npm install -g @vscode/vsce
+vsce package
+
+# 5. Install the generated .vsix file (see Option 1 above)
+```
+
+### Option 3: Development Mode
+
+Run without installing (for development/testing):
+
+1. Open this folder in VS Code
+2. Press `F5` to launch Extension Development Host
+3. Test the extension in the new window
 
 ---
 
@@ -194,9 +233,31 @@ MIT License
 ##  Acknowledgments
 
 - **notesnlh Extension**: Foundation by [canadaduane](https://github.com/canadaduane)
-- **Chroma Parse Notes**: Feature inspiration
+- **Chroma Parse Notes**: Feature inspiration [lilfetz22](https://github.com/lilfetz22/chroma-parse-notes)
 - **Compromise.js**: NLP library by [Spencer Kelly](https://github.com/spencermountain/compromise)
 
 ---
 
 **Your workspace. Your data. Your device.** 
+
+---
+
+## Releasing and versioning
+
+This repo uses semantic-release to automate versioning, changelog, GitHub releases, and VSIX packaging/publishing based on Conventional Commits.
+
+- Commit format: type(scope?): subject
+  - Common types: feat, fix, docs, refactor, perf, test, chore
+  - Breaking changes: add "!" after type/scope or include a footer: BREAKING CHANGE: description
+- Examples:
+  - feat(kanban): add swimlanes to board
+  - fix(tasks): correct timezone logic for daily schedule
+  - chore: update dependencies
+
+CI will run on pushes to main (and prerelease branches). To publish to the VS Code Marketplace, set a repository secret named VSCE_PAT containing a Personal Access Token from the VS Code Marketplace publisher account.
+
+Local (optional):
+- npm run build
+- npm run release
+
+Note: Local release requires GITHUB_TOKEN and optionally VSCE_PAT in your environment; normally releases are performed via GitHub Actions.

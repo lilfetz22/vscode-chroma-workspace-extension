@@ -166,6 +166,234 @@ const migrations: Migration[] = [
                 END;
             `);
         }
+    },
+    {
+        version: 6,
+        name: 'add_task_tags_table',
+        up: (db) => {
+            db.exec(`
+                CREATE TABLE IF NOT EXISTS task_tags (
+                    task_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (task_id, tag_id),
+                    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_task_tags_tag ON task_tags(tag_id);
+            `);
+        }
+    },
+    {
+        version: 7,
+        name: 'add_completed_at_to_cards',
+        up: (db) => {
+            db.exec(`
+                ALTER TABLE cards ADD COLUMN completed_at DATETIME;
+                CREATE INDEX IF NOT EXISTS idx_cards_completed ON cards(completed_at);
+            `);
+        }
+    },
+    {
+        version: 8,
+        name: 'align_schema_with_documentation',
+        up: (db) => {
+            // Temporarily disable foreign keys for table restructuring
+            db.pragma('foreign_keys = OFF');
+            
+            // Drop FTS triggers that reference cards table
+            db.exec(`
+                DROP TRIGGER IF EXISTS cards_after_insert;
+                DROP TRIGGER IF EXISTS cards_after_delete;
+                DROP TRIGGER IF EXISTS cards_after_update;
+            `);
+            
+            // Recreate boards table with correct schema
+            db.exec(`
+                CREATE TABLE boards_new (
+                    id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO boards_new (id, title) SELECT id, name FROM boards;
+                DROP TABLE boards;
+                ALTER TABLE boards_new RENAME TO boards;
+            `);
+            
+            // Recreate columns table with correct schema
+            db.exec(`
+                CREATE TABLE columns_new (
+                    id TEXT PRIMARY KEY,
+                    board_id TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    position INTEGER NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
+                );
+                INSERT INTO columns_new (id, board_id, title, position)
+                SELECT id, board_id, name, order_index FROM columns;
+                DROP TABLE columns;
+                ALTER TABLE columns_new RENAME TO columns;
+                CREATE INDEX idx_columns_board ON columns(board_id, position);
+            `);
+            
+            // Recreate cards table with correct schema
+            db.exec(`
+                CREATE TABLE cards_new (
+                    id TEXT PRIMARY KEY,
+                    column_id TEXT NOT NULL,
+                    position INTEGER NOT NULL,
+                    card_type TEXT CHECK(card_type IN ('simple', 'linked')) NOT NULL,
+                    title TEXT NOT NULL,
+                    content TEXT,
+                    note_id TEXT,
+                    summary TEXT,
+                    priority INTEGER DEFAULT 0,
+                    scheduled_at DATETIME,
+                    recurrence TEXT,
+                    activated_at DATETIME,
+                    completed_at DATETIME,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
+                    FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
+                );
+                INSERT INTO cards_new (id, column_id, position, card_type, title, content, note_id, priority, completed_at, created_at, updated_at)
+                SELECT 
+                    id, 
+                    column_id, 
+                    order_index,
+                    'simple',
+                    title, 
+                    content, 
+                    note_id, 
+                    CASE priority
+                        WHEN 'low' THEN 0
+                        WHEN 'medium' THEN 1
+                        WHEN 'high' THEN 2
+                        ELSE 0
+                    END,
+                    completed_at,
+                    created_at,
+                    COALESCE(updated_at, created_at)
+                FROM cards;
+                DROP TABLE cards;
+                ALTER TABLE cards_new RENAME TO cards;
+                CREATE INDEX idx_cards_column ON cards(column_id, position);
+                CREATE INDEX idx_cards_scheduled ON cards(scheduled_at);
+                CREATE INDEX idx_cards_completed ON cards(completed_at);
+            `);
+            
+            // Recreate FTS triggers for cards
+            db.exec(`
+                CREATE TRIGGER IF NOT EXISTS cards_after_insert
+                AFTER INSERT ON cards
+                BEGIN
+                    INSERT INTO search_index (title, content, entity_id, entity_type)
+                    VALUES (new.title, new.content, new.id, 'card');
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS cards_after_delete
+                AFTER DELETE ON cards
+                BEGIN
+                    DELETE FROM search_index WHERE entity_id = old.id;
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS cards_after_update
+                AFTER UPDATE ON cards
+                BEGIN
+                    UPDATE search_index
+                    SET title = new.title, content = new.content
+                    WHERE entity_id = new.id;
+                END;
+            `);
+            
+            // Recreate tags table with created_at column
+            db.exec(`
+                CREATE TABLE tags_new (
+                    id TEXT PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL,
+                    color TEXT NOT NULL DEFAULT '#808080',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+                INSERT INTO tags_new (id, name, color) SELECT id, name, color FROM tags;
+                DROP TABLE tags;
+                ALTER TABLE tags_new RENAME TO tags;
+                CREATE INDEX idx_tags_name ON tags(name);
+            `);
+            
+            // Recreate card_tags with proper indexes
+            db.exec(`
+                CREATE TABLE card_tags_new (
+                    card_id TEXT NOT NULL,
+                    tag_id TEXT NOT NULL,
+                    PRIMARY KEY (card_id, tag_id),
+                    FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
+                    FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+                );
+                INSERT INTO card_tags_new SELECT * FROM card_tags;
+                DROP TABLE card_tags;
+                ALTER TABLE card_tags_new RENAME TO card_tags;
+                CREATE INDEX idx_card_tags_tag ON card_tags(tag_id);
+            `);
+            
+            // Re-enable foreign keys
+            db.pragma('foreign_keys = ON');
+        }
+    },
+    {
+        version: 9,
+        name: 'fix_cards_updated_at_column',
+        up: (db) => {
+            // Check if updated_at column exists, if not add it
+            const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
+            const hasUpdatedAt = tableInfo.some((col: any) => col.name === 'updated_at');
+            
+            if (!hasUpdatedAt) {
+                console.log('Adding missing updated_at column to cards table');
+                db.exec(`
+                    ALTER TABLE cards ADD COLUMN updated_at DATETIME;
+                    UPDATE cards SET updated_at = created_at WHERE updated_at IS NULL;
+                `);
+            } else {
+                console.log('Cards table already has updated_at column');
+            }
+        }
+    },
+    {
+        version: 10,
+        name: 'add_converted_from_task_at_column',
+        up: (db) => {
+            // Add converted_from_task_at column to cards table
+            const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
+            const hasConvertedFromTaskAt = tableInfo.some((col: any) => col.name === 'converted_from_task_at');
+            
+            if (!hasConvertedFromTaskAt) {
+                console.log('Adding converted_from_task_at column to cards table');
+                db.exec(`
+                    ALTER TABLE cards ADD COLUMN converted_from_task_at DATETIME;
+                `);
+            } else {
+                console.log('Cards table already has converted_from_task_at column');
+            }
+        }
+    },
+    {
+        version: 11,
+        name: 'add_board_id_to_tasks',
+        up: (db) => {
+            // Add board_id column to tasks table
+            const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
+            const hasBoardId = tableInfo.some((col: any) => col.name === 'board_id');
+            
+            if (!hasBoardId) {
+                console.log('Adding board_id column to tasks table');
+                db.exec(`
+                    ALTER TABLE tasks ADD COLUMN board_id TEXT REFERENCES boards(id) ON DELETE SET NULL;
+                `);
+            } else {
+                console.log('Tasks table already has board_id column');
+            }
+        }
     }
 ];
 

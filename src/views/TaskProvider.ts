@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Task } from '../models/Task';
-import { getDb } from '../database';
+import { getDb, getTagsByTaskId } from '../database';
 
 export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
   private _onDidChangeTreeData: vscode.EventEmitter<Task | TaskGroup | undefined | null | void> = new vscode.EventEmitter<Task | TaskGroup | undefined | null | void>();
@@ -34,7 +34,7 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
 
   private async getGroupedTasks(): Promise<TaskGroup[]> {
     const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT * FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
+    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -90,10 +90,25 @@ function isTaskGroup(item: any): item is TaskGroup {
 
 class TaskItem extends vscode.TreeItem {
     constructor(public readonly task: Task) {
-        super(task.title, vscode.TreeItemCollapsibleState.None);
+        // Get tags for this task
+        const tags = getTagsByTaskId(task.id);
+        const tagString = tags.length > 0 ? tags.map(t => `#${t.name}`).join(' ') : '';
+        
+        // Construct label with tags
+        const label = tagString ? `${task.title} ${tagString}` : task.title;
+        
+        super(label, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "task";
         this.description = new Date(task.dueDate).toLocaleDateString();
-        this.tooltip = `Due: ${new Date(task.dueDate).toLocaleString()}`;
+    const parts: string[] = [`Due: ${new Date(task.dueDate).toLocaleString()}`];
+    if (task.recurrence) {
+      const recurrenceLabel = task.recurrence.charAt(0).toUpperCase() + task.recurrence.slice(1);
+      parts.push(`Recurrence: ${recurrenceLabel}`);
+    }
+    if (task.description && task.description.trim().length > 0) {
+      parts.push('', 'Content:', task.description);
+    }
+    this.tooltip = parts.join('\n');
     }
 }
 

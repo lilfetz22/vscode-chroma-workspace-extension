@@ -58,6 +58,7 @@ CREATE TABLE cards (
   recurrence TEXT,
   activated_at DATETIME,
   completed_at DATETIME,
+  converted_from_task_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
   FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
@@ -123,9 +124,11 @@ CREATE TABLE tasks (
   recurrence TEXT,
   status TEXT NOT NULL DEFAULT 'pending',
   card_id TEXT,
+  board_id TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL
+  FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE SET NULL,
+  FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_tasks_due_date ON tasks(due_date);
 CREATE INDEX idx_tasks_status ON tasks(status);

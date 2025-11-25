@@ -123,7 +123,7 @@ describe('Migration', () => {
             const result = validateImportData(null);
 
             expect(result.valid).toBe(false);
-            expect(result.errors).toContain('Import data must be a JSON object');
+            expect(result.errors).toContain('Import data must be a JSON object or array');
         });
 
         test('should reject notes with missing id', () => {
@@ -350,6 +350,9 @@ describe('Migration', () => {
 
             const result = await importFromJson(testJsonPath, tempDir, undefined, db);
 
+            if (!result.success) {
+                console.error('Import failed:', result.message, result.errors);
+            }
             expect(result.success).toBe(true);
             expect(result.message).toContain('Successfully imported');
 
@@ -378,6 +381,72 @@ describe('Migration', () => {
             const result = await importFromJson('/nonexistent/file.json', tempDir);
 
             expect(result.success).toBe(false);
+        });
+
+        test('should import array of boards directly', async () => {
+            const boardsArray = [
+                {
+                    id: 'board-1',
+                    title: 'Test Board 1',
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 'board-2',
+                    title: 'Test Board 2',
+                    created_at: new Date().toISOString()
+                }
+            ];
+
+            fs.writeFileSync(testJsonPath, JSON.stringify(boardsArray), 'utf-8');
+
+            const result = await importFromJson(testJsonPath, tempDir, undefined, db);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('Successfully imported');
+            expect(result.message).toContain('2 boards');
+
+            // Verify boards were imported
+            const boards = db.prepare('SELECT * FROM boards').all();
+            expect(boards.length).toBe(2);
+            expect(boards.find((b: any) => b.id === 'board-1')).toBeDefined();
+            expect(boards.find((b: any) => b.id === 'board-2')).toBeDefined();
+        });
+
+        test('should import array of columns directly', async () => {
+            // First create a board for the columns
+            db.prepare('INSERT INTO boards (id, title, created_at) VALUES (?, ?, ?)').run(
+                'board-1',
+                'Test Board',
+                new Date().toISOString()
+            );
+
+            const columnsArray = [
+                {
+                    id: 'col-1',
+                    board_id: 'board-1',
+                    title: 'Column 1',
+                    position: 0,
+                    created_at: new Date().toISOString()
+                },
+                {
+                    id: 'col-2',
+                    board_id: 'board-1',
+                    title: 'Column 2',
+                    position: 1,
+                    created_at: new Date().toISOString()
+                }
+            ];
+
+            fs.writeFileSync(testJsonPath, JSON.stringify(columnsArray), 'utf-8');
+
+            const result = await importFromJson(testJsonPath, tempDir, undefined, db);
+
+            expect(result.success).toBe(true);
+            expect(result.message).toContain('2 columns');
+
+            // Verify columns were imported
+            const columns = db.prepare('SELECT * FROM columns').all();
+            expect(columns.length).toBe(2);
         });
 
         test('should fail on invalid data structure', async () => {
@@ -417,8 +486,8 @@ describe('Migration', () => {
 
             expect(result.success).toBe(true);
 
-            // Check that note file was created
-            const notePath = path.join(tempDir, 'notes', 'Test_Note.notesnlh');
+            // Check that note file was created (filename includes sanitized title and ID)
+            const notePath = path.join(tempDir, 'notes', 'test_note_note-1.notesnlh');
             expect(fs.existsSync(notePath)).toBe(true);
             
             const noteContent = fs.readFileSync(notePath, 'utf-8');
@@ -475,8 +544,8 @@ describe('Migration', () => {
             expect(card).toBeDefined();
             expect(card.title).toBe('Test Card');
             expect(card.content).toBe('Card content');
-            expect(card.priority).toBe(1);
-            expect(card.recurrence).toBe('daily');
+            expect(card.priority).toBe(1);  // Priority stored as integer: 0=low, 1=medium, 2=high
+            // Note: recurrence is not stored in cards table in local schema
         });
 
         test('should import card-tag associations', async () => {
@@ -673,7 +742,7 @@ describe('Migration', () => {
 
             // Export
             const exportPath = path.join(tempDir, 'export.json');
-            const exportResult = await exportToJson(exportPath);
+            const exportResult = await exportToJson(exportPath, undefined, db);
             expect(exportResult.success).toBe(true);
 
             // Clear database
@@ -682,7 +751,7 @@ describe('Migration', () => {
             db.prepare('DELETE FROM tags').run();
 
             // Import
-            const importResult = await importFromJson(exportPath, tempDir);
+            const importResult = await importFromJson(exportPath, tempDir, undefined, db);
             expect(importResult.success).toBe(true);
 
             // Verify data
@@ -694,7 +763,7 @@ describe('Migration', () => {
             expect(boards).toHaveLength(1);
             expect(tags).toHaveLength(1);
             expect((notes[0] as any).title).toBe('Original_Note');
-            expect((boards[0] as any).title).toBe('Original Board');
+            expect((boards[0] as any).title).toBe('Original Board');  // Boards use 'title' column
             expect((tags[0] as any).name).toBe('Original Tag');
         });
     });

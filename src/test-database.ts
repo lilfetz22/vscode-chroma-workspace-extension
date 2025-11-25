@@ -82,7 +82,7 @@ export async function initTestDatabase(): Promise<any> {
 }
 
 function createTestTables(db: any): void {
-    // Create all tables needed for testing
+    // Create all tables needed for testing - schema matches DATABASE_SCHEMA.md
     db.exec(`
         CREATE TABLE IF NOT EXISTS notes (
             id TEXT PRIMARY KEY,
@@ -96,28 +96,34 @@ function createTestTables(db: any): void {
 
         CREATE TABLE IF NOT EXISTS boards (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
+            title TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS columns (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL,
             board_id TEXT NOT NULL,
-            order_index INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
         );
 
         CREATE TABLE IF NOT EXISTS cards (
             id TEXT PRIMARY KEY,
+            column_id TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            card_type TEXT CHECK(card_type IN ('simple', 'linked')) NOT NULL,
             title TEXT NOT NULL,
             content TEXT,
-            column_id TEXT NOT NULL,
             note_id TEXT,
-            order_index INTEGER NOT NULL,
-            priority TEXT DEFAULT 'medium',
+            summary TEXT,
+            priority INTEGER DEFAULT 0,
+            scheduled_at DATETIME,
+            recurrence TEXT,
+            activated_at DATETIME,
+            completed_at DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
             FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL
         );
@@ -126,7 +132,7 @@ function createTestTables(db: any): void {
             id TEXT PRIMARY KEY,
             title TEXT NOT NULL,
             description TEXT,
-            due_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            due_date DATETIME NOT NULL,
             recurrence TEXT,
             status TEXT NOT NULL DEFAULT 'pending',
             card_id TEXT,
@@ -137,8 +143,9 @@ function createTestTables(db: any): void {
 
         CREATE TABLE IF NOT EXISTS tags (
             id TEXT PRIMARY KEY,
-            name TEXT NOT NULL UNIQUE,
-            color TEXT NOT NULL
+            name TEXT UNIQUE NOT NULL,
+            color TEXT NOT NULL DEFAULT '#808080',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS card_tags (
@@ -223,6 +230,26 @@ export function getTagsByCardId(db: any, cardId: string): Tag[] {
     return stmt.all(cardId);
 }
 
+// Task-Tag relationship functions
+export function addTagToTask(db: any, taskId: string, tagId: string): void {
+    const stmt = db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)');
+    stmt.run(taskId, tagId);
+}
+
+export function removeTagFromTask(db: any, taskId: string, tagId: string): void {
+    const stmt = db.prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?');
+    stmt.run(taskId, tagId);
+}
+
+export function getTagsByTaskId(db: any, taskId: string): Tag[] {
+    const stmt = db.prepare(`
+        SELECT t.* FROM tags t
+        INNER JOIN task_tags tt ON t.id = tt.tag_id
+        WHERE tt.task_id = ?
+    `);
+    return stmt.all(taskId);
+}
+
 // Note-related functions
 export function createNote(db: any, note: Partial<Note>): any {
     const id = note.id || randomBytes(16).toString('hex');
@@ -289,9 +316,25 @@ export function deleteNote(db: any, id: string): void {
 // Board-related functions
 export function createBoard(db: any, board: Partial<Board>): Board {
     const id = board.id || randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO boards (id, name) VALUES (?, ?)');
-    stmt.run(id, board.name);
-    return { id, name: board.name! };
+    const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
+    stmt.run(id, board.title);
+    
+    // Automatically create default columns
+    const defaultColumns = [
+        { title: 'To Do', position: 0 },
+        { title: 'In Progress', position: 1 },
+        { title: 'Done', position: 2 }
+    ];
+    
+    for (const col of defaultColumns) {
+        createColumn(db, { 
+            title: col.title, 
+            board_id: id, 
+            position: col.position 
+        });
+    }
+    
+    return { id, title: board.title! };
 }
 
 export function getBoardById(db: any, id: string): Board | undefined {
@@ -308,42 +351,51 @@ export function getAllBoards(db: any): Board[] {
 export function createColumn(db: any, column: Partial<Column>): Column {
     const id = column.id || randomBytes(16).toString('hex');
     const stmt = db.prepare(
-        'INSERT INTO columns (id, name, board_id, order_index) VALUES (?, ?, ?, ?)'
+        'INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)'
     );
-    stmt.run(id, column.name, column.board_id, column.order);
+    stmt.run(id, column.title, column.board_id, column.position);
     return {
         id,
-        name: column.name!,
+        title: column.title!,
         board_id: column.board_id!,
-        order: column.order!
+        position: column.position!
     };
 }
 
 export function getColumnsByBoardId(db: any, boardId: string): Column[] {
-    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY order_index');
-    return stmt.all(boardId).map((col: any) => ({
-        id: col.id,
-        name: col.name,
-        board_id: col.board_id,
-        order: col.order_index
-    }));
+    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position');
+        const rows = stmt.all(boardId) as any[];
+        // Fallback mapping if legacy schema (name/order_index) still present in an existing test DB
+        return rows.map(r => ({
+            id: r.id,
+            board_id: r.board_id,
+            title: r.title !== undefined ? r.title : r.name,
+            position: r.position !== undefined ? r.position : r.order_index,
+            created_at: r.created_at
+        })) as Column[];
 }
 
 // Card-related functions
 export function createCard(db: any, card: Partial<Card>): Card {
     const id = card.id || randomBytes(16).toString('hex');
     const stmt = db.prepare(
-        'INSERT INTO cards (id, title, content, column_id, note_id, order_index, priority) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
-    stmt.run(id, card.title, card.content, card.column_id, card.note_id || null, card.order, card.priority);
+    stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null);
     return {
         id,
-        title: card.title!,
-        content: card.content || '',
         column_id: card.column_id!,
-        note_id: card.note_id || null,
-        order: card.order!,
-        priority: card.priority!,
+        position: card.position ?? 0,
+        card_type: card.card_type ?? 'simple',
+        title: card.title!,
+        content: card.content ?? null,
+        note_id: card.note_id ?? null,
+        summary: card.summary ?? null,
+        priority: card.priority ?? 0,
+        scheduled_at: card.scheduled_at ?? null,
+        recurrence: card.recurrence ?? null,
+        activated_at: card.activated_at ?? null,
+        completed_at: card.completed_at ?? null,
     };
 }
 
@@ -351,28 +403,12 @@ export function getCardById(db: any, id: string): Card | undefined {
     const stmt = db.prepare('SELECT * FROM cards WHERE id = ?');
     const row = stmt.get(id);
     if (!row) return undefined;
-    return {
-        id: row.id,
-        title: row.title,
-        content: row.content,
-        column_id: row.column_id,
-        note_id: row.note_id,
-        order: row.order_index,
-        priority: row.priority
-    };
+    return row as Card;
 }
 
 export function getCardsByColumnId(db: any, columnId: string): Card[] {
-    const stmt = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY order_index');
-    return stmt.all(columnId).map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        content: row.content,
-        column_id: row.column_id,
-        note_id: row.note_id,
-        order: row.order_index,
-        priority: row.priority
-    }));
+    const stmt = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position');
+    return stmt.all(columnId) as Card[];
 }
 
 export function updateCard(db: any, id: string, updates: Partial<Card>): void {
@@ -395,9 +431,33 @@ export function updateCard(db: any, id: string, updates: Partial<Card>): void {
         fields.push('column_id = ?');
         values.push(updates.column_id);
     }
-    if (updates.order !== undefined) {
-        fields.push('order_index = ?');
-        values.push(updates.order);
+    if (updates.position !== undefined) {
+        fields.push('position = ?');
+        values.push(updates.position);
+    }
+    if (updates.card_type !== undefined) {
+        fields.push('card_type = ?');
+        values.push(updates.card_type);
+    }
+    if (updates.summary !== undefined) {
+        fields.push('summary = ?');
+        values.push(updates.summary);
+    }
+    if (updates.scheduled_at !== undefined) {
+        fields.push('scheduled_at = ?');
+        values.push(updates.scheduled_at);
+    }
+    if (updates.recurrence !== undefined) {
+        fields.push('recurrence = ?');
+        values.push(updates.recurrence);
+    }
+    if (updates.activated_at !== undefined) {
+        fields.push('activated_at = ?');
+        values.push(updates.activated_at);
+    }
+    if (updates.completed_at !== undefined) {
+        fields.push('completed_at = ?');
+        values.push(updates.completed_at);
     }
     if (updates.note_id !== undefined) {
         fields.push('note_id = ?');
@@ -405,7 +465,6 @@ export function updateCard(db: any, id: string, updates: Partial<Card>): void {
     }
     
     if (fields.length > 0) {
-        fields.push('updated_at = CURRENT_TIMESTAMP');
         values.push(id);
         const sql = `UPDATE cards SET ${fields.join(', ')} WHERE id = ?`;
         const stmt = db.prepare(sql);

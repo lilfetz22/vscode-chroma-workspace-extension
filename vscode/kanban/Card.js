@@ -1,18 +1,81 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId } = require('../../out/database');
+const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard } = require('../../out/src/database');
+const { selectOrCreateTags } = require('../../out/vscode/Tag');
+const { getDebugLogger } = require('../../out/src/logic/DebugLogger');
+const { getSettingsService } = require('../../out/src/logic/SettingsService');
 
 async function addCard(column) {
+    const debugLog = getDebugLogger();
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });
-    if (cardTitle) {
-        createCard({ title: cardTitle, column_id: column.columnId, order: 0, priority: 'medium' });
+    if (!cardTitle) {
+        return;
+    }
+    const content = await vscode.window.showInputBox({ prompt: 'Optional: Enter content/context for this card' });
+    
+    debugLog.log('=== Creating new card ===');
+    debugLog.log('Column ID:', column.columnId);
+    debugLog.log('Card title:', cardTitle);
+    
+    const newCard = createCard({ title: cardTitle, content: content || '', column_id: column.columnId, position: 0, card_type: 'simple', priority: 0 });
+    debugLog.log('createCard returned:', newCard);
+    
+    // Verify card was created and has an ID
+    if (!newCard || !newCard.id) {
+        debugLog.log('ERROR: No card or ID returned from createCard');
+        vscode.window.showErrorMessage('Failed to create card - no ID returned');
+        return;
+    }
+    
+    debugLog.log('Card created successfully with ID:', newCard.id);
+    
+    // Prompt for tags
+    const tagIds = await selectOrCreateTags();
+    if (tagIds && tagIds.length > 0) {
+        debugLog.log('Selected tag IDs:', tagIds);
+        
+        for (const tagId of tagIds) {
+            try {
+                debugLog.log(`Adding tag ${tagId} to card ${newCard.id}`);
+                addTagToCard(newCard.id, tagId);
+                debugLog.log(`Successfully added tag ${tagId}`);
+            } catch (err) {
+                debugLog.log(`ERROR adding tag: ${err.message || err}`);
+                vscode.window.showErrorMessage(`Failed to add tag: ${err.message || err}`);
+            }
+        }
     }
 }
 
 async function editCard(card) {
-    const newCardTitle = await vscode.window.showInputBox({ value: card.label });
-    if (newCardTitle) {
-        updateCard({ id: card.cardId, title: newCardTitle });
+    // Fetch current card to prefill content if available
+    let current;
+    try {
+        const { getCardById } = require('../../out/src/database');
+        current = getCardById(card.cardId);
+    } catch (e) {
+        // Log error and distinguish between different error types
+        console.error('Failed to fetch card for editing:', e);
+        
+        // If card truly doesn't exist, show error and return
+        if (e.message && e.message.includes('does not exist')) {
+            vscode.window.showErrorMessage(`Card not found: ${card.label}`);
+            return;
+        }
+        
+        // For other errors, log but allow user to continue with current card data
+        console.warn('Continuing with fallback card data due to fetch error');
+        current = undefined;
     }
+
+    const newCardTitle = await vscode.window.showInputBox({ value: current?.title || card.label, prompt: 'Edit card title' });
+    if (!newCardTitle) {
+        return;
+    }
+    const newContent = await vscode.window.showInputBox({
+        value: current?.content || '',
+        prompt: 'Optional: Edit content/context for this card'
+    });
+    updateCard({ id: card.cardId, title: newCardTitle, content: newContent !== undefined ? newContent : current?.content });
 }
 
 async function deleteCard(card) {
@@ -24,12 +87,31 @@ async function deleteCard(card) {
 
 async function moveCard(card) {
     const columns = getColumnsByBoardId(card.boardId);
-    const columnNames = columns.map(column => column.name);
+    const columnNames = columns.map(column => column.title);
     const selectedColumnName = await vscode.window.showQuickPick(columnNames, { placeHolder: 'Select a column to move the card to' });
     if (selectedColumnName) {
-        const selectedColumn = columns.find(column => column.name === selectedColumnName);
+        const selectedColumn = columns.find(column => column.title === selectedColumnName);
         if (selectedColumn) {
-            updateCard({ id: card.cardId, column_id: selectedColumn.id });
+            // Get configured completion column name (default "Done")
+            const { getColumnById } = require('../../out/src/database');
+            const currentColumn = getColumnById(card.columnId);
+            const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+            
+            // Check if moving to or from completion column (case-insensitive and trimmed)
+            const movingToCompletion = selectedColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+            const movingFromCompletion = currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+            
+            const updateData = { id: card.cardId, column_id: selectedColumn.id };
+            
+            if (movingToCompletion) {
+                // Set completed_at to current datetime
+                updateData.completed_at = new Date().toISOString();
+            } else if (movingFromCompletion) {
+                // Clear completed_at
+                updateData.completed_at = null;
+            }
+            
+            updateCard(updateData);
         }
     }
 }
