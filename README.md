@@ -47,7 +47,6 @@ Visual task tracking with full VS Code integration:
 - **Two Card Types**:
   - **Simple Cards**: Standalone tasks with rich descriptions
   - **Linked Cards**: Cards connected to existing notes
-- **Priority System**: Assign priority levels (Low, Medium, High)
 - **Command-Based Movement**: Move cards with VS Code commands
 - **Tag Support**: Organize cards with flexible tagging
 
@@ -60,8 +59,9 @@ Advanced scheduling capabilities for recurring and time-based tasks:
 - **Time-Based Activation**: Set specific times for tasks to appear on your board
 - **Status Bar Integration**: Quick view of upcoming tasks
 - **Notifications**: Reminders for due tasks
+- **Board Assignment**: Tasks can be targeted to a specific board; you'll be prompted to pick a board when multiple boards exist, one board is auto-selected, and a default board+column is created if none exist.
 
-###  Accomplishments Export
+###  Accomplishments Export (FUTURE FEATURE)
 
 Performance review made easy with intelligent task aggregation:
 
@@ -233,7 +233,7 @@ MIT License
 ##  Acknowledgments
 
 - **notesnlh Extension**: Foundation by [canadaduane](https://github.com/canadaduane)
-- **Chroma Parse Notes**: Feature inspiration
+- **Chroma Parse Notes**: Feature inspiration [lilfetz22](https://github.com/lilfetz22/chroma-parse-notes)
 - **Compromise.js**: NLP library by [Spencer Kelly](https://github.com/spencermountain/compromise)
 
 ---

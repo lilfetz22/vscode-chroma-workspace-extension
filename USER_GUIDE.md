@@ -153,6 +153,18 @@ Command: Chroma: Add Card
    - **Monthly**: Same date each month
    - **Custom**: Define your own pattern
 
+5. Choose a board (if applicable):
+   - If you have **multiple boards**, a board picker will be shown so you can select which board the scheduled task should be sent to when it becomes due.
+   - If you have **one board**, the board is selected automatically and you won't be prompted.
+   - If you have **no boards**, the scheduler will create a default board and column when the task activates.
+
+### Editing Scheduled Tasks
+
+You can edit a scheduled task to change its title, due date, recurrence, description, and board assignment.
+1. Right-click a task → "Edit Scheduled Task" (or use the command palette)
+2. Update required fields and choose a board if multiple boards exist
+3. Save to update the scheduled task
+
 ### Viewing Scheduled Tasks
 
 The Scheduled Tasks view organizes tasks into categories:
@@ -187,6 +199,13 @@ Configure notification behavior in settings:
 1. Right-click task → "Mark Complete"
 2. For recurring tasks, a new instance is automatically created for the next due date
 3. Completed tasks are tracked for the Accomplishments Export
+
+### Board Assignment & Behavior
+
+- **Single Board:** If your workspace only has one board, newly created scheduled tasks are automatically assigned to that board.
+- **Multiple Boards:** When there are multiple boards, you will be prompted to select a board during task creation or editing.
+- **No Boards:** If no boards exist, the scheduler will create a default board and "To Do" column when the task becomes due, and the card will be added there.
+- **Existing Tasks (no board_id):** Tasks created before this feature was added (no `board_id`) will still work and will fall back to the first available board.
 
 ---
 
