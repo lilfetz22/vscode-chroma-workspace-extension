@@ -116,6 +116,13 @@ export async function convertCardToTask(card: Card) {
         return;
     }
 
+    // Normalize card ID (handle both Card objects and TreeItem objects)
+    const cardId = card.id || (card as any).cardId;
+    if (!cardId) {
+        vscode.window.showErrorMessage('Invalid card: missing ID.');
+        return;
+    }
+
     const title = await vscode.window.showInputBox({
         prompt: 'Enter task title',
         value: card.title,
@@ -142,10 +149,10 @@ export async function convertCardToTask(card: Card) {
         const db = getDb();
         const id = uuidv4();
         db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
-          .run(id, title, card.content, dueDate, recurrenceValue, card.id);
+          .run(id, title, card.content, dueDate, recurrenceValue, cardId);
         
         // Copy tags from the card to the task
-        const cardTagIds = getTagsByCardId(card.id || card.cardId).map(t => t.id);
+        const cardTagIds = getTagsByCardId(cardId).map(t => t.id);
         for (const tagId of cardTagIds) {
             try {
                 addTagToTask(id, tagId);
