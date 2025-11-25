@@ -77,7 +77,7 @@ export class TaskScheduler {
     this.lastNotificationTime.set(taskId, Date.now());
   }
 
-  private getOrCreateToDoColumn(): string | null {
+  private getOrCreateToDoColumn(boardId?: string): string | null {
     try {
       const db = getDb();
       const boards = getAllBoards();
@@ -89,9 +89,13 @@ export class TaskScheduler {
         return column.id;
       }
 
-      // Use the first board
-      const firstBoard = boards[0];
-      const columns = getColumnsByBoardId(firstBoard.id);
+      // Use the specified board_id if provided, otherwise use the first board
+      let targetBoard = boardId ? boards.find(b => b.id === boardId) : undefined;
+      if (!targetBoard) {
+        targetBoard = boards[0];
+      }
+
+      const columns = getColumnsByBoardId(targetBoard.id);
       
       // Look for a "To Do" column
       const todoColumn = columns.find(col => col.title.toLowerCase() === 'to do');
@@ -100,7 +104,7 @@ export class TaskScheduler {
       }
 
       // If no "To Do" column exists, create one at the beginning
-      const column = createColumn({ title: 'To Do', board_id: firstBoard.id, position: 0 });
+      const column = createColumn({ title: 'To Do', board_id: targetBoard.id, position: 0 });
       return column.id;
     } catch (error) {
       console.error('Failed to get/create To Do column:', error);
@@ -110,7 +114,7 @@ export class TaskScheduler {
 
   private async checkTasks() {
     const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
+    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, board_id as boardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
     const now = new Date();
     let dueTodayCount = 0;
     let cardsCreated = false;
@@ -118,8 +122,8 @@ export class TaskScheduler {
     for (const task of tasks) {
       let dueDate = new Date(task.dueDate);
       if (dueDate <= now) {
-        // Task is due - create a card in the "To Do" column
-        const todoColumnId = this.getOrCreateToDoColumn();
+        // Task is due - create a card in the "To Do" column of the task's specified board
+        const todoColumnId = this.getOrCreateToDoColumn(task.boardId);
         
         if (todoColumnId) {
           try {

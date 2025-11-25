@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, addTagToTask, getTagsByCardId } from './database';
+import { getDb, addTagToTask, getTagsByCardId, getAllBoards } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 
@@ -209,11 +209,37 @@ export async function addTask() {
     // Convert 'Once' to null, and lowercase other options
     const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
 
+    // Check if there are multiple boards and prompt for board selection
+    let boardId: string | null = null;
+    const boards = getAllBoards();
+    
+    if (boards.length > 1) {
+        const boardItems = boards.map(board => ({
+            label: board.title,
+            description: board.id,
+            boardId: board.id
+        }));
+        
+        const selectedBoard = await vscode.window.showQuickPick(boardItems, {
+            placeHolder: 'Select which board this task should be sent to'
+        });
+        
+        if (!selectedBoard) {
+            return; // User cancelled board selection
+        }
+        
+        boardId = selectedBoard.boardId;
+    } else if (boards.length === 1) {
+        // Only one board exists, use it automatically
+        boardId = boards[0].id;
+    }
+    // If no boards exist, boardId remains null
+
     try {
         const db = getDb();
         const id = uuidv4();
-        db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence) VALUES (?, ?, ?, ?, ?)')
-            .run(id, title, description || null, dueDate, recurrenceValue);
+        db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(id, title, description || null, dueDate, recurrenceValue, boardId);
         
         // Prompt for tags
         const tagIds = await selectOrCreateTags();
@@ -267,10 +293,37 @@ export async function editTask(task: Task) {
         value: task.description || ''
     });
 
+    // Check if there are multiple boards and prompt for board selection
+    let boardId: string | null = task.boardId || null;
+    const boards = getAllBoards();
+    
+    if (boards.length > 1) {
+        const boardItems = boards.map(board => ({
+            label: board.title,
+            description: board.id,
+            boardId: board.id,
+            picked: board.id === task.boardId
+        }));
+        
+        const selectedBoard = await vscode.window.showQuickPick(boardItems, {
+            placeHolder: 'Select which board this task should be sent to'
+        });
+        
+        if (!selectedBoard) {
+            return; // User cancelled board selection
+        }
+        
+        boardId = selectedBoard.boardId;
+    } else if (boards.length === 1) {
+        // Only one board exists, use it automatically
+        boardId = boards[0].id;
+    }
+    // If no boards exist, boardId remains null or task's existing value
+
     try {
         const db = getDb();
-        db.prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ? WHERE id = ?')
-          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrenceValue, task.id);
+        db.prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
+          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrenceValue, boardId, task.id);
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);

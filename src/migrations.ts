@@ -376,6 +376,24 @@ const migrations: Migration[] = [
                 console.log('Cards table already has converted_from_task_at column');
             }
         }
+    },
+    {
+        version: 11,
+        name: 'add_board_id_to_tasks',
+        up: (db) => {
+            // Add board_id column to tasks table
+            const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
+            const hasBoardId = tableInfo.some((col: any) => col.name === 'board_id');
+            
+            if (!hasBoardId) {
+                console.log('Adding board_id column to tasks table');
+                db.exec(`
+                    ALTER TABLE tasks ADD COLUMN board_id TEXT REFERENCES boards(id) ON DELETE SET NULL;
+                `);
+            } else {
+                console.log('Tasks table already has board_id column');
+            }
+        }
     }
 ];
 
