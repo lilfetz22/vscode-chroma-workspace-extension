@@ -544,7 +544,7 @@ describe('Migration', () => {
             expect(card).toBeDefined();
             expect(card.title).toBe('Test Card');
             expect(card.content).toBe('Card content');
-            expect(card.priority).toBe(1);  // Priority stored as integer: 0=low,1=medium,2=high
+            expect(card.priority).toBe(1);  // Priority stored as integer: 0=low, 1=medium, 2=high
             // Note: recurrence is not stored in cards table in local schema
         });
 
