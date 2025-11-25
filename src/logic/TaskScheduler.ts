@@ -132,7 +132,8 @@ export class TaskScheduler {
               column_id: todoColumnId, 
               position: 0, 
               card_type: 'simple', 
-              priority: 0 
+              priority: 0,
+              converted_from_task_at: new Date().toISOString()
             });
 
             // Copy tags from task to card

@@ -12,5 +12,6 @@ export interface Card {
     recurrence?: string | null;
     activated_at?: string | null;
     completed_at?: string | null;
+    converted_from_task_at?: string | null;
     created_at?: string;
 }

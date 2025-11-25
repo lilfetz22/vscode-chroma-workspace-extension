@@ -58,6 +58,7 @@ CREATE TABLE cards (
   recurrence TEXT,
   activated_at DATETIME,
   completed_at DATETIME,
+  converted_from_task_at DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (column_id) REFERENCES columns(id) ON DELETE CASCADE,
   FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE SET NULL

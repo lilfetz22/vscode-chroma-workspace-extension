@@ -358,6 +358,24 @@ const migrations: Migration[] = [
                 console.log('Cards table already has updated_at column');
             }
         }
+    },
+    {
+        version: 10,
+        name: 'add_converted_from_task_at_column',
+        up: (db) => {
+            // Add converted_from_task_at column to cards table
+            const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
+            const hasConvertedFromTaskAt = tableInfo.some((col: any) => col.name === 'converted_from_task_at');
+            
+            if (!hasConvertedFromTaskAt) {
+                console.log('Adding converted_from_task_at column to cards table');
+                db.exec(`
+                    ALTER TABLE cards ADD COLUMN converted_from_task_at DATETIME;
+                `);
+            } else {
+                console.log('Cards table already has converted_from_task_at column');
+            }
+        }
     }
 ];
 

@@ -63,9 +63,20 @@ class KanbanProvider {
                 completedDateString = ` [${month}-${day}-${year}]`;
             }
             
+            // Check if card was converted from task within the last 3 hours
+            let newFlag = '';
+            if (card.converted_from_task_at) {
+                const convertedAt = new Date(card.converted_from_task_at);
+                const now = new Date();
+                const threeHoursInMs = 3 * 60 * 60 * 1000;
+                if (now - convertedAt < threeHoursInMs) {
+                    newFlag = ' (New)';
+                }
+            }
+            
             const label = tagString 
-                ? `${card.title} ${tagString}${completedDateString}` 
-                : `${card.title}${completedDateString}`;
+                ? `${card.title} ${tagString}${completedDateString}${newFlag}` 
+                : `${card.title}${completedDateString}${newFlag}`;
             
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
