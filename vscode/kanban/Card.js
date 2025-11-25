@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard } = require('../../out/src/database');
 const { selectOrCreateTags } = require('../../out/vscode/Tag');
 const { getDebugLogger } = require('../../out/src/logic/DebugLogger');
+const { getSettingsService } = require('../../out/src/logic/SettingsService');
 
 async function addCard(column) {
     const debugLog = getDebugLogger();
@@ -52,6 +53,17 @@ async function editCard(card) {
         const { getCardById } = require('../../out/src/database');
         current = getCardById(card.cardId);
     } catch (e) {
+        // Log error and distinguish between different error types
+        console.error('Failed to fetch card for editing:', e);
+        
+        // If card truly doesn't exist, show error and return
+        if (e.message && e.message.includes('does not exist')) {
+            vscode.window.showErrorMessage(`Card not found: ${card.label}`);
+            return;
+        }
+        
+        // For other errors, log but allow user to continue with current card data
+        console.warn('Continuing with fallback card data due to fetch error');
         current = undefined;
     }
 
@@ -80,19 +92,21 @@ async function moveCard(card) {
     if (selectedColumnName) {
         const selectedColumn = columns.find(column => column.title === selectedColumnName);
         if (selectedColumn) {
-            // Check if moving to or from "Done" column
+            // Get configured completion column name (default "Done")
             const { getColumnById } = require('../../out/src/database');
             const currentColumn = getColumnById(card.columnId);
+            const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
             
-            const movingToDone = selectedColumn.title === 'Done';
-            const movingFromDone = currentColumn.title === 'Done';
+            // Check if moving to or from completion column (case-insensitive and trimmed)
+            const movingToCompletion = selectedColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+            const movingFromCompletion = currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
             
             const updateData = { id: card.cardId, column_id: selectedColumn.id };
             
-            if (movingToDone) {
+            if (movingToCompletion) {
                 // Set completed_at to current datetime
                 updateData.completed_at = new Date().toISOString();
-            } else if (movingFromDone) {
+            } else if (movingFromCompletion) {
                 // Clear completed_at
                 updateData.completed_at = null;
             }

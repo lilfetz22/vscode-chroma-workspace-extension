@@ -467,9 +467,6 @@
     "publisherId": ""
   },
   "dependencies": {
-    // NOTE: better-sqlite3 is pinned to ^11.10.0 due to compatibility issues with Electron v37.x.
-    // Newer versions (>=12.x) are not compatible with the Electron ABI used in this project.
-    // All required features are supported in 11.10.0, and security has been reviewed as of June 2024.
     "better-sqlite3": "^11.10.0",
     "compromise": "^14.14.0",
     "uuid": "^13.0.0"

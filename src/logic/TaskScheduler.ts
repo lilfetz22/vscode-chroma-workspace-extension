@@ -3,6 +3,7 @@ import { getDb, createCard, getAllBoards, getColumnsByBoardId, createBoard, crea
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
+import { Logger } from './Logger';
 
 export class TaskScheduler {
   private static instance: TaskScheduler;
@@ -81,11 +82,12 @@ export class TaskScheduler {
     try {
       const db = getDb();
       const boards = getAllBoards();
+      const taskCreationColumn = getSettingsService().getKanbanSettings().taskCreationColumn;
       
       // If no boards exist, create a default one
       if (boards.length === 0) {
         const newBoard = createBoard({ title: 'My Board' });
-        const column = createColumn({ title: 'To Do', board_id: newBoard.id, position: 0 });
+        const column = createColumn({ title: taskCreationColumn, board_id: newBoard.id, position: 0 });
         return column.id;
       }
 
@@ -97,17 +99,17 @@ export class TaskScheduler {
 
       const columns = getColumnsByBoardId(targetBoard.id);
       
-      // Look for a "To Do" column
-      const todoColumn = columns.find(col => col.title.toLowerCase() === 'to do');
+      // Look for the task creation column (configured or default "To Do")
+      const todoColumn = columns.find(col => col.title.toLowerCase() === taskCreationColumn.toLowerCase());
       if (todoColumn) {
         return todoColumn.id;
       }
 
-      // If no "To Do" column exists, create one at the beginning
-      const column = createColumn({ title: 'To Do', board_id: targetBoard.id, position: 0 });
+      // If the configured column doesn't exist, create one at the beginning
+      const column = createColumn({ title: taskCreationColumn, board_id: targetBoard.id, position: 0 });
       return column.id;
     } catch (error) {
-      console.error('Failed to get/create To Do column:', error);
+      console.error(`Failed to get/create ${getSettingsService().getKanbanSettings().taskCreationColumn} column:`, error);
       return null;
     }
   }
@@ -165,12 +167,16 @@ export class TaskScheduler {
             // Update dueDate to reflect the new due date for "due today" count
             dueDate = nextDueDate;
           } else {
-            // If no next due date, delete the task
+            // If no next due date, log warning and delete the task
+            const logger = Logger.getInstance();
+            logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
             db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
             continue;
           }
         } else {
-          // For non-recurring tasks, delete the task after creating the card
+          // For non-recurring tasks, log and delete the task after creating the card
+          const logger = Logger.getInstance();
+          logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
           db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
           continue;
         }

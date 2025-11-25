@@ -497,42 +497,36 @@ export function addTagToCard(cardId: string, tagId: string): void {
     const db = getDb();
     const logger = getLogger();
     
-    // Log database information
-    logger.info(`addTagToCard: Database instance:`, db.name);
-    logger.info(`addTagToCard: Database in WAL mode:`, db.inTransaction);
-    
-    // Count total cards
-    const cardCount = db.prepare('SELECT COUNT(*) as count FROM cards').get() as any;
-    logger.info(`addTagToCard: Total cards in database: ${cardCount.count}`);
-    
-    // List all card IDs
-    const allCardIds = db.prepare('SELECT id, title FROM cards LIMIT 10').all();
-    logger.info(`addTagToCard: First 10 cards:`, allCardIds);
-    
     // Verify card exists
     const card = db.prepare('SELECT id FROM cards WHERE id = ?').get(cardId);
-    logger.info(`addTagToCard: Checking card ${cardId}, found:`, card);
     if (!card) {
         const error = new Error(`Card with ID ${cardId} does not exist`);
-        logger.error('addTagToCard failed:', error);
+        logger.error('addTagToCard failed: Card not found', error);
         throw error;
     }
     
     // Verify tag exists
     const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
-    logger.info(`addTagToCard: Checking tag ${tagId}, found:`, tag);
     if (!tag) {
         const error = new Error(`Tag with ID ${tagId} does not exist`);
-        logger.error('addTagToCard failed:', error);
+        logger.error('addTagToCard failed: Tag not found', error);
         throw error;
     }
     
-    logger.info(`addTagToCard: Inserting card_id=${cardId}, tag_id=${tagId}`);
+    // Debug logging (only logged when debug level is enabled)
+    logger.debug(`addTagToCard: Database instance: ${db.name}`);
+    logger.debug(`addTagToCard: Database in transaction: ${db.inTransaction}`);
+    const cardCount = db.prepare('SELECT COUNT(*) as count FROM cards').get() as any;
+    logger.debug(`addTagToCard: Total cards in database: ${cardCount.count}`);
+    const allCardIds = db.prepare('SELECT id, title FROM cards LIMIT 10').all();
+    logger.debug(`addTagToCard: First 10 cards: ${JSON.stringify(allCardIds)}`);
+    logger.debug(`addTagToCard: Inserting card_id=${cardId}, tag_id=${tagId}`);
+    
     try {
         db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
-        logger.info(`addTagToCard: Successfully inserted`);
+        logger.debug(`addTagToCard: Successfully inserted tag ${tagId} to card ${cardId}`);
     } catch (err) {
-        logger.error(`addTagToCard: Insert failed:`, err);
+        logger.error(`addTagToCard: Insert failed`, err);
         throw err;
     }
 }
@@ -555,7 +549,34 @@ export function getTagsByCardId(cardId: string): Tag[] {
 // Task-Tag Relationships
 export function addTagToTask(taskId: string, tagId: string): void {
     const db = getDb();
-    db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
+    const logger = getLogger();
+    
+    // Verify task exists
+    const task = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+    if (!task) {
+        const error = new Error(`Task with ID ${taskId} does not exist`);
+        logger.error('addTagToTask failed: Task not found', error);
+        throw error;
+    }
+    
+    // Verify tag exists
+    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    if (!tag) {
+        const error = new Error(`Tag with ID ${tagId} does not exist`);
+        logger.error('addTagToTask failed: Tag not found', error);
+        throw error;
+    }
+    
+    // Debug logging (only logged when debug level is enabled)
+    logger.debug(`addTagToTask: Inserting task_id=${taskId}, tag_id=${tagId}`);
+    
+    try {
+        db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
+        logger.debug(`addTagToTask: Successfully inserted tag ${tagId} to task ${taskId}`);
+    } catch (err) {
+        logger.error(`addTagToTask: Insert failed`, err);
+        throw err;
+    }
 }
 
 export function removeTagFromTask(taskId: string, tagId: string): void {

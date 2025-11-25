@@ -1,6 +1,22 @@
 const vscode = require('vscode');
 const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/src/database');
 
+// Constants
+const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Format a date string to MM-DD-YY format
+ * @param {string | Date} dateString ISO date string or Date object
+ * @returns {string} Formatted date string (MM-DD-YY)
+ */
+function formatDate(dateString) {
+    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = String(date.getFullYear()).slice(-2);
+    return `${month}-${day}-${year}`;
+}
+
 class KanbanProvider {
     constructor() {
         this._onDidChangeTreeData = new vscode.EventEmitter();
@@ -56,20 +72,16 @@ class KanbanProvider {
             // Format completed date if present
             let completedDateString = '';
             if (card.completed_at) {
-                const date = new Date(card.completed_at);
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const year = String(date.getFullYear()).slice(-2);
-                completedDateString = ` [${month}-${day}-${year}]`;
+                completedDateString = ` [${formatDate(card.completed_at)}]`;
             }
             
             // Check if card was converted from task within the last 3 hours
             let newFlag = '';
             if (card.converted_from_task_at) {
-                const convertedAt = new Date(card.converted_from_task_at);
-                const now = new Date();
-                const threeHoursInMs = 3 * 60 * 60 * 1000;
-                if (now - convertedAt < threeHoursInMs) {
+                const convertedAt = new Date(card.converted_from_task_at).getTime();
+                const now = new Date().getTime();
+                // Use Math.abs to handle potential clock adjustments or timezone issues
+                if (Math.abs(now - convertedAt) < THREE_HOURS_MS) {
                     newFlag = ' (New)';
                 }
             }
