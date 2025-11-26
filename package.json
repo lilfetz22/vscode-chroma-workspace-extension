@@ -1,7 +1,7 @@
 {
   "name": "chroma-workspace",
   "displayName": "Chroma Workspace",
-  "description": "Comprehensive workspace management with Natural Language Highlighting, Kanban boards, task scheduling, and productivity analytics",
+  "description": "Comprehensive workspace management with Natural Language Highlighting, Kanban boards, task scheduling, and productivity analytics - all data stored locally",
   "icon": "images/Natural_Language_Highlighting.png",
   "version": "1.0.0",
   "publisher": "lilfetz22",
