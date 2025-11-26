@@ -17,7 +17,7 @@ After downloading the `.vsix` file from the [Releases page](https://github.com/l
      ```
    - Run:
      ```powershell
-     npm install --build-from-source
+     npm rebuild
      ```
 6. Reload VS Code when prompted
 
@@ -25,7 +25,7 @@ After downloading the `.vsix` file from the [Releases page](https://github.com/l
 ```powershell
 code --install-extension chroma-workspace-1.0.3.vsix
 cd $env:USERPROFILE\.vscode\extensions\lilfetz22.chroma-workspace-*
-npm install --build-from-source
+npm rebuild
 ```
 
 ## Why the extra step?
@@ -35,7 +35,7 @@ The extension uses `better-sqlite3`, a native Node.js addon that must be compile
 ## Troubleshooting
 
 If you see errors about "Cannot find module 'bindings'" or "not a valid Win32 application":
-1. Make sure you ran `npm install --build-from-source` in the extension directory
+1. Make sure you ran `npm rebuild` in the extension directory
 2. Ensure you have build tools installed:
    - **Windows**: Install [windows-build-tools](https://github.com/felixrieseberg/windows-build-tools) or Visual Studio Build Tools
    - **Mac**: Install Xcode Command Line Tools (`xcode-select --install`)
