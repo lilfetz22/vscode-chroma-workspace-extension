@@ -15,7 +15,7 @@
     [
       "semantic-release-vsce",
       {
-        "publish": false,
+        "publish": true,
         "packageVsix": true
       }
     ],
