@@ -17,7 +17,7 @@ async function main() {
   // better-sqlite3 relies on `bindings` which walks the call stack; bundling the caller breaks it.
   // By marking the compiled database module as external, we keep its original file boundary so
   // the native addon can resolve correctly when the extension host loads it.
-  external: ['vscode', 'better-sqlite3', '../out/database', './out/database'],
+  external: ['vscode', 'better-sqlite3', 'bindings', 'file-uri-to-path', '../out/database', './out/database'],
     logLevel: 'silent',
     plugins: [
       /* add to the end of plugins array */
