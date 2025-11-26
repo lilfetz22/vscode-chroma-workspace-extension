@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.1.0...v1.2.0) (2025-11-26)
+
+
+### Features
+
+* **release:** enable publishing for semantic-release-vsce ([b3bfad4](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b3bfad4992158549c56936659bf98387d15026f9))
+
 # [1.1.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.4...v1.1.0) (2025-11-26)
 
 
