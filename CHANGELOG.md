@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.1...v1.0.2) (2025-11-26)
+
+
+### Bug Fixes
+
+* **package:** include bindings and file-uri-to-path modules in VSIX ([f7cc555](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f7cc5554da7a28752661bebd90cb55ad1e1188a1))
+
 ## [1.0.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.0...v1.0.1) (2025-11-26)
 
 
