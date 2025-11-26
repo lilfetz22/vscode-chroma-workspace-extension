@@ -505,6 +505,7 @@
     "build": "npm run compile && node esbuild.js",
     "watch": "tsc -p ./ --watch",
     "postinstall": "electron-rebuild -v 37.7.0 -f -w better-sqlite3",
+    "vscode:prepublish": "npm run build",
     "package": "vsce package",
     "build-and-package": "npm run build && npm run package",
     "release": "semantic-release"
