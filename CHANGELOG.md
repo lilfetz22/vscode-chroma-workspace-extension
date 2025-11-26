@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.2...v1.0.3) (2025-11-26)
+
+
+### Bug Fixes
+
+* **package:** exclude prebuilt native binaries, include source for rebuild ([6ae64fc](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/6ae64fce422eb0a2973d6058f446779ac19461f8))
+
 ## [1.0.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.1...v1.0.2) (2025-11-26)
 
 
