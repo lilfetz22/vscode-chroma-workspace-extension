@@ -242,22 +242,83 @@ MIT License
 
 ---
 
-## Releasing and versioning
+## Releasing and Versioning
 
-This repo uses semantic-release to automate versioning, changelog, GitHub releases, and VSIX packaging/publishing based on Conventional Commits.
+This repo uses **semantic-release** to automate versioning, changelog generation, GitHub releases, and VSIX packaging/publishing based on **Conventional Commits**.
 
-- Commit format: type(scope?): subject
-  - Common types: feat, fix, docs, refactor, perf, test, chore
-  - Breaking changes: add "!" after type/scope or include a footer: BREAKING CHANGE: description
-- Examples:
-  - feat(kanban): add swimlanes to board
-  - fix(tasks): correct timezone logic for daily schedule
-  - chore: update dependencies
+### Commit Message Format
 
-CI will run on pushes to main (and prerelease branches). To publish to the VS Code Marketplace, set a repository secret named VSCE_PAT containing a Personal Access Token from the VS Code Marketplace publisher account.
+Use the format: `type(scope): subject`
 
-Local (optional):
-- npm run build
-- npm run release
+**Common types:**
+- `feat`: New feature (triggers **minor** version bump: 1.0.0 → 1.1.0)
+- `fix`: Bug fix (triggers **patch** version bump: 1.0.0 → 1.0.1)
+- `docs`: Documentation changes (no version bump)
+- `refactor`: Code refactoring (no version bump)
+- `perf`: Performance improvements (triggers **patch** bump)
+- `test`: Test additions/changes (no version bump)
+- `chore`: Build process or auxiliary tool changes (no version bump)
 
-Note: Local release requires GITHUB_TOKEN and optionally VSCE_PAT in your environment; normally releases are performed via GitHub Actions.
+**Breaking changes** (triggers **major** version bump: 1.0.0 → 2.0.0):
+- Add `!` after type/scope: `feat(api)!: remove deprecated methods`
+- OR include footer: `BREAKING CHANGE: description`
+
+**Examples:**
+```bash
+feat(kanban): add swimlanes to board
+fix(tasks): correct timezone logic for daily schedule
+fix(build): externalize bindings module in esbuild config
+chore: update dependencies
+feat(search)!: change search API to async
+```
+
+### Development Workflow
+
+1. **Make changes** to code
+2. **Build and test**: `npm run build && npm test`
+3. **Stage changes**: `git add <files>`
+4. **Commit with conventional format**:
+   ```bash
+   git commit -m "fix(build): externalize native module dependencies"
+   ```
+5. **Push to main**:
+   ```bash
+   git push origin master
+   ```
+
+### Automated Release Process (CI/CD)
+
+When you push to `master`, GitHub Actions automatically:
+
+1. **Analyzes commits** since the last release
+2. **Determines version bump** (major/minor/patch) based on commit types
+3. **Updates** `package.json` version
+4. **Generates** CHANGELOG.md with all changes
+5. **Creates** GitHub release with release notes
+6. **Packages** VSIX file
+7. **Publishes** to VS Code Marketplace (if `VSCE_PAT` repository secret is configured)
+
+### Manual Release (Optional)
+
+For local testing or manual releases:
+
+```bash
+npm run build
+npm run release
+```
+
+**Requirements:**
+- `GITHUB_TOKEN` environment variable (for GitHub release)
+- `VSCE_PAT` environment variable (optional, for marketplace publishing)
+
+**Note:** Normally releases are performed automatically via GitHub Actions. Manual releases are only needed for testing the release process locally.
+
+### Marketplace Publishing Setup
+
+To enable automatic publishing to the VS Code Marketplace:
+
+1. Create a Personal Access Token (PAT) at https://dev.azure.com/
+   - Organization: All accessible organizations
+   - Scopes: Marketplace (Acquire, Manage)
+2. Add the PAT as a repository secret named `VSCE_PAT` in GitHub Settings → Secrets
+3. Push commits to `master` - extension will auto-publish on release

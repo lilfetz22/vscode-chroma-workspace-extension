@@ -26,6 +26,38 @@ Developer workflows & exact commands
   `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
   This sets the execution policy only for the current process and avoids needing a persistent policy change while allowing scripts like `esbuild.js` or `vsce` to run.
 
+Semantic versioning & release workflow
+-------------------------------------
+This repo uses `semantic-release` for automated versioning and releases based on Conventional Commits.
+
+**Commit format**: `type(scope): subject`
+- Common types: `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `chore`
+- Breaking changes: add `!` after type/scope OR include footer `BREAKING CHANGE: description`
+- Examples:
+  - `feat(kanban): add swimlanes to board` → triggers minor version bump (1.0.0 → 1.1.0)
+  - `fix(tasks): correct timezone logic` → triggers patch version bump (1.0.0 → 1.0.1)
+  - `feat(api)!: remove deprecated methods` → triggers major version bump (1.0.0 → 2.0.0)
+  - `chore: update dependencies` → no version bump
+
+**Workflow for making changes**:
+1. Make code changes
+2. Build and test: `npm run build && npm test`
+3. Stage changes: `git add <files>`
+4. Commit with conventional format: `git commit -m "fix(build): externalize native module dependencies"`
+5. Push to main: `git push origin master` (triggers CI/CD)
+6. GitHub Actions automatically:
+   - Analyzes commits since last release
+   - Determines version bump (major/minor/patch)
+   - Updates `package.json` version
+   - Generates CHANGELOG.md
+   - Creates GitHub release
+   - Packages VSIX
+   - Publishes to VS Code Marketplace (if `VSCE_PAT` secret is set)
+
+**Manual release (optional)**: `npm run release` (requires `GITHUB_TOKEN` and optionally `VSCE_PAT` in environment)
+
+**Before packaging locally**: Ensure version is correct in `package.json` (semantic-release handles this in CI).
+
 Important project-specific conventions & gotchas
 -------------------------------------------
 - Database path must be a relative path ending with `.db`. `SettingsService.isValidDatabasePath()` enforces this. Use `setDatabasePath()` before `initDatabase()` when changing path.
