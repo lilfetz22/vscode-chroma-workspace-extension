@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.0...v1.0.1) (2025-11-26)
+
+
+### Bug Fixes
+
+* **package:** improve description to emphasize local storage ([c177db3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c177db3282814cea1f314dcf660465396e37a27f))
+
 # 1.0.0 (2025-11-26)
 
 
