@@ -12,9 +12,6 @@
   "categories": [
     "Programming Languages"
   ],
-  "activationEvents": [
-    "onLanguage:notesnlh"
-  ],
   "main": "./dist/extension_bundled.js",
   "contributes": {
     "viewsContainers": {
