@@ -3,7 +3,7 @@
   "displayName": "Chroma Workspace",
   "description": "Comprehensive workspace management with Natural Language Highlighting, Kanban boards, task scheduling, and productivity analytics - all data stored locally",
   "icon": "images/icon.png",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "publisher": "lilfetz22",
   "repository": "https://github.com/lilfetz22/vscode-chroma-workspace-extension",
   "engines": {

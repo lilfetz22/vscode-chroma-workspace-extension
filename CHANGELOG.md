@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.3...v1.0.4) (2025-11-26)
+
+
+### Bug Fixes
+
+* **docs:** update installation instructions to use 'npm rebuild' instead of 'npm install --build-from-source' ([880214d](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/880214d1e6c4581af1d29f69eca5dabd558e7043))
+
 ## [1.0.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.2...v1.0.3) (2025-11-26)
 
 
