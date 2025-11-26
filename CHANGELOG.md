@@ -1,3 +1,16 @@
+# [1.1.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.4...v1.1.0) (2025-11-26)
+
+
+### Bug Fixes
+
+* **icon:** fixing the icon location ([d62931e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d62931e754c54fbb83108b04e617f88db9bcae06))
+
+
+### Features
+
+* **branding:** update extension icon to new design ([23aba68](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/23aba681daad5da787be1a4122cb8f9969593724))
+* **images:** new extension icons ([0794ec2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/0794ec23254f165991019c86e6546e3f5beac157))
+
 ## [1.0.4](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.0.3...v1.0.4) (2025-11-26)
 
 
