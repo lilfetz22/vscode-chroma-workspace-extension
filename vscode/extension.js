@@ -56,15 +56,7 @@ exports.activate = async function activate(context) {
     getDebugLogger().log('Workspace root:', workspaceRoot);
   }
 
-  // Initialize settings service
-  kanbanProvider = new KanbanProvider();
-  kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
-  taskProvider = new TaskProvider();
-  vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
-  tagsProvider = new TagsProvider();
-  vscode.window.registerTreeDataProvider('tags', tagsProvider);
-
-  // Initialize database early with workspace root and configured relative path
+  // Initialize database FIRST before creating any providers
   try {
     const config = vscode.workspace.getConfiguration('chroma');
     const configuredPath = config.get('database.path');
@@ -84,7 +76,16 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Stack trace:', e.stack);
     }
     vscode.window.showErrorMessage(`Chroma: Database initialization failed: ${e?.message || e}`);
+    return; // Don't continue if database fails
   }
+
+  // Now create providers AFTER database is ready
+  kanbanProvider = new KanbanProvider();
+  kanbanTreeView = vscode.window.createTreeView('kanban', { treeDataProvider: kanbanProvider });
+  taskProvider = new TaskProvider();
+  vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
+  tagsProvider = new TagsProvider();
+  vscode.window.registerTreeDataProvider('tags', tagsProvider);
 
   context.subscriptions.push(
     vscode.commands.registerCommand('chroma.refreshTasks', () => {
