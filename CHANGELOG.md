@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.0...v2.0.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* **build:** copy sql-wasm.wasm to dist folder for runtime loading ([e9a4d38](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e9a4d38427ab33d69de54030413c312f76188693))
+
 # [2.0.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.2.0...v2.0.0) (2025-11-27)
 
 
