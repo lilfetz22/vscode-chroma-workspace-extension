@@ -203,8 +203,7 @@ const migrations: Migration[] = [
         version: 8,
         name: 'align_schema_with_documentation',
         up: (db) => {
-            // Temporarily disable foreign keys for table restructuring
-            db.pragma('foreign_keys = OFF');
+            // Note: sql.js doesn't support pragma(), foreign keys handled differently
             
             // Drop FTS triggers that reference cards table
             db.exec(`
@@ -341,18 +340,21 @@ const migrations: Migration[] = [
                 ALTER TABLE card_tags_new RENAME TO card_tags;
                 CREATE INDEX idx_card_tags_tag ON card_tags(tag_id);
             `);
-            
-            // Re-enable foreign keys
-            db.pragma('foreign_keys = ON');
         }
     },
     {
         version: 9,
         name: 'fix_cards_updated_at_column',
         up: (db) => {
-            // Check if updated_at column exists, if not add it
-            const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
-            const hasUpdatedAt = tableInfo.some((col: any) => col.name === 'updated_at');
+            // Check if updated_at column exists using sql.js compatible query
+            try {
+                db.exec("SELECT updated_at FROM cards LIMIT 0");
+                // Column exists, no action needed
+                return;
+            } catch (e) {
+                // Column doesn't exist, continue with migration
+            }
+            const hasUpdatedAt = false;
             
             if (!hasUpdatedAt) {
                 console.log('Adding missing updated_at column to cards table');
