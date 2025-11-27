@@ -1,4 +1,4 @@
-import { getDb } from './database';
+import { getDb, prepare } from './database';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -411,7 +411,7 @@ export function initMigrationTable(): void {
 export function getCurrentVersion(): number {
     const db = getDb();
     try {
-        const result = db.prepare('SELECT MAX(version) as version FROM schema_migrations').get() as { version: number | null };
+        const result = prepare('SELECT MAX(version) as version FROM schema_migrations').get() as { version: number | null };
         return result.version || 0;
     } catch (error) {
         return 0;
@@ -435,14 +435,11 @@ export function runMigrations(): void {
     for (const migration of pendingMigrations) {
         console.log(`Applying migration ${migration.version}: ${migration.name}`);
         
-        // Run migration in a transaction
-        const transaction = db.transaction(() => {
-            migration.up(db);
-            db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)').run(migration.version, migration.name);
-        });
-        
+        // NOTE: sql.js doesn't support transactions like better-sqlite3
+        // Apply migration and record it
         try {
-            transaction();
+            migration.up(db);
+            prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)').run(migration.version, migration.name);
             console.log(`Migration ${migration.version} applied successfully`);
         } catch (error: any) {
             console.error(`Failed to apply migration ${migration.version}:`, error.message);
@@ -456,8 +453,9 @@ export function runMigrations(): void {
 export function getMigrationHistory(): Array<{ version: number; name: string; applied_at: string }> {
     const db = getDb();
     try {
-        return db.prepare('SELECT version, name, applied_at FROM schema_migrations ORDER BY version').all() as Array<{ version: number; name: string; applied_at: string }>;
+        return prepare('SELECT version, name, applied_at FROM schema_migrations ORDER BY version').all() as Array<{ version: number; name: string; applied_at: string }>;
     } catch (error) {
         return [];
     }
 }
+

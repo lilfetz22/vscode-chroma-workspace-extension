@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Task } from '../models/Task';
-import { getDb, getTagsByTaskId } from '../database';
+import { getDb, prepare, getTagsByTaskId } from '../database';
 
 export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
   private _onDidChangeTreeData: vscode.EventEmitter<Task | TaskGroup | undefined | null | void> = new vscode.EventEmitter<Task | TaskGroup | undefined | null | void>();
@@ -34,7 +34,7 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
 
   private async getGroupedTasks(): Promise<TaskGroup[]> {
     const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
+    const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -118,3 +118,4 @@ class TaskGroupItem extends vscode.TreeItem {
         this.description = `(${count})`;
     }
 }
+

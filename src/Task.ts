@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, addTagToTask, getTagsByCardId, getAllBoards } from './database';
+import { getDb, prepare, addTagToTask, getTagsByCardId, getAllBoards } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 
@@ -148,7 +148,7 @@ export async function convertCardToTask(card: Card) {
     try {
         const db = getDb();
         const id = uuidv4();
-        db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
+        prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
           .run(id, title, card.content, dueDate, recurrenceValue, cardId);
         
         // Copy tags from the card to the task
@@ -245,7 +245,7 @@ export async function addTask() {
     try {
         const db = getDb();
         const id = uuidv4();
-        db.prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
+        prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
             .run(id, title, description || null, dueDate, recurrenceValue, boardId);
         
         // Prompt for tags
@@ -329,7 +329,7 @@ export async function editTask(task: Task) {
 
     try {
         const db = getDb();
-        db.prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
+        prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
           .run(title, description !== undefined ? description : task.description || null, dueDate, recurrenceValue, boardId, task.id);
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
@@ -345,7 +345,7 @@ export async function completeTask(task: Task) {
 
     try {
         const db = getDb();
-        db.prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
+        prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
         vscode.window.showInformationMessage('Task completed.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to complete task: ' + err.message);
@@ -360,9 +360,11 @@ export async function deleteTask(task: Task) {
 
     try {
         const db = getDb();
-        db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+        prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
         vscode.window.showInformationMessage('Task deleted.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to delete task: ' + err.message);
     }
 }
+
+

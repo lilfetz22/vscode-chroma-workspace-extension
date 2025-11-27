@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import Database from 'better-sqlite3';
+import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import { Note } from './models/Note';
 import { Board } from './models/Board';
 import { Column } from './models/Column';
@@ -30,9 +30,62 @@ function getLogger() {
     return logger;
 }
 
-let db: Database.Database | undefined;
-let memoryDb: Database.Database | undefined;
+let db: SqlJsDatabase | undefined;
+let memoryDb: SqlJsDatabase | undefined;
 let customDbPath: string | undefined;
+let dbFilePath: string | undefined;
+
+// Wrapper to make sql.js compatible with better-sqlite3 API
+export interface Statement {
+    run(...params: any[]): { changes: number; lastInsertRowid: number };
+    get(...params: any[]): any;
+    all(...params: any[]): any[];
+}
+
+export function prepare(sql: string): Statement {
+    const database = getDb();
+    return {
+        run: (...params: any[]) => {
+            // sql.js expects an array, our API accepts variadic args - convert
+            database.run(sql, params.length > 0 ? params : []);
+            const changes = database.getRowsModified();
+            const result = database.exec('SELECT last_insert_rowid() as id');
+            const lastInsertRowid = result.length > 0 && result[0].values.length > 0 
+                ? result[0].values[0][0] as number 
+                : 0;
+            saveDatabase(); // Auto-save after write
+            return { changes, lastInsertRowid };
+        },
+        get: (...params: any[]) => {
+            const result = database.exec(sql, params.length > 0 ? params : []);
+            if (result.length === 0 || result[0].values.length === 0) {
+                return undefined;
+            }
+            const row = result[0].values[0];
+            const columns = result[0].columns;
+            const obj: any = {};
+            columns.forEach((col, idx) => {
+                obj[col] = row[idx];
+            });
+            return obj;
+        },
+        all: (...params: any[]) => {
+            const result = database.exec(sql, params.length > 0 ? params : []);
+            if (result.length === 0) {
+                return [];
+            }
+            const rows = result[0].values;
+            const columns = result[0].columns;
+            return rows.map(row => {
+                const obj: any = {};
+                columns.forEach((col, idx) => {
+                    obj[col] = row[idx];
+                });
+                return obj;
+            });
+        },
+    };
+}
 
 /**
  * Set a custom database path (relative to workspace root)
@@ -57,10 +110,13 @@ export function getDatabasePath(): string {
     return customDbPath || '.chroma/chroma.db';
 }
 
-export function initDatabase(memory: boolean = false, workspaceRoot?: string): Database.Database {
+export async function initDatabase(memory: boolean = false, workspaceRoot?: string): Promise<SqlJsDatabase> {
     try {
         const caller = new Error().stack?.split('\n')[2]?.trim();
         getLogger().info('initDatabase called', { memory, workspaceRoot, caller });
+        
+        // Initialize sql.js
+        const SQL = await initSqlJs();
         
         if (memory) {
             if (memoryDb) {
@@ -68,7 +124,7 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
                 return memoryDb;
             }
             getLogger().info('Creating new in-memory database');
-            memoryDb = new Database(':memory:');
+            memoryDb = new SQL.Database();
             db = memoryDb;
         } else {
             if (db) {
@@ -99,15 +155,20 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
                 fs.mkdirSync(chromaDir, { recursive: true });
             }
             
-            getLogger().info('Opening database connection');
-            db = new Database(dbPath);
+            // Load existing database file or create new one
+            let buffer: Uint8Array | undefined;
+            if (fs.existsSync(dbPath)) {
+                buffer = fs.readFileSync(dbPath);
+                getLogger().info('Loaded existing database file');
+            }
+            
+            db = new SQL.Database(buffer);
+            dbFilePath = dbPath;
+            getLogger().info('Database initialized from file');
         }
 
-        db.pragma('journal_mode = WAL');
-        getLogger().debug('Set journal_mode to WAL');
-        
-        db.pragma('foreign_keys = ON');
-        getLogger().debug('Enabled foreign key constraints');
+        // sql.js doesn't support pragma, but we track foreign keys in migrations
+        getLogger().debug('Database ready (sql.js doesn\'t use pragma)');
 
         // Run migrations automatically on initialization
         getLogger().info('Running database migrations');
@@ -122,11 +183,24 @@ export function initDatabase(memory: boolean = false, workspaceRoot?: string): D
     }
 }
 
-export function getDb(): Database.Database {
+// Save database to file
+export function saveDatabase(): void {
+    if (!db || !dbFilePath || memoryDb) {
+        return; // Don't save memory databases
+    }
+    try {
+        const data = db.export();
+        fs.writeFileSync(dbFilePath, data);
+        getLogger().debug('Database saved to file');
+    } catch (error: any) {
+        getLogger().error('Failed to save database', error);
+    }
+}
+
+export function getDb(): SqlJsDatabase {
     if (!db) {
-        getLogger().warn('Database not initialized when getDb() called, initializing now');
-        getLogger().warn('This may indicate a module loading issue');
-        return initDatabase(!!memoryDb);
+        getLogger().error('Database not initialized when getDb() called');
+        throw new Error('Database not initialized. Call initDatabase() first.');
     }
     getLogger().debug('getDb() returning existing database instance');
     return db;
@@ -158,14 +232,17 @@ export function createTables(): void {
 export function createNote(note: Partial<Note>): Note {
     try {
         getLogger().debug('Creating note', { title: note.title, file_path: note.file_path });
-        const db = getDb();
-        const stmt = db.prepare(
-            'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (@id, @title, @content, @file_path, @nlh_enabled)'
+        getDb(); // Ensure DB is initialized
+        const stmt = prepare(
+            'INSERT INTO notes (id, title, content, file_path, nlh_enabled) VALUES (?, ?, ?, ?, ?)'
         );
-        stmt.run({
-            ...note,
-            nlh_enabled: note.nlh_enabled ? 1 : 0,
-        });
+        stmt.run(
+            note.id,
+            note.title,
+            note.content,
+            note.file_path,
+            note.nlh_enabled ? 1 : 0
+        );
         getLogger().info('Note created successfully', { id: note.id });
         return getNoteById(note.id as string);
     } catch (error: any) {
@@ -177,8 +254,8 @@ export function createNote(note: Partial<Note>): Note {
 export function getNoteById(id: string): Note {
     try {
         getLogger().debug('Fetching note by ID', { id });
-        const db = getDb();
-        const stmt = db.prepare('SELECT * FROM notes WHERE id = ?');
+        getDb(); // Ensure DB is initialized
+        const stmt = prepare('SELECT * FROM notes WHERE id = ?');
         const note = stmt.get(id) as Note;
         if (note) {
             note.nlh_enabled = !!note.nlh_enabled;
@@ -196,8 +273,8 @@ export function getNoteById(id: string): Note {
 export function getNoteByFilePath(filePath: string): Note {
     try {
         getLogger().debug('Fetching note by file path', { filePath });
-        const db = getDb();
-        const stmt = db.prepare('SELECT * FROM notes WHERE file_path = ?');
+        getDb(); // Ensure DB is initialized
+        const stmt = prepare('SELECT * FROM notes WHERE file_path = ?');
         const note = stmt.get(filePath) as Note;
         if (note) {
             note.nlh_enabled = !!note.nlh_enabled;
@@ -237,8 +314,8 @@ export function findOrCreateNoteByPath(filePath: string): Note {
 export function getAllNotes(): Note[] {
     try {
         getLogger().debug('Fetching all notes');
-        const db = getDb();
-        const stmt = db.prepare('SELECT * FROM notes');
+        getDb(); // Ensure DB is initialized
+        const stmt = prepare('SELECT * FROM notes');
         const notes = stmt.all() as Note[];
         getLogger().info(`Found ${notes.length} notes`);
         return notes.map(note => ({
@@ -254,8 +331,8 @@ export function getAllNotes(): Note[] {
 export function updateNote(note: Partial<Note>): Note {
     try {
         getLogger().debug('Updating note', { id: note.id });
-        const db = getDb();
-        const stmt = db.prepare(
+        getDb(); // Ensure DB is initialized
+        const stmt = prepare(
             'UPDATE notes SET title = @title, content = @content, file_path = @file_path, nlh_enabled = @nlh_enabled, updated_at = CURRENT_TIMESTAMP WHERE id = @id'
         );
         stmt.run({
@@ -271,8 +348,8 @@ export function updateNote(note: Partial<Note>): Note {
 }
 
 export function deleteNote(id: string): void {
-    const db = getDb();
-    const stmt = db.prepare('DELETE FROM notes WHERE id = ?');
+    getDb(); // Ensure DB is initialized
+    const stmt = prepare('DELETE FROM notes WHERE id = ?');
     stmt.run(id);
 }
 
@@ -287,7 +364,7 @@ export function closeDb(): void {
 export function createBoard(board: Partial<Board>): Board {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
+    const stmt = prepare('INSERT INTO boards (id, title) VALUES (?, ?)');
     stmt.run(id, board.title);
     
     // Automatically create default columns
@@ -310,24 +387,24 @@ export function createBoard(board: Partial<Board>): Board {
 
 export function getBoardById(id: string): Board {
     const db = getDb();
-    return db.prepare('SELECT * FROM boards WHERE id = ?').get(id) as Board;
+    return prepare('SELECT * FROM boards WHERE id = ?').get(id) as Board;
 }
 
 export function getAllBoards(): Board[] {
     const db = getDb();
-    return db.prepare('SELECT * FROM boards').all() as Board[];
+    return prepare('SELECT * FROM boards').all() as Board[];
 }
 
 export function updateBoard(board: Partial<Board>): Board {
-    const db = getDb();
-    const stmt = db.prepare('UPDATE boards SET title = ? WHERE id = ?');
+    getDb(); // Ensure DB is initialized
+    const stmt = prepare('UPDATE boards SET title = ? WHERE id = ?');
     stmt.run(board.title, board.id);
     return getBoardById(board.id as string);
 }
 
 export function deleteBoard(id: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM boards WHERE id = ?').run(id);
+    prepare('DELETE FROM boards WHERE id = ?').run(id);
 }
 
 // Column CRUD
@@ -339,20 +416,20 @@ const rowToColumn = (row: any): Column => {
 export function createColumn(column: Partial<Column>): Column {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)');
+    const stmt = prepare('INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)');
     stmt.run(id, column.title, column.board_id, column.position);
     return getColumnById(id);
 }
 
 export function getColumnById(id: string): Column {
     const db = getDb();
-    const row = db.prepare('SELECT * FROM columns WHERE id = ?').get(id);
+    const row = prepare('SELECT * FROM columns WHERE id = ?').get(id);
     return rowToColumn(row);
 }
 
 export function getColumnsByBoardId(boardId: string): Column[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position').all(boardId);
+    const rows = prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position').all(boardId);
     return rows.map(rowToColumn);
 }
 
@@ -377,14 +454,14 @@ export function updateColumn(column: Partial<Column>): Column {
     }
     const sql = `UPDATE columns SET ${fields.join(", ")} WHERE id = ?`;
     values.push(column.id);
-    const stmt = db.prepare(sql);
+    const stmt = prepare(sql);
     stmt.run(...values);
     return getColumnById(column.id as string);
 }
 
 export function deleteColumn(id: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM columns WHERE id = ?').run(id);
+    prepare('DELETE FROM columns WHERE id = ?').run(id);
 }
 
 // Card CRUD
@@ -396,20 +473,20 @@ const rowToCard = (row: any): Card => {
 export function createCard(card: Partial<Card>): Card {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at, converted_from_task_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+    const stmt = prepare('INSERT INTO cards (id, column_id, position, card_type, title, content, note_id, summary, priority, scheduled_at, recurrence, activated_at, completed_at, converted_from_task_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     stmt.run(id, card.column_id, card.position ?? 0, card.card_type ?? 'simple', card.title, card.content ?? null, card.note_id ?? null, card.summary ?? null, card.priority ?? 0, card.scheduled_at ?? null, card.recurrence ?? null, card.activated_at ?? null, card.completed_at ?? null, card.converted_from_task_at ?? null);
     return getCardById(id);
 }
 
 export function getCardById(id: string): Card {
     const db = getDb();
-    const row = db.prepare('SELECT * FROM cards WHERE id = ?').get(id);
+    const row = prepare('SELECT * FROM cards WHERE id = ?').get(id);
     return rowToCard(row);
 }
 
 export function getCardsByColumnId(columnId: string): Card[] {
     const db = getDb();
-    const rows = db.prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position').all(columnId);
+    const rows = prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position').all(columnId);
     return rows.map(rowToCard);
 }
 
@@ -449,32 +526,32 @@ export function updateCard(card: Partial<Card>): Card {
     }
     const sql = `UPDATE cards SET ${setClauses.join(', ')} WHERE id = ?`;
     values.push(card.id);
-    db.prepare(sql).run(...values);
+    prepare(sql).run(...values);
     return getCardById(card.id as string);
 }
 
 export function deleteCard(id: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM cards WHERE id = ?').run(id);
+    prepare('DELETE FROM cards WHERE id = ?').run(id);
 }
 
 // Tag CRUD
 export function createTag(tag: Partial<Tag>): Tag {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = db.prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)');
+    const stmt = prepare('INSERT INTO tags (id, name, color) VALUES (?, ?, ?)');
     stmt.run(id, tag.name, tag.color);
     return getTagById(id);
 }
 
 export function getTagById(id: string): Tag {
     const db = getDb();
-    return db.prepare('SELECT * FROM tags WHERE id = ?').get(id) as Tag;
+    return prepare('SELECT * FROM tags WHERE id = ?').get(id) as Tag;
 }
 
 export function getAllTags(): Tag[] {
     const db = getDb();
-    return db.prepare('SELECT * FROM tags ORDER BY name').all() as Tag[];
+    return prepare('SELECT * FROM tags ORDER BY name').all() as Tag[];
 }
 
 export function updateTag(tag: Partial<Tag>): Tag {
@@ -482,14 +559,14 @@ export function updateTag(tag: Partial<Tag>): Tag {
     if (!tag.id) {
         throw new Error("Tag id is required for update");
     }
-    const stmt = db.prepare('UPDATE tags SET name = ?, color = ? WHERE id = ?');
+    const stmt = prepare('UPDATE tags SET name = ?, color = ? WHERE id = ?');
     stmt.run(tag.name, tag.color, tag.id);
     return getTagById(tag.id as string);
 }
 
 export function deleteTag(id: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM tags WHERE id = ?').run(id);
+    prepare('DELETE FROM tags WHERE id = ?').run(id);
 }
 
 // Card-Tag Relationships
@@ -498,7 +575,7 @@ export function addTagToCard(cardId: string, tagId: string): void {
     const logger = getLogger();
     
     // Verify card exists
-    const card = db.prepare('SELECT id FROM cards WHERE id = ?').get(cardId);
+    const card = prepare('SELECT id FROM cards WHERE id = ?').get(cardId);
     if (!card) {
         const error = new Error(`Card with ID ${cardId} does not exist`);
         logger.error('addTagToCard failed: Card not found', error);
@@ -506,7 +583,7 @@ export function addTagToCard(cardId: string, tagId: string): void {
     }
     
     // Verify tag exists
-    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    const tag = prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
     if (!tag) {
         const error = new Error(`Tag with ID ${tagId} does not exist`);
         logger.error('addTagToCard failed: Tag not found', error);
@@ -514,16 +591,16 @@ export function addTagToCard(cardId: string, tagId: string): void {
     }
     
     // Debug logging (only logged when debug level is enabled)
-    logger.debug(`addTagToCard: Database instance: ${db.name}`);
-    logger.debug(`addTagToCard: Database in transaction: ${db.inTransaction}`);
-    const cardCount = db.prepare('SELECT COUNT(*) as count FROM cards').get() as any;
+    logger.debug(`addTagToCard: Database instance type: sql.js`);
+    logger.debug(`addTagToCard: sql.js doesn't support transactions like better-sqlite3`);
+    const cardCount = prepare('SELECT COUNT(*) as count FROM cards').get() as any;
     logger.debug(`addTagToCard: Total cards in database: ${cardCount.count}`);
-    const allCardIds = db.prepare('SELECT id, title FROM cards LIMIT 10').all();
+    const allCardIds = prepare('SELECT id, title FROM cards LIMIT 10').all();
     logger.debug(`addTagToCard: First 10 cards: ${JSON.stringify(allCardIds)}`);
     logger.debug(`addTagToCard: Inserting card_id=${cardId}, tag_id=${tagId}`);
     
     try {
-        db.prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
+        prepare('INSERT INTO card_tags (card_id, tag_id) VALUES (?, ?)').run(cardId, tagId);
         logger.debug(`addTagToCard: Successfully inserted tag ${tagId} to card ${cardId}`);
     } catch (err) {
         logger.error(`addTagToCard: Insert failed`, err);
@@ -533,12 +610,12 @@ export function addTagToCard(cardId: string, tagId: string): void {
 
 export function removeTagFromCard(cardId: string, tagId: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM card_tags WHERE card_id = ? AND tag_id = ?').run(cardId, tagId);
+    prepare('DELETE FROM card_tags WHERE card_id = ? AND tag_id = ?').run(cardId, tagId);
 }
 
 export function getTagsByCardId(cardId: string): Tag[] {
-    const db = getDb();
-    const stmt = db.prepare(`
+    getDb(); // Ensure DB is initialized
+    const stmt = prepare(`
         SELECT t.* FROM tags t
         JOIN card_tags ct ON t.id = ct.tag_id
         WHERE ct.card_id = ?
@@ -552,7 +629,7 @@ export function addTagToTask(taskId: string, tagId: string): void {
     const logger = getLogger();
     
     // Verify task exists
-    const task = db.prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
+    const task = prepare('SELECT id FROM tasks WHERE id = ?').get(taskId);
     if (!task) {
         const error = new Error(`Task with ID ${taskId} does not exist`);
         logger.error('addTagToTask failed: Task not found', error);
@@ -560,7 +637,7 @@ export function addTagToTask(taskId: string, tagId: string): void {
     }
     
     // Verify tag exists
-    const tag = db.prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
+    const tag = prepare('SELECT id FROM tags WHERE id = ?').get(tagId);
     if (!tag) {
         const error = new Error(`Tag with ID ${tagId} does not exist`);
         logger.error('addTagToTask failed: Tag not found', error);
@@ -571,7 +648,7 @@ export function addTagToTask(taskId: string, tagId: string): void {
     logger.debug(`addTagToTask: Inserting task_id=${taskId}, tag_id=${tagId}`);
     
     try {
-        db.prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
+        prepare('INSERT INTO task_tags (task_id, tag_id) VALUES (?, ?)').run(taskId, tagId);
         logger.debug(`addTagToTask: Successfully inserted tag ${tagId} to task ${taskId}`);
     } catch (err) {
         logger.error(`addTagToTask: Insert failed`, err);
@@ -581,15 +658,16 @@ export function addTagToTask(taskId: string, tagId: string): void {
 
 export function removeTagFromTask(taskId: string, tagId: string): void {
     const db = getDb();
-    db.prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?').run(taskId, tagId);
+    prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?').run(taskId, tagId);
 }
 
 export function getTagsByTaskId(taskId: string): Tag[] {
-    const db = getDb();
-    const stmt = db.prepare(`
+    getDb(); // Ensure DB is initialized
+    const stmt = prepare(`
         SELECT t.* FROM tags t
         JOIN task_tags tt ON t.id = tt.tag_id
         WHERE tt.task_id = ?
     `);
     return stmt.all(taskId) as Tag[];
 }
+

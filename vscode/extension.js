@@ -74,7 +74,7 @@ exports.activate = async function activate(context) {
     }
     if (workspaceRoot) {
       getDebugLogger().log('Initializing database with workspace root');
-      initDatabase(false, workspaceRoot);
+      await initDatabase(false, workspaceRoot);
       getDebugLogger().log('Database initialized successfully');
     }
   } catch (e) {

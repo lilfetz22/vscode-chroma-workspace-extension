@@ -1,4 +1,4 @@
-import { getDb } from '../database';
+import { getDb, prepare } from '../database';
 
 export interface SearchResult {
   id: string;
@@ -14,7 +14,7 @@ export interface SearchResult {
  * @returns A promise that resolves to an array of search results, ranked by relevance.
  */
 export async function search(query: string): Promise<SearchResult[]> {
-  const db = getDb();
+  getDb(); // Ensure DB is initialized
 
   // Sanitize and format the query for FTS5
   const ftsQuery = query.trim().split(/\s+/).map(term => `"${term}"`).join(' ');
@@ -23,7 +23,7 @@ export async function search(query: string): Promise<SearchResult[]> {
     return [];
   }
 
-  const stmt = db.prepare(`
+  const stmt = prepare(`
     SELECT
       entity_id,
       entity_type,

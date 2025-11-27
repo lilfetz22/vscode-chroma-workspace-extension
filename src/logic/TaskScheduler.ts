@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard } from '../database';
+import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard } from '../database';
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
@@ -115,8 +115,8 @@ export class TaskScheduler {
   }
 
   private async checkTasks() {
-    const db = getDb();
-    const tasks: Task[] = db.prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, board_id as boardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
+    getDb(); // Ensure DB is initialized
+    const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, board_id as boardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
     const now = new Date();
     let dueTodayCount = 0;
     let cardsCreated = false;
@@ -163,21 +163,21 @@ export class TaskScheduler {
           // For recurring tasks, calculate the next due date and update the task
           const nextDueDate = getNextDueDate(task);
           if (nextDueDate) {
-            db.prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
+            prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
             // Update dueDate to reflect the new due date for "due today" count
             dueDate = nextDueDate;
           } else {
             // If no next due date, log warning and delete the task
             const logger = Logger.getInstance();
             logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
-            db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+            prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
             continue;
           }
         } else {
           // For non-recurring tasks, log and delete the task after creating the card
           const logger = Logger.getInstance();
           logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
-          db.prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+          prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
           continue;
         }
       }
@@ -214,3 +214,4 @@ export class TaskScheduler {
     this.lastNotificationTime.clear();
   }
 }
+

@@ -13,11 +13,8 @@ async function main() {
     sourcesContent: false,
     platform: 'node',
     outfile: 'dist/extension_bundled.js',
-  // Externalizing native modules and the database layer to preserve runtime module parent chain
-  // better-sqlite3 relies on `bindings` which walks the call stack; bundling the caller breaks it.
-  // By marking the compiled database module as external, we keep its original file boundary so
-  // the native addon can resolve correctly when the extension host loads it.
-  external: ['vscode', 'better-sqlite3', 'bindings', 'file-uri-to-path', '../out/database', './out/database'],
+  // Externalize only vscode API - sql.js is pure WebAssembly and bundles perfectly
+  external: ['vscode'],
     logLevel: 'silent',
     plugins: [
       /* add to the end of plugins array */

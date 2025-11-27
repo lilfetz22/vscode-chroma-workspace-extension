@@ -1,13 +1,6 @@
 to_do.notesnlh
 .vscode
 node_modules/**
-!node_modules/better-sqlite3/lib/**
-!node_modules/better-sqlite3/src/**
-!node_modules/better-sqlite3/deps/**
-!node_modules/better-sqlite3/binding.gyp
-!node_modules/better-sqlite3/package.json
-!node_modules/bindings/**
-!node_modules/file-uri-to-path/**
 esbuild.js
 src/**
 test/**
