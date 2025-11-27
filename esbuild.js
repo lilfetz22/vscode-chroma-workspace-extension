@@ -1,4 +1,6 @@
 const esbuild = require('esbuild');
+const fs = require('fs');
+const path = require('path');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -26,6 +28,16 @@ async function main() {
   } else {
     await ctx.rebuild();
     await ctx.dispose();
+  }
+  
+  // Copy sql.js WASM file to dist folder
+  const wasmSource = path.join(__dirname, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const wasmDest = path.join(__dirname, 'dist', 'sql-wasm.wasm');
+  if (fs.existsSync(wasmSource)) {
+    fs.copyFileSync(wasmSource, wasmDest);
+    console.log('Copied sql-wasm.wasm to dist/');
+  } else {
+    console.warn('Warning: sql-wasm.wasm not found in node_modules');
   }
 }
 

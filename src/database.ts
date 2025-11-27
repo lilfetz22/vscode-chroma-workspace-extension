@@ -115,8 +115,16 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
         const caller = new Error().stack?.split('\n')[2]?.trim();
         getLogger().info('initDatabase called', { memory, workspaceRoot, caller });
         
-        // Initialize sql.js
-        const SQL = await initSqlJs();
+        // Initialize sql.js with WASM file location
+        // The WASM file is copied to dist/ by esbuild.js
+        const SQL = await initSqlJs({
+            locateFile: (file) => {
+                // Look in the dist folder where esbuild copies it
+                const wasmPath = path.join(__dirname, '..', 'dist', file);
+                getLogger().debug('Loading WASM file from:', wasmPath);
+                return wasmPath;
+            }
+        });
         
         if (memory) {
             if (memoryDb) {
