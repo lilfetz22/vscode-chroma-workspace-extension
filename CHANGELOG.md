@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.1...v2.0.2) (2025-11-27)
+
+
+### Bug Fixes
+
+* **database:** replace FTS5 with LIKE-based search for sql.js compatibility ([a8c9377](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/a8c9377f4fc8c01c30f35b57b4d679b7872e7bdd))
+
 ## [2.0.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.0...v2.0.1) (2025-11-27)
 
 
