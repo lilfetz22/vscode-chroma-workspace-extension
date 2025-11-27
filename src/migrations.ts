@@ -372,16 +372,18 @@ const migrations: Migration[] = [
         name: 'add_converted_from_task_at_column',
         up: (db) => {
             // Add converted_from_task_at column to cards table
-            const tableInfo = db.prepare("PRAGMA table_info(cards)").all();
-            const hasConvertedFromTaskAt = tableInfo.some((col: any) => col.name === 'converted_from_task_at');
-            
-            if (!hasConvertedFromTaskAt) {
+            // sql.js doesn't support PRAGMA, so we try to add and catch if it exists
+            try {
                 console.log('Adding converted_from_task_at column to cards table');
                 db.exec(`
                     ALTER TABLE cards ADD COLUMN converted_from_task_at DATETIME;
                 `);
-            } else {
-                console.log('Cards table already has converted_from_task_at column');
+            } catch (error: any) {
+                if (error.message && error.message.includes('duplicate column')) {
+                    console.log('Cards table already has converted_from_task_at column');
+                } else {
+                    throw error;
+                }
             }
         }
     },
@@ -390,16 +392,18 @@ const migrations: Migration[] = [
         name: 'add_board_id_to_tasks',
         up: (db) => {
             // Add board_id column to tasks table
-            const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
-            const hasBoardId = tableInfo.some((col: any) => col.name === 'board_id');
-            
-            if (!hasBoardId) {
+            // sql.js doesn't support PRAGMA, so we try to add and catch if it exists
+            try {
                 console.log('Adding board_id column to tasks table');
                 db.exec(`
                     ALTER TABLE tasks ADD COLUMN board_id TEXT REFERENCES boards(id) ON DELETE SET NULL;
                 `);
-            } else {
-                console.log('Tasks table already has board_id column');
+            } catch (error: any) {
+                if (error.message && error.message.includes('duplicate column')) {
+                    console.log('Tasks table already has board_id column');
+                } else {
+                    throw error;
+                }
             }
         }
     }
