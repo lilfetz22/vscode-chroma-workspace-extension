@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.3...v2.1.0) (2025-11-27)
+
+
+### Features
+
+* **database:** support absolute/shared database path & cross-workspace sync ([7fc73d8](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/7fc73d8cb8c05c7a169620f7fd5c766d5fa811da))
+
 ## [2.0.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.2...v2.0.3) (2025-11-27)
 
 
