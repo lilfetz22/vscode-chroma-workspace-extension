@@ -4,7 +4,7 @@ export interface SearchResult {
   id: string;
   title: string;
   type: 'note' | 'card';
-  // The rank is a negative number, with lower values indicating a better match.
+  // The rank indicates match quality: 1=title match, 2=content match, 3=other
   rank: number;
 }
 
@@ -16,26 +16,32 @@ export interface SearchResult {
 export async function search(query: string): Promise<SearchResult[]> {
   getDb(); // Ensure DB is initialized
 
-  // Sanitize and format the query for FTS5
-  const ftsQuery = query.trim().split(/\s+/).map(term => `"${term}"`).join(' ');
+  // Sanitize query for LIKE search
+  const searchQuery = query.trim();
 
-  if (!ftsQuery) {
+  if (!searchQuery) {
     return [];
   }
 
+  // Use LIKE for search since sql.js doesn't support FTS5
+  const likePattern = `%${searchQuery}%`;
   const stmt = prepare(`
     SELECT
       entity_id,
       entity_type,
       title,
-      rank
+      CASE 
+        WHEN title LIKE ? THEN 1
+        WHEN content LIKE ? THEN 2
+        ELSE 3
+      END as rank
     FROM search_index
-    WHERE search_index MATCH ?
-    ORDER BY rank; -- FTS5 ranks by relevance, lower is better
+    WHERE title LIKE ? OR content LIKE ?
+    ORDER BY rank, title;
   `);
 
   try {
-    const rows = stmt.all(ftsQuery) as any[];
+    const rows = stmt.all(likePattern, likePattern, likePattern, likePattern) as any[];
     return rows.map(row => ({
       id: row.entity_id,
       type: row.entity_type,

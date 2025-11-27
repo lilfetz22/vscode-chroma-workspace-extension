@@ -109,13 +109,19 @@ const migrations: Migration[] = [
         name: 'add_full_text_search',
         up: (db) => {
             db.exec(`
-                -- Create FTS5 virtual table for searching notes and cards
-                CREATE VIRTUAL TABLE IF NOT EXISTS search_index USING fts5(
-                    title,
-                    content,
-                    entity_id UNINDEXED,
-                    entity_type UNINDEXED
+                -- Create regular table for searching notes and cards (sql.js doesn't support FTS5)
+                CREATE TABLE IF NOT EXISTS search_index (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT,
+                    content TEXT,
+                    entity_id TEXT NOT NULL,
+                    entity_type TEXT NOT NULL
                 );
+                
+                -- Create indexes for faster LIKE queries
+                CREATE INDEX IF NOT EXISTS idx_search_title ON search_index(title);
+                CREATE INDEX IF NOT EXISTS idx_search_content ON search_index(content);
+                CREATE INDEX IF NOT EXISTS idx_search_entity ON search_index(entity_id, entity_type);
 
                 -- Trigger to insert into search_index when a new note is created
                 CREATE TRIGGER IF NOT EXISTS notes_after_insert
