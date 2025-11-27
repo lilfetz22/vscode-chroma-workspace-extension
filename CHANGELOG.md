@@ -1,3 +1,29 @@
+# [2.0.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.2.0...v2.0.0) (2025-11-27)
+
+
+### Bug Fixes
+
+* **database:** migrate from better-sqlite3 to sql.js for cross-platform compatibility ([34e929f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/34e929f0d17a0cc5c1f61db53de4db7717b212e1))
+
+
+### BREAKING CHANGES
+
+* **database:** Database backend changed from better-sqlite3 to sql.js
+
+- Replace better-sqlite3 with sql.js (WebAssembly-based SQLite)
+- No more native module compilation required
+- Works on Windows, Mac, Linux without build tools
+- Add file persistence layer for sql.js in-memory database
+- Auto-save database after write operations
+- Update all database queries to use sql.js API
+- Remove transaction support (sql.js limitation)
+- Update esbuild config to bundle sql.js completely
+- Remove better-sqlite3 specific workarounds from .vscodeignore
+- Update INSTALL.md with simplified installation instructions
+- Remove electron-rebuild dependency
+- Fixes 'not a valid Win32 application' error on Windows
+- Users can now install VSIX without NPM or build tools
+
 # [1.2.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v1.1.0...v1.2.0) (2025-11-26)
 
 
