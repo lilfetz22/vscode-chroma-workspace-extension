@@ -41,7 +41,7 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath } = require('../out/src/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally } = require('../out/src/database');
 const { search } = require('../out/src/logic/search');
 const { getSettingsService } = require('../out/src/logic/SettingsService');
 const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
@@ -86,6 +86,31 @@ exports.activate = async function activate(context) {
   vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
   tagsProvider = new TagsProvider();
   vscode.window.registerTreeDataProvider('tags', tagsProvider);
+
+  // Cross-workspace sync: Reload database from disk when window gains focus
+  // This supports shared databases where multiple VS Code workspaces access the same .db file
+  context.subscriptions.push(
+    vscode.window.onDidChangeWindowState(async (windowState) => {
+      if (windowState.focused) {
+        try {
+          const result = await reloadDatabaseIfChanged();
+          if (result.externalChange && result.reloaded) {
+            getDebugLogger().log('Database reloaded due to external changes, refreshing all providers');
+            vscode.window.showInformationMessage('Chroma: Database updated from another workspace');
+            // Refresh all providers to reflect the updated data
+            kanbanProvider.refresh();
+            taskProvider.refresh();
+            tagsProvider.refresh();
+          } else if (result.externalChange && !result.reloaded) {
+            getDebugLogger().log('WARNING: Database changed externally but reload failed');
+            vscode.window.showWarningMessage('Chroma: Database was modified externally but reload failed. Consider reloading the window.');
+          }
+        } catch (e) {
+          getDebugLogger().log('ERROR: Failed to check/reload database on focus:', e?.message || String(e));
+        }
+      }
+    })
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('chroma.refreshTasks', () => {

@@ -34,6 +34,7 @@ let db: SqlJsDatabase | undefined;
 let memoryDb: SqlJsDatabase | undefined;
 let customDbPath: string | undefined;
 let dbFilePath: string | undefined;
+let dbLastMtime: number | undefined; // Track last modification time for cross-workspace sync
 
 // Wrapper to make sql.js compatible with better-sqlite3 API
 export interface Statement {
@@ -141,15 +142,19 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             }
             
             // Determine the database path
-            const relativePath = getDatabasePath();
+            const configuredPath = getDatabasePath();
             let dbPath: string;
             
-            if (workspaceRoot) {
+            // Check if the configured path is absolute (shared database outside workspace)
+            if (path.isAbsolute(configuredPath)) {
+                dbPath = configuredPath;
+                getLogger().info('Using absolute database path (shared database)');
+            } else if (workspaceRoot) {
                 // Use provided workspace root (for production)
-                dbPath = path.join(workspaceRoot, relativePath);
+                dbPath = path.join(workspaceRoot, configuredPath);
             } else {
                 // Fallback to __dirname (for testing)
-                dbPath = path.join(__dirname, '..', relativePath);
+                dbPath = path.join(__dirname, '..', configuredPath);
                 getLogger().warn('No workspaceRoot provided, using fallback path');
             }
             
@@ -167,6 +172,8 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             let buffer: Uint8Array | undefined;
             if (fs.existsSync(dbPath)) {
                 buffer = fs.readFileSync(dbPath);
+                // Store the file's modification time for cross-workspace sync detection
+                dbLastMtime = fs.statSync(dbPath).mtimeMs;
                 getLogger().info('Loaded existing database file');
             }
             
@@ -199,9 +206,83 @@ export function saveDatabase(): void {
     try {
         const data = db.export();
         fs.writeFileSync(dbFilePath, data);
+        // Update our tracked mtime after saving
+        dbLastMtime = fs.statSync(dbFilePath).mtimeMs;
         getLogger().debug('Database saved to file');
     } catch (error: any) {
         getLogger().error('Failed to save database', error);
+    }
+}
+
+/**
+ * Check if the database file has been modified externally (e.g., by another VS Code workspace)
+ * Returns true if the file has changed since we last loaded/saved it
+ */
+export function hasDatabaseChangedExternally(): boolean {
+    if (!dbFilePath || memoryDb || !dbLastMtime) {
+        return false;
+    }
+    try {
+        if (!fs.existsSync(dbFilePath)) {
+            return false;
+        }
+        const currentMtime = fs.statSync(dbFilePath).mtimeMs;
+        return currentMtime > dbLastMtime;
+    } catch (error: any) {
+        getLogger().error('Failed to check database mtime', error);
+        return false;
+    }
+}
+
+/**
+ * Reload the database from disk if it has been modified externally
+ * Used for cross-workspace synchronization when using a shared database
+ * Returns true if the database was reloaded, false otherwise
+ */
+export async function reloadDatabaseIfChanged(): Promise<{ reloaded: boolean; externalChange: boolean }> {
+    if (!dbFilePath || memoryDb) {
+        return { reloaded: false, externalChange: false };
+    }
+    
+    const externalChange = hasDatabaseChangedExternally();
+    if (!externalChange) {
+        getLogger().debug('Database has not changed externally, no reload needed');
+        return { reloaded: false, externalChange: false };
+    }
+    
+    getLogger().info('Database file changed externally, reloading...');
+    getDebugLogger().log('Database file changed externally, reloading from disk');
+    
+    try {
+        // Read the updated file
+        const buffer = fs.readFileSync(dbFilePath);
+        const currentMtime = fs.statSync(dbFilePath).mtimeMs;
+        
+        // Initialize sql.js
+        const SQL = await initSqlJs({
+            locateFile: (file) => {
+                const wasmPath = path.join(__dirname, '..', 'dist', file);
+                return wasmPath;
+            }
+        });
+        
+        // Close the old database if it exists
+        if (db) {
+            db.close();
+        }
+        
+        // Create new database from the updated file
+        db = new SQL.Database(buffer);
+        dbLastMtime = currentMtime;
+        
+        getLogger().info('Database reloaded from disk successfully');
+        getDebugLogger().log('Database reloaded from disk successfully');
+        
+        return { reloaded: true, externalChange: true };
+    } catch (error: any) {
+        getLogger().error('Failed to reload database', error);
+        getDebugLogger().log('ERROR: Failed to reload database:', error.message);
+        return { reloaded: false, externalChange: true };
     }
 }
 

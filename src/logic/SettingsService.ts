@@ -219,6 +219,7 @@ export class SettingsService {
 
     /**
      * Validate database path
+     * Supports both relative paths (within workspace) and absolute paths (shared database)
      */
     public isValidDatabasePath(dbPath: string): boolean {
         // Must end with .db extension
@@ -226,22 +227,24 @@ export class SettingsService {
             return false;
         }
 
-        // Must not be an absolute path
-        if (path.isAbsolute(dbPath)) {
+        // Additional security: path should not contain null bytes
+        if (dbPath.includes('\0')) {
             return false;
         }
 
+        // For absolute paths, we trust the user's explicit configuration
+        // They know the database is outside the workspace since relative is the default
+        if (path.isAbsolute(dbPath)) {
+            return true;
+        }
+
+        // For relative paths, apply path traversal protection
         // Normalize the path and check for path traversal attempts
         const normalizedPath = path.normalize(dbPath);
         
         // After normalization, the path should not start with '..' or contain '../'
         // This prevents traversal attacks like '../../../etc/passwd.db'
         if (normalizedPath.startsWith('..') || normalizedPath.includes(`..${path.sep}`)) {
-            return false;
-        }
-
-        // Additional security: path should not contain null bytes
-        if (dbPath.includes('\0')) {
             return false;
         }
 

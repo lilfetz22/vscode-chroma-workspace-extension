@@ -187,22 +187,25 @@ describe('SettingsService', () => {
     });
 
     describe('isValidDatabasePath', () => {
-        test('should validate correct database paths', () => {
+        test('should validate correct relative database paths', () => {
             expect(settingsService.isValidDatabasePath('.chroma/chroma.db')).toBe(true);
             expect(settingsService.isValidDatabasePath('data/db.db')).toBe(true);
             expect(settingsService.isValidDatabasePath('custom.db')).toBe(true);
         });
 
-        test('should reject invalid database paths', () => {
+        test('should validate correct absolute database paths (shared database)', () => {
             // Unix absolute paths
-            expect(settingsService.isValidDatabasePath('/absolute/path.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('/home/user/shared/chroma.db')).toBe(true);
+            expect(settingsService.isValidDatabasePath('/absolute/path.db')).toBe(true);
             
             // Windows absolute paths (various formats)
-            expect(settingsService.isValidDatabasePath('C:\\path\\to\\file.db')).toBe(false);
-            expect(settingsService.isValidDatabasePath('C:/path/to/file.db')).toBe(false);
-            expect(settingsService.isValidDatabasePath('\\\\network\\share\\file.db')).toBe(false);
-            
-            // Path traversal attacks
+            expect(settingsService.isValidDatabasePath('C:\\Users\\User\\shared.db')).toBe(true);
+            expect(settingsService.isValidDatabasePath('C:/path/to/file.db')).toBe(true);
+            expect(settingsService.isValidDatabasePath('\\\\network\\share\\file.db')).toBe(true);
+        });
+
+        test('should reject invalid database paths', () => {
+            // Path traversal attacks (only applies to relative paths)
             expect(settingsService.isValidDatabasePath('../../../etc/passwd.db')).toBe(false);
             expect(settingsService.isValidDatabasePath('../../outside.db')).toBe(false);
             expect(settingsService.isValidDatabasePath('folder/../../outside.db')).toBe(false);
@@ -210,9 +213,12 @@ describe('SettingsService', () => {
             // Invalid extensions
             expect(settingsService.isValidDatabasePath('.chroma/chroma.txt')).toBe(false);
             expect(settingsService.isValidDatabasePath('no-extension')).toBe(false);
+            expect(settingsService.isValidDatabasePath('/absolute/path/no-ext')).toBe(false);
+            expect(settingsService.isValidDatabasePath('C:\\path\\file.txt')).toBe(false);
             
             // Null byte injection
             expect(settingsService.isValidDatabasePath('evil\0.db')).toBe(false);
+            expect(settingsService.isValidDatabasePath('/absolute/evil\0.db')).toBe(false);
         });
     });
 
@@ -243,12 +249,20 @@ describe('SettingsService', () => {
         });
 
         test('should fail validation with invalid database path', () => {
-            mockConfig['database.path'] = '/absolute/path.db';
+            mockConfig['database.path'] = '../../../escape/attack.db';  // Path traversal attack
             const result = settingsService.validateSettings();
             
             expect(result.valid).toBe(false);
             expect(result.errors.length).toBeGreaterThan(0);
             expect(result.errors[0]).toContain('Invalid database path');
+        });
+
+        test('should pass validation with absolute database path (shared database)', () => {
+            mockConfig['database.path'] = '/home/user/shared/chroma.db';
+            const result = settingsService.validateSettings();
+            
+            expect(result.valid).toBe(true);
+            expect(result.errors).toHaveLength(0);
         });
 
         test('should collect multiple validation errors', () => {
