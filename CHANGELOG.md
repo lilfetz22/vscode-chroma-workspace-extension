@@ -1,3 +1,12 @@
+## [2.0.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.2...v2.0.3) (2025-11-27)
+
+
+### Bug Fixes
+
+* **extension:** initialize database before creating providers ([e4f003f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e4f003feaeab8622256dbb86d657601003d2ae7f))
+* **migrations:** handle duplicate column errors for sql.js compatibility ([b278693](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b27869354ad0c65f178b2a9ba6f79471b0d958b1))
+* **migrations:** remove pragma calls incompatible with sql.js ([95b15aa](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/95b15aa656ca6cc969d40f7fb6f817e3256e44d4))
+
 ## [2.0.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.1...v2.0.2) (2025-11-27)
 
 
