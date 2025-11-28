@@ -29,6 +29,91 @@ async function pickTime(defaultTime: string = '00:00'): Promise<string | undefin
     return timeInput;
 }
 
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+async function pickDaysOfWeek(preselectedDays?: number[]): Promise<number[] | undefined> {
+    const items: vscode.QuickPickItem[] = DAY_NAMES.map((day, index) => ({
+        label: day,
+        picked: preselectedDays?.includes(index) || false
+    }));
+
+    const selected = await vscode.window.showQuickPick(items, {
+        canPickMany: true,
+        placeHolder: 'Select days of the week (at least one required)',
+        ignoreFocusOut: true
+    });
+
+    if (!selected || selected.length === 0) {
+        return undefined;
+    }
+
+    return selected.map(item => DAY_NAMES.indexOf(item.label));
+}
+
+interface RecurrenceResult {
+    value: string | null;
+    label: string;
+}
+
+async function pickRecurrence(currentRecurrence?: string | null): Promise<RecurrenceResult | undefined> {
+    // Parse current recurrence to preselect in UI
+    let currentType = currentRecurrence;
+    let currentDays: number[] | undefined;
+    
+    if (currentRecurrence?.startsWith('custom_weekly:')) {
+        currentType = 'custom_weekly';
+        currentDays = currentRecurrence.split(':')[1].split(',').map(Number);
+    }
+
+    const recurrenceOptions: vscode.QuickPickItem[] = [
+        { label: 'Once', description: 'No recurrence' },
+        { label: 'Daily', description: 'Every day' },
+        { label: 'Weekdays', description: 'Monday through Friday' },
+        { label: 'Weekly', description: 'Same day each week' },
+        { label: 'Bi-weekly', description: 'Every two weeks' },
+        { label: 'Custom Weekly', description: 'Choose specific days' },
+        { label: 'Monthly', description: 'Same date each month' },
+        { label: 'Yearly', description: 'Same date each year' }
+    ];
+
+    const selected = await vscode.window.showQuickPick(recurrenceOptions, {
+        placeHolder: 'Select recurrence pattern',
+        ignoreFocusOut: true
+    });
+
+    if (!selected) {
+        return undefined;
+    }
+
+    switch (selected.label) {
+        case 'Once':
+            return { value: null, label: 'Once' };
+        case 'Daily':
+            return { value: 'daily', label: 'Daily' };
+        case 'Weekdays':
+            return { value: 'weekdays', label: 'Weekdays' };
+        case 'Weekly':
+            return { value: 'weekly', label: 'Weekly' };
+        case 'Bi-weekly':
+            return { value: 'bi-weekly', label: 'Bi-weekly' };
+        case 'Monthly':
+            return { value: 'monthly', label: 'Monthly' };
+        case 'Yearly':
+            return { value: 'yearly', label: 'Yearly' };
+        case 'Custom Weekly': {
+            const days = await pickDaysOfWeek(currentDays);
+            if (!days || days.length === 0) {
+                vscode.window.showWarningMessage('Custom weekly requires at least one day selected.');
+                return undefined;
+            }
+            const dayNames = days.map(d => DAY_NAMES[d].substring(0, 3)).join(', ');
+            return { value: `custom_weekly:${days.join(',')}`, label: `Custom Weekly (${dayNames})` };
+        }
+        default:
+            return undefined;
+    }
+}
+
 async function pickDueDate(initialDate?: Date): Promise<string | undefined> {
     const qp = vscode.window.createQuickPick();
     qp.matchOnDescription = true;
@@ -138,18 +223,16 @@ export async function convertCardToTask(card: Card) {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
-        placeHolder: 'Select recurrence',
-    });
-
-    // Convert 'Once' to null, and lowercase other options
-    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
+    const recurrence = await pickRecurrence();
+    if (recurrence === undefined) {
+        return;
+    }
 
     try {
         const db = getDb();
         const id = uuidv4();
         prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
-          .run(id, title, card.content, dueDate, recurrenceValue, cardId);
+          .run(id, title, card.content, dueDate, recurrence.value, cardId);
         
         // Copy tags from the card to the task
         const cardTagIds = getTagsByCardId(cardId).map(t => t.id);
@@ -209,12 +292,10 @@ export async function addTask() {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
-        placeHolder: 'Select recurrence',
-    });
-
-    // Convert 'Once' to null, and lowercase other options
-    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
+    const recurrence = await pickRecurrence();
+    if (recurrence === undefined) {
+        return;
+    }
 
     // Check if there are multiple boards and prompt for board selection
     let boardId: string | null = null;
@@ -246,7 +327,7 @@ export async function addTask() {
         const db = getDb();
         const id = uuidv4();
         prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
-            .run(id, title, description || null, dueDate, recurrenceValue, boardId);
+            .run(id, title, description || null, dueDate, recurrence.value, boardId);
         
         // Prompt for tags
         const tagIds = await selectOrCreateTags();
@@ -288,12 +369,10 @@ export async function editTask(task: Task) {
         return;
     }
 
-    const recurrence = await vscode.window.showQuickPick(['Once', 'Daily', 'Weekly', 'Monthly', 'Yearly'], {
-        placeHolder: 'Select recurrence',
-    });
-
-    // Convert 'Once' to null, and lowercase other options
-    const recurrenceValue = recurrence === 'Once' ? null : recurrence?.toLowerCase() || null;
+    const recurrence = await pickRecurrence(task.recurrence);
+    if (recurrence === undefined) {
+        return;
+    }
 
     const description = await vscode.window.showInputBox({
         prompt: 'Optional: Edit content/context for this task',
@@ -330,7 +409,7 @@ export async function editTask(task: Task) {
     try {
         const db = getDb();
         prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
-          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrenceValue, boardId, task.id);
+          .run(title, description !== undefined ? description : task.description || null, dueDate, recurrence.value, boardId, task.id);
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);
