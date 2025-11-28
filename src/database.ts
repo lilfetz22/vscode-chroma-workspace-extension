@@ -325,46 +325,51 @@ export function getDb(): SqlJsDatabase {
 /**
  * If the existing database has an FTS5 virtual table named `search_index`,
  * replace it with a regular table so sql.js can operate without the fts5 module.
+ * Also recreates the triggers to use the regular table.
  */
 function ensureSearchIndexCompatible(): void {
     const database = getDb();
-    // Inspect sqlite_master to detect FTS5 virtual table
+    const logger = getLogger();
+    
+    // Check if search_index exists and if it's an FTS5 virtual table
     const result = database.exec(`
         SELECT name, type, sql FROM sqlite_master 
         WHERE name = 'search_index' LIMIT 1;
     `);
+    
     if (!result || result.length === 0 || result[0].values.length === 0) {
-        return; // No search_index present; migrations will create if needed
+        logger.info('No search_index table found, will be created by migrations');
+        return;
     }
+    
     const row = result[0].values[0];
     const sqlText = String(row[2] || '');
     const isVirtualFts5 = /VIRTUAL\s+TABLE/i.test(sqlText) && /fts5/i.test(sqlText);
+    
     if (!isVirtualFts5) {
-        return; // Already a regular table
+        logger.info('search_index is already a regular table, no conversion needed');
+        return;
     }
-
-    // Create a temporary backup of data from the virtual table
+    
+    logger.info('Found FTS5 virtual table, converting to regular table for sql.js compatibility');
+    
+    // Step 1: Drop ALL triggers that reference search_index (they use FTS5 syntax)
+    // These triggers insert into the FTS5 table which causes the error
     database.exec(`
-        CREATE TABLE IF NOT EXISTS search_index_backup (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT,
-            content TEXT,
-            entity_id TEXT NOT NULL,
-            entity_type TEXT NOT NULL
-        );
+        DROP TRIGGER IF EXISTS notes_after_insert;
+        DROP TRIGGER IF EXISTS notes_after_delete;
+        DROP TRIGGER IF EXISTS notes_after_update;
+        DROP TRIGGER IF EXISTS cards_after_insert;
+        DROP TRIGGER IF EXISTS cards_after_delete;
+        DROP TRIGGER IF EXISTS cards_after_update;
     `);
-    // Try to copy over common columns if they exist
-    try {
-        database.exec(`
-            INSERT INTO search_index_backup (title, content, entity_id, entity_type)
-            SELECT title, content, entity_id, entity_type FROM search_index;
-        `);
-    } catch {
-        // If columns differ, skip copy; we'll rebuild via triggers later
-    }
-
-    // Drop the FTS5 virtual table and recreate a compatible regular table
+    logger.info('Dropped FTS5-dependent triggers');
+    
+    // Step 2: Drop the FTS5 virtual table (we can't read from it in sql.js)
     database.exec(`DROP TABLE IF EXISTS search_index;`);
+    logger.info('Dropped FTS5 virtual table');
+    
+    // Step 3: Create the regular search_index table with indexes
     database.exec(`
         CREATE TABLE IF NOT EXISTS search_index (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -377,18 +382,78 @@ function ensureSearchIndexCompatible(): void {
         CREATE INDEX IF NOT EXISTS idx_search_content ON search_index(content);
         CREATE INDEX IF NOT EXISTS idx_search_entity ON search_index(entity_id, entity_type);
     `);
+    logger.info('Created regular search_index table');
+    
+    // Step 4: Recreate the triggers with regular table INSERT syntax
+    database.exec(`
+        -- Trigger to insert into search_index when a new note is created
+        CREATE TRIGGER IF NOT EXISTS notes_after_insert
+        AFTER INSERT ON notes
+        BEGIN
+            INSERT INTO search_index (title, content, entity_id, entity_type)
+            VALUES (new.title, new.content, new.id, 'note');
+        END;
 
-    // Restore any backed up rows
+        -- Trigger to insert into search_index when a new card is created
+        CREATE TRIGGER IF NOT EXISTS cards_after_insert
+        AFTER INSERT ON cards
+        BEGIN
+            INSERT INTO search_index (title, content, entity_id, entity_type)
+            VALUES (new.title, new.content, new.id, 'card');
+        END;
+
+        -- Trigger to delete from search_index when a note is deleted
+        CREATE TRIGGER IF NOT EXISTS notes_after_delete
+        AFTER DELETE ON notes
+        BEGIN
+            DELETE FROM search_index WHERE entity_id = old.id AND entity_type = 'note';
+        END;
+
+        -- Trigger to delete from search_index when a card is deleted
+        CREATE TRIGGER IF NOT EXISTS cards_after_delete
+        AFTER DELETE ON cards
+        BEGIN
+            DELETE FROM search_index WHERE entity_id = old.id AND entity_type = 'card';
+        END;
+
+        -- Trigger to update search_index when a note is updated
+        CREATE TRIGGER IF NOT EXISTS notes_after_update
+        AFTER UPDATE ON notes
+        BEGIN
+            UPDATE search_index
+            SET title = new.title, content = new.content
+            WHERE entity_id = new.id AND entity_type = 'note';
+        END;
+
+        -- Trigger to update search_index when a card is updated
+        CREATE TRIGGER IF NOT EXISTS cards_after_update
+        AFTER UPDATE ON cards
+        BEGIN
+            UPDATE search_index
+            SET title = new.title, content = new.content
+            WHERE entity_id = new.id AND entity_type = 'card';
+        END;
+    `);
+    logger.info('Recreated triggers for regular table');
+    
+    // Step 5: Repopulate search_index from existing notes and cards
     try {
         database.exec(`
             INSERT INTO search_index (title, content, entity_id, entity_type)
-            SELECT title, content, entity_id, entity_type FROM search_index_backup;
+            SELECT title, content, id, 'note' FROM notes;
         `);
-    } catch {
-        // No backup rows; triggers will repopulate going forward
+        database.exec(`
+            INSERT INTO search_index (title, content, entity_id, entity_type)
+            SELECT title, content, id, 'card' FROM cards;
+        `);
+        logger.info('Repopulated search_index from existing data');
+    } catch (e: any) {
+        logger.warn('Could not repopulate search_index, will be populated by triggers going forward', e);
     }
-    // Cleanup backup table
-    database.exec(`DROP TABLE IF EXISTS search_index_backup;`);
+    
+    // Save the database after conversion
+    saveDatabase();
+    logger.info('FTS5 to regular table conversion complete');
 }
 
 export function createTables(): void {
