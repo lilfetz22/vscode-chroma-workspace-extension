@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.3.0...v2.4.0) (2025-11-28)
+
+
+### Features
+
+* **database:** convert FTS5 virtual table to regular table for compatibility ([b8e8de7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b8e8de7f32f4236af75058a5fa674e4cfb45492a))
+
 # [2.3.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.2.0...v2.3.0) (2025-11-28)
 
 
