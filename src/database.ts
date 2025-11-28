@@ -208,6 +208,13 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
         // Run migrations automatically on initialization
         getLogger().info('Running database migrations');
         runMigrations();
+
+        // Ensure FTS5-dependent objects are compatible with sql.js
+        try {
+            ensureSearchIndexCompatible();
+        } catch (compatErr: any) {
+            getLogger().warn('Search index compatibility check failed', compatErr);
+        }
         
         getLogger().info('Database initialized successfully');
         return db;
@@ -313,6 +320,75 @@ export function getDb(): SqlJsDatabase {
     }
     getLogger().debug('getDb() returning existing database instance');
     return db;
+}
+
+/**
+ * If the existing database has an FTS5 virtual table named `search_index`,
+ * replace it with a regular table so sql.js can operate without the fts5 module.
+ */
+function ensureSearchIndexCompatible(): void {
+    const database = getDb();
+    // Inspect sqlite_master to detect FTS5 virtual table
+    const result = database.exec(`
+        SELECT name, type, sql FROM sqlite_master 
+        WHERE name = 'search_index' LIMIT 1;
+    `);
+    if (!result || result.length === 0 || result[0].values.length === 0) {
+        return; // No search_index present; migrations will create if needed
+    }
+    const row = result[0].values[0];
+    const sqlText = String(row[2] || '');
+    const isVirtualFts5 = /VIRTUAL\s+TABLE/i.test(sqlText) && /fts5/i.test(sqlText);
+    if (!isVirtualFts5) {
+        return; // Already a regular table
+    }
+
+    // Create a temporary backup of data from the virtual table
+    database.exec(`
+        CREATE TABLE IF NOT EXISTS search_index_backup (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT,
+            entity_id TEXT NOT NULL,
+            entity_type TEXT NOT NULL
+        );
+    `);
+    // Try to copy over common columns if they exist
+    try {
+        database.exec(`
+            INSERT INTO search_index_backup (title, content, entity_id, entity_type)
+            SELECT title, content, entity_id, entity_type FROM search_index;
+        `);
+    } catch {
+        // If columns differ, skip copy; we'll rebuild via triggers later
+    }
+
+    // Drop the FTS5 virtual table and recreate a compatible regular table
+    database.exec(`DROP TABLE IF EXISTS search_index;`);
+    database.exec(`
+        CREATE TABLE IF NOT EXISTS search_index (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT,
+            entity_id TEXT NOT NULL,
+            entity_type TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_search_title ON search_index(title);
+        CREATE INDEX IF NOT EXISTS idx_search_content ON search_index(content);
+        CREATE INDEX IF NOT EXISTS idx_search_entity ON search_index(entity_id, entity_type);
+    `);
+
+    // Restore any backed up rows
+    try {
+        database.exec(`
+            INSERT INTO search_index (title, content, entity_id, entity_type)
+            SELECT title, content, entity_id, entity_type FROM search_index_backup;
+        `);
+    } catch {
+        // No backup rows; triggers will repopulate going forward
+    }
+    // Cleanup backup table
+    database.exec(`DROP TABLE IF EXISTS search_index_backup;`);
 }
 
 export function createTables(): void {
