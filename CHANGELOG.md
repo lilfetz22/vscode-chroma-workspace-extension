@@ -1,3 +1,13 @@
+# [2.5.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.4.0...v2.5.0) (2025-11-28)
+
+
+### Features
+
+* **migration:** add support for scheduled_tasks in import/export functions ([19ded47](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/19ded4746916d196cc31110f2aec9773008f81f9))
+* **recurrence:** support weekdays, bi-weekly and custom weekly recurrence patterns ([e133b0a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e133b0a141a7968b7faa2d2bfb8ae9102a5c1fa8))
+* **tasks:** add Weekdays, Bi-weekly and Custom Weekly recurrence options + UI pickers ([75027f8](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/75027f8895de1ce968a3412fffb082b7f6778ddd))
+* **tasks:** show human-readable recurrence labels in task tooltip ([0e5c556](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/0e5c55615f5074cc59b97debc19a742a592f8d1e))
+
 # [2.4.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.3.0...v2.4.0) (2025-11-28)
 
 
