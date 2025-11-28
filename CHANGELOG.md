@@ -1,3 +1,15 @@
+# [2.2.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.1.0...v2.2.0) (2025-11-28)
+
+
+### Bug Fixes
+
+* **migration:** use prepare wrapper and improve import/export robustness ([20df887](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/20df88749337dfec322b749c785e52d4c3692f9b))
+
+
+### Features
+
+* **logging:** add DebugLogger output and SQL-level debug logs ([35be429](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/35be4293e36a304116a8d79f25bfb9cb6f840eeb))
+
 # [2.1.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.0.3...v2.1.0) (2025-11-27)
 
 
