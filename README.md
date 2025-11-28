@@ -204,8 +204,8 @@ Configure where your data is stored:
 ```
 
 - **`chroma.database.path`**: Relative path to SQLite database within workspace (default: `".chroma/chroma.db"`)
-  - Must be a relative path ending in `.db`
-  - Changes require extension reload
+  - Must be a path ending in `.db`. You can use a relative path (default) for per-workspace databases or an absolute path (e.g. `C:\\Users\\You\\shared-chroma.db` or `/home/you/chroma-shared.db`) to share a database across multiple workspaces.
+  - After changing this setting, reload the VS Code window (`Developer: Reload Window`) or restart VS Code for the new database location to take effect.
 
 ---
 
