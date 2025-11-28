@@ -1,9 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getDb, prepare } from '../database';
+import { getDb, prepare as defaultPrepare, Statement } from '../database';
 import { createLogger } from './Logger';
 
 const logger = createLogger('Migration');
+
+/**
+ * Get a prepare function that uses either the test database or the global database.
+ * The testDb (SqlJsWrapper) already has a .prepare() method with the same interface.
+ */
+function getPrepareFunction(testDb?: any): (sql: string) => Statement {
+    if (testDb && typeof testDb.prepare === 'function') {
+        return (sql: string) => testDb.prepare(sql);
+    }
+    return defaultPrepare;
+}
 
 /**
  * Supabase/Chroma Parse Notes data format
@@ -428,6 +439,9 @@ export async function importFromJson(
             throw new Error('Database not initialized');
         }
 
+        // Create a prepare function that uses the correct database
+        const prepare = getPrepareFunction(testDb);
+
         // Begin transaction (sql.js auto-commits, so this may not work, but won't hurt)
         logger.info('Starting database import');
         try {
@@ -741,6 +755,9 @@ export async function exportToJson(
         if (!db) {
             throw new Error('Database not initialized');
         }
+
+        // Create a prepare function that uses the correct database
+        const prepare = getPrepareFunction(testDb);
 
         const exportData: SupabaseExportData = {};
 
