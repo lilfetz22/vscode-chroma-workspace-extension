@@ -1,3 +1,11 @@
+# [2.3.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.2.0...v2.3.0) (2025-11-28)
+
+
+### Features
+
+* **database:** ensure FTS5 compatibility during database initialization ([88c6a08](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/88c6a08653925eb185107ce5cdec2b29e2a24f2e))
+* **migration:** enhance database preparation handling for import/export functions ([9c1f3cb](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/9c1f3cb544f3e41fc6185375905577950f4d46f1))
+
 # [2.2.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.1.0...v2.2.0) (2025-11-28)
 
 
