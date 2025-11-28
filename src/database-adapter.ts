@@ -1,6 +1,7 @@
 // Database adapter to support both better-sqlite3 (production) and sql.js (testing)
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import BetterSqlite3, { Database as BetterSqlite3Database } from 'better-sqlite3';
+import { getDebugLogger } from './logic/DebugLogger';
 
 // Common interface for both database implementations
 export interface DatabaseAdapter {
@@ -47,6 +48,17 @@ class SqlJsAdapter implements DatabaseAdapter {
     prepare(sql: string): StatementAdapter {
         return {
             run: (...params: any[]) => {
+                // Log for debugging
+                try {
+                    const debugLogger = getDebugLogger();
+                    debugLogger.log('[SqlJsAdapter] Running SQL:', sql);
+                    debugLogger.log('[SqlJsAdapter] With params:', JSON.stringify(params));
+                } catch (e) {
+                    // Fallback to console if debug logger not available
+                    console.log('[SqlJsAdapter] Running SQL:', sql);
+                    console.log('[SqlJsAdapter] With params:', JSON.stringify(params));
+                }
+                
                 this.db.run(sql, params);
                 const changes = this.db.getRowsModified();
                 // Get last insert rowid by querying

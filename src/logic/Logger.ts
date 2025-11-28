@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { getDebugLogger } from './DebugLogger';
 
 export enum LogLevel {
     DEBUG = 0,
@@ -74,6 +75,14 @@ export class Logger {
     public info(message: string, ...args: any[]): void {
         if (this.logLevel <= LogLevel.INFO) {
             this.log(LogLevel.INFO, message, ...args);
+            // Also write to debug log file
+            try {
+                const debugLogger = getDebugLogger();
+                const argsStr = args.length > 0 ? ` ${JSON.stringify(args)}` : '';
+                debugLogger.log(`[INFO] ${message}${argsStr}`);
+            } catch (e) {
+                // Silently fail if debug logger not available
+            }
         }
     }
 
@@ -83,6 +92,14 @@ export class Logger {
     public warn(message: string, ...args: any[]): void {
         if (this.logLevel <= LogLevel.WARN) {
             this.log(LogLevel.WARN, message, ...args);
+            // Also write to debug log file
+            try {
+                const debugLogger = getDebugLogger();
+                const argsStr = args.length > 0 ? ` ${JSON.stringify(args)}` : '';
+                debugLogger.log(`[WARN] ${message}${argsStr}`);
+            } catch (e) {
+                // Silently fail if debug logger not available
+            }
         }
     }
 
@@ -95,6 +112,14 @@ export class Logger {
                 ? `${message}: ${error.message}\n${error.stack}` 
                 : `${message}: ${JSON.stringify(error) || ''}`;
             this.log(LogLevel.ERROR, errorMessage, ...args);
+            // Also write to debug log file with full details
+            try {
+                const debugLogger = getDebugLogger();
+                const argsStr = args.length > 0 ? ` ${JSON.stringify(args)}` : '';
+                debugLogger.log(`[ERROR] ${errorMessage}${argsStr}`);
+            } catch (e) {
+                // Silently fail if debug logger not available
+            }
         }
     }
 

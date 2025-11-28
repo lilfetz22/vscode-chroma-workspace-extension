@@ -43,12 +43,32 @@ export interface Statement {
     all(...params: any[]): any[];
 }
 
+/**
+ * Create a prepared statement wrapper for sql.js
+ * This provides a better-sqlite3-compatible API
+ */
 export function prepare(sql: string): Statement {
     const database = getDb();
     return {
         run: (...params: any[]) => {
+            // Log for debugging
+            try {
+                const debugLogger = getDebugLogger();
+                debugLogger.log('[database.prepare.run] SQL:', sql);
+                debugLogger.log('[database.prepare.run] Params:', JSON.stringify(params));
+            } catch (e) {
+                console.log('[database.prepare.run] SQL:', sql);
+                console.log('[database.prepare.run] Params:', JSON.stringify(params));
+            }
+            
             // sql.js expects an array, our API accepts variadic args - convert
-            database.run(sql, params.length > 0 ? params : []);
+            try {
+                database.run(sql, params.length > 0 ? params : []);
+            } catch (err) {
+                getDebugLogger().log('[database.prepare.run] ERROR executing SQL:', err);
+                throw err;
+            }
+            
             const changes = database.getRowsModified();
             const result = database.exec('SELECT last_insert_rowid() as id');
             const lastInsertRowid = result.length > 0 && result[0].values.length > 0 
