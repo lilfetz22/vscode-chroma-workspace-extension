@@ -84,6 +84,25 @@ export interface SupabaseTask {
     updated_at: string;
 }
 
+/**
+ * Supabase scheduled_tasks format (different from local tasks table)
+ */
+export interface SupabaseScheduledTask {
+    id: string;
+    user_id?: string;
+    project_id?: string;
+    title: string;
+    summary: string | null;
+    target_column_id: string;
+    recurrence_type: string;
+    days_of_week: number[] | null;
+    next_occurrence_date: string;
+    created_at: string;
+    priority: number;
+    tag_ids: string[];
+    scheduled_timestamp: string | null;
+}
+
 export interface SupabaseExportData {
     notes?: SupabaseNote[];
     boards?: SupabaseBoard[];
@@ -92,6 +111,7 @@ export interface SupabaseExportData {
     tags?: SupabaseTag[];
     card_tags?: SupabaseCardTag[];
     tasks?: SupabaseTask[];
+    scheduled_tasks?: SupabaseScheduledTask[];
 }
 
 /**
@@ -109,6 +129,7 @@ export interface ValidationResult {
         tags: number;
         card_tags: number;
         tasks: number;
+        scheduled_tasks: number;
     };
 }
 
@@ -120,13 +141,24 @@ export type ProgressCallback = (message: string, percentage: number) => void;
 /**
  * Auto-detect array type based on properties
  */
-function detectArrayType(arr: any[]): 'boards' | 'columns' | 'cards' | 'notes' | 'tags' | 'tasks' | 'unknown' {
+function detectArrayType(arr: any[]): 'boards' | 'columns' | 'cards' | 'notes' | 'tags' | 'tasks' | 'scheduled_tasks' | 'unknown' {
     if (arr.length === 0) return 'unknown';
     
     const firstItem = arr[0];
     
+    // Scheduled Tasks (Supabase format): have target_column_id, next_occurrence_date, or recurrence_type
+    // Must check this BEFORE boards because they also have title and created_at
+    if (firstItem.target_column_id || firstItem.next_occurrence_date || firstItem.recurrence_type || firstItem.scheduled_timestamp) {
+        return 'scheduled_tasks';
+    }
+    
+    // Tasks (local format): have due_date
+    if (firstItem.due_date) {
+        return 'tasks';
+    }
+    
     // Boards: have title, created_at, and optionally user_id/project_id (but NOT board_id or column_id)
-    if (firstItem.title && firstItem.created_at && !firstItem.board_id && !firstItem.column_id && !firstItem.content && !firstItem.due_date) {
+    if (firstItem.title && firstItem.created_at && !firstItem.board_id && !firstItem.column_id && !firstItem.content) {
         return 'boards';
     }
     
@@ -148,11 +180,6 @@ function detectArrayType(arr: any[]): 'boards' | 'columns' | 'cards' | 'notes' |
     // Tags: have name and color
     if (firstItem.name && firstItem.color) {
         return 'tags';
-    }
-    
-    // Tasks: have due_date
-    if (firstItem.due_date) {
-        return 'tasks';
     }
     
     return 'unknown';
@@ -201,7 +228,8 @@ export function validateImportData(data: any): ValidationResult {
             cards: 0,
             tags: 0,
             card_tags: 0,
-            tasks: 0
+            tasks: 0,
+            scheduled_tasks: 0
         }
     };
 
@@ -382,6 +410,30 @@ export function validateImportData(data: any): ValidationResult {
         }
     }
 
+    // Validate scheduled_tasks (Supabase format)
+    if (data.scheduled_tasks) {
+        if (!Array.isArray(data.scheduled_tasks)) {
+            result.valid = false;
+            result.errors.push('Scheduled tasks must be an array');
+        } else {
+            result.stats.scheduled_tasks = data.scheduled_tasks.length;
+            data.scheduled_tasks.forEach((task: any, index: number) => {
+                if (!task.id || typeof task.id !== 'string') {
+                    result.errors.push(`Scheduled task ${index}: missing or invalid id`);
+                    result.valid = false;
+                }
+                if (!task.title || typeof task.title !== 'string') {
+                    result.errors.push(`Scheduled task ${index}: missing or invalid title`);
+                    result.valid = false;
+                }
+                if (!task.next_occurrence_date || typeof task.next_occurrence_date !== 'string') {
+                    result.errors.push(`Scheduled task ${index}: missing or invalid next_occurrence_date`);
+                    result.valid = false;
+                }
+            });
+        }
+    }
+
     logger.info('Validation complete', result);
     return result;
 }
@@ -415,7 +467,8 @@ export async function importFromJson(
             hasCards: !!data.cards,
             hasNotes: !!data.notes,
             hasTags: !!data.tags,
-            hasTasks: !!data.tasks
+            hasTasks: !!data.tasks,
+            hasScheduledTasks: !!data.scheduled_tasks
         });
 
         // Validate data
@@ -696,6 +749,46 @@ export async function importFromJson(
                 logger.info(`Imported ${data.tasks.length} tasks`);
             }
 
+            // Import scheduled_tasks (Supabase format -> local tasks table)
+            if (data.scheduled_tasks && data.scheduled_tasks.length > 0) {
+                if (progressCallback) {
+                    progressCallback(`Importing ${data.scheduled_tasks.length} scheduled tasks...`, progressStep);
+                }
+                progressStep += stepIncrement;
+
+                const insertTask = prepare(`
+                    INSERT INTO tasks (
+                        id, title, description, due_date, recurrence, status, 
+                        card_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `);
+
+                for (const task of data.scheduled_tasks) {
+                    // Map Supabase scheduled_tasks format to local tasks format
+                    // - summary -> description
+                    // - next_occurrence_date -> due_date
+                    // - recurrence_type -> recurrence (with days_of_week if applicable)
+                    let recurrence = task.recurrence_type || null;
+                    if (recurrence && task.days_of_week && task.days_of_week.length > 0) {
+                        // Append days of week info for custom_weekly patterns
+                        recurrence = `${recurrence}:${task.days_of_week.join(',')}`;
+                    }
+
+                    insertTask.run(
+                        task.id,
+                        task.title,
+                        task.summary || null,  // summary -> description
+                        task.next_occurrence_date,  // next_occurrence_date -> due_date
+                        recurrence,
+                        'pending',  // New tasks are always pending
+                        null,  // No card_id for scheduled tasks
+                        task.created_at || new Date().toISOString(),
+                        new Date().toISOString()  // updated_at
+                    );
+                }
+                logger.info(`Imported ${data.scheduled_tasks.length} scheduled tasks`);
+            }
+
             // Commit transaction
             try {
                 db.exec('COMMIT');
@@ -711,7 +804,7 @@ export async function importFromJson(
 
             return {
                 success: true,
-                message: `Successfully imported ${validation.stats.notes} notes, ${validation.stats.boards} boards, ${validation.stats.columns} columns, ${validation.stats.cards} cards, ${validation.stats.tags} tags, and ${validation.stats.tasks} tasks`
+                message: `Successfully imported ${validation.stats.notes} notes, ${validation.stats.boards} boards, ${validation.stats.columns} columns, ${validation.stats.cards} cards, ${validation.stats.tags} tags, ${validation.stats.tasks} tasks, and ${validation.stats.scheduled_tasks} scheduled tasks`
             };
 
         } catch (error) {
