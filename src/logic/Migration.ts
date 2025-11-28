@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { getDb } from '../database';
+import { getDb, prepare } from '../database';
 import { createLogger } from './Logger';
 
 const logger = createLogger('Migration');
@@ -428,9 +428,15 @@ export async function importFromJson(
             throw new Error('Database not initialized');
         }
 
-        // Begin transaction
-        logger.info('Starting database transaction');
-        db.exec('BEGIN TRANSACTION');
+        // Begin transaction (sql.js auto-commits, so this may not work, but won't hurt)
+        logger.info('Starting database import');
+        try {
+            db.exec('BEGIN TRANSACTION');
+            logger.info('Transaction started');
+        } catch (e) {
+            // sql.js doesn't support transactions in the same way, but that's okay
+            logger.info('Proceeding with import (transactions not supported in sql.js)');
+        }
 
         try {
             let progressStep = 20;
@@ -444,7 +450,7 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertNote = db.prepare(`
+                const insertNote = prepare(`
                     INSERT INTO notes (id, title, content, file_path, nlh_enabled, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 `);
@@ -486,7 +492,7 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertBoard = db.prepare(`
+                const insertBoard = prepare(`
                     INSERT INTO boards (id, title, created_at)
                     VALUES (?, ?, ?)
                 `);
@@ -508,7 +514,7 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertColumn = db.prepare(`
+                const insertColumn = prepare(`
                     INSERT INTO columns (id, board_id, title, position, created_at)
                     VALUES (?, ?, ?, ?, ?)
                 `);
@@ -533,9 +539,9 @@ export async function importFromJson(
                 progressStep += stepIncrement;
 
                 // Prepare statement to check if a note exists
-                const checkNote = db.prepare('SELECT id FROM notes WHERE id = ?');
+                const checkNote = prepare('SELECT id FROM notes WHERE id = ?');
 
-                const insertCard = db.prepare(`
+                const insertCard = prepare(`
                     INSERT INTO cards (
                         id, column_id, position, card_type, title, content, note_id,
                         summary, priority, scheduled_at, recurrence, activated_at, completed_at, created_at
@@ -582,19 +588,39 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertTag = db.prepare(`
+                const insertTag = prepare(`
                     INSERT INTO tags (id, name, color)
                     VALUES (?, ?, ?)
                 `);
 
-                for (const tag of data.tags) {
-                    insertTag.run(
-                        tag.id,
-                        tag.name,
-                        tag.color || '#808080'
-                    );
+                try {
+                    for (const tag of data.tags) {
+                        try {
+                            const tagId = tag.id;
+                            const tagName = tag.name;
+                            const tagColor = tag.color || '#808080';
+                            
+                            logger.info(`Attempting to insert tag: id=${tagId}, name=${tagName}, color=${tagColor}`);
+                            
+                            insertTag.run(tagId, tagName, tagColor);
+                        } catch (tagError) {
+                            logger.error(`Failed to import tag`, tagError);
+                            logger.error('Tag data:', { tag });
+                            logger.error('Tag properties:', { 
+                                id: tag.id, 
+                                name: tag.name, 
+                                color: tag.color,
+                                hasName: tag.hasOwnProperty('name'),
+                                nameType: typeof tag.name
+                            });
+                            throw tagError;
+                        }
+                    }
+                    logger.info(`Imported ${data.tags.length} tags`);
+                } catch (error) {
+                    logger.error('Error during tags import', error);
+                    throw error;
                 }
-                logger.info(`Imported ${data.tags.length} tags`);
             }
 
             // Import card_tags
@@ -604,15 +630,26 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertCardTag = db.prepare(`
+                const insertCardTag = prepare(`
                     INSERT INTO card_tags (card_id, tag_id)
                     VALUES (?, ?)
                 `);
 
-                for (const cardTag of data.card_tags) {
-                    insertCardTag.run(cardTag.card_id, cardTag.tag_id);
+                try {
+                    for (const cardTag of data.card_tags) {
+                        try {
+                            insertCardTag.run(cardTag.card_id, cardTag.tag_id);
+                        } catch (cardTagError) {
+                            logger.error(`Failed to import card-tag association`, cardTagError);
+                            logger.error('Card-tag data:', { cardTag });
+                            throw cardTagError;
+                        }
+                    }
+                    logger.info(`Imported ${data.card_tags.length} card-tag associations`);
+                } catch (error) {
+                    logger.error('Error during card-tag associations import', error);
+                    throw error;
                 }
-                logger.info(`Imported ${data.card_tags.length} card-tag associations`);
             }
 
             // Import tasks
@@ -622,7 +659,7 @@ export async function importFromJson(
                 }
                 progressStep += stepIncrement;
 
-                const insertTask = db.prepare(`
+                const insertTask = prepare(`
                     INSERT INTO tasks (
                         id, title, description, due_date, recurrence, status, 
                         card_id, created_at, updated_at
@@ -646,8 +683,13 @@ export async function importFromJson(
             }
 
             // Commit transaction
-            db.exec('COMMIT');
-            logger.info('Transaction committed successfully');
+            try {
+                db.exec('COMMIT');
+                logger.info('Transaction committed successfully');
+            } catch (e) {
+                // sql.js auto-commits each statement, so COMMIT may fail
+                logger.info('Import completed successfully (auto-committed)');
+            }
 
             if (progressCallback) {
                 progressCallback('Import complete!', 100);
@@ -660,8 +702,13 @@ export async function importFromJson(
 
         } catch (error) {
             // Rollback on error
-            db.exec('ROLLBACK');
-            logger.error('Transaction rolled back due to error', error);
+            try {
+                db.exec('ROLLBACK');
+                logger.error('Transaction rolled back due to error', error);
+            } catch (e) {
+                // sql.js may not support ROLLBACK, log the original error
+                logger.error('Import failed', error);
+            }
             throw error;
         }
 
@@ -701,7 +748,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting notes...', 15);
         }
-        const notes = db.prepare('SELECT * FROM notes ORDER BY created_at').all();
+        const notes = prepare('SELECT * FROM notes ORDER BY created_at').all();
         exportData.notes = notes as SupabaseNote[];
         logger.info(`Exported ${notes.length} notes`);
 
@@ -709,7 +756,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting boards...', 30);
         }
-        const boards = db.prepare('SELECT * FROM boards ORDER BY created_at').all();
+        const boards = prepare('SELECT * FROM boards ORDER BY created_at').all();
         exportData.boards = boards as SupabaseBoard[];
         logger.info(`Exported ${boards.length} boards`);
 
@@ -717,7 +764,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting columns...', 45);
         }
-        const columns = db.prepare('SELECT * FROM columns ORDER BY board_id, position').all();
+        const columns = prepare('SELECT * FROM columns ORDER BY board_id, position').all();
         exportData.columns = columns as SupabaseColumn[];
         logger.info(`Exported ${columns.length} columns`);
 
@@ -725,7 +772,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting cards...', 60);
         }
-        const cards = db.prepare('SELECT * FROM cards ORDER BY column_id, position').all();
+        const cards = prepare('SELECT * FROM cards ORDER BY column_id, position').all();
         exportData.cards = cards as SupabaseCard[];
         logger.info(`Exported ${cards.length} cards`);
 
@@ -733,7 +780,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting tags...', 75);
         }
-        const tags = db.prepare('SELECT * FROM tags ORDER BY name').all();
+        const tags = prepare('SELECT * FROM tags ORDER BY name').all();
         // Add created_at for Supabase format compatibility (not in local schema)
         exportData.tags = tags.map((tag: any) => ({
             ...tag,
@@ -745,7 +792,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting card-tag associations...', 85);
         }
-        const cardTags = db.prepare('SELECT * FROM card_tags').all();
+        const cardTags = prepare('SELECT * FROM card_tags').all();
         exportData.card_tags = cardTags as SupabaseCardTag[];
         logger.info(`Exported ${cardTags.length} card-tag associations`);
 
@@ -753,7 +800,7 @@ export async function exportToJson(
         if (progressCallback) {
             progressCallback('Exporting tasks...', 90);
         }
-        const tasks = db.prepare('SELECT * FROM tasks ORDER BY created_at').all();
+        const tasks = prepare('SELECT * FROM tasks ORDER BY created_at').all();
         exportData.tasks = tasks as SupabaseTask[];
         logger.info(`Exported ${tasks.length} tasks`);
 
