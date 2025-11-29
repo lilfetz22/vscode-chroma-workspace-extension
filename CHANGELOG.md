@@ -1,3 +1,10 @@
+# [2.7.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.6.0...v2.7.0) (2025-11-29)
+
+
+### Features
+
+* **tasks:** add vacation mode to pause scheduled task-to-card conversion ([f72c856](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f72c856f7fa8e9d5c4a7fb03e0416a982196bf08))
+
 # [2.6.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.5.0...v2.6.0) (2025-11-29)
 
 
