@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, getTagsByCardId, getAllBoards } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 
@@ -410,6 +410,20 @@ export async function editTask(task: Task) {
         const db = getDb();
         prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
           .run(title, description !== undefined ? description : task.description || null, dueDate, recurrence.value, boardId, task.id);
+        // Integrated tag editing flow
+        const existingTags = getTagsByTaskId(task.id);
+        const existingTagIds = existingTags.map(t => t.id);
+        const selectedTagIds = await selectOrCreateTags();
+        if (selectedTagIds !== undefined) {
+            const toAdd = selectedTagIds.filter(id => !existingTagIds.includes(id));
+            const toRemove = existingTagIds.filter(id => !selectedTagIds.includes(id));
+            for (const tagId of toAdd) {
+                try { addTagToTask(task.id, tagId); } catch (err: any) { console.error(`Failed to add tag ${tagId} to task ${task.id}:`, err); }
+            }
+            for (const tagId of toRemove) {
+                try { removeTagFromTask(task.id, tagId); } catch (err: any) { console.error(`Failed to remove tag ${tagId} from task ${task.id}:`, err); }
+            }
+        }
         vscode.window.showInformationMessage('Task updated.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);
