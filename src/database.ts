@@ -131,6 +131,13 @@ export function getDatabasePath(): string {
     return customDbPath || '.chroma/chroma.db';
 }
 
+/**
+ * Get the full resolved database file path (only available after initDatabase)
+ */
+export function getDatabaseFilePath(): string | undefined {
+    return dbFilePath;
+}
+
 export async function initDatabase(memory: boolean = false, workspaceRoot?: string): Promise<SqlJsDatabase> {
     try {
         const caller = new Error().stack?.split('\n')[2]?.trim();
