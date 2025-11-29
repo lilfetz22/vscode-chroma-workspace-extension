@@ -262,14 +262,6 @@
         "title": "Delete Tag"
       },
       {
-        "command": "chroma.assignTag",
-        "title": "Assign Tag to Card"
-      },
-      {
-        "command": "chroma.removeTag",
-        "title": "Remove Tag from Card"
-      },
-      {
         "command": "chroma.exportAccomplishments",
         "title": "Export Accomplishments"
       },
@@ -347,16 +339,6 @@
         },
         {
           "command": "chroma.moveCard",
-          "when": "view == kanban && viewItem == card",
-          "group": "inline"
-        },
-        {
-          "command": "chroma.assignTag",
-          "when": "view == kanban && viewItem == card",
-          "group": "inline"
-        },
-        {
-          "command": "chroma.removeTag",
           "when": "view == kanban && viewItem == card",
           "group": "inline"
         },
