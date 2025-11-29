@@ -41,10 +41,10 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally } = require('../out/src/database');
+const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath } = require('../out/src/database');
 const { search } = require('../out/src/logic/search');
 const { getSettingsService } = require('../out/src/logic/SettingsService');
-const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
+const { initDebugLogger, getDebugLogger, closeDebugLogger } = require('../out/src/logic/DebugLogger');
 
 
 exports.activate = async function activate(context) {
@@ -68,6 +68,17 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Initializing database with workspace root');
       await initDatabase(false, workspaceRoot);
       getDebugLogger().log('Database initialized successfully');
+      
+      // Reinitialize debug logger with database directory
+      const dbFilePath = getDatabaseFilePath();
+      if (dbFilePath) {
+        const dbDir = paths.dirname(dbFilePath);
+        closeDebugLogger();
+        initDebugLogger(dbDir);
+        getDebugLogger().log('=== Debug Logger Reinitialized with Database Directory ===');
+        getDebugLogger().log('Database file path:', dbFilePath);
+        getDebugLogger().log('Log directory:', dbDir);
+      }
     }
   } catch (e) {
     getDebugLogger().log('ERROR: Database initialization failed');
@@ -211,16 +222,6 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.deleteTag', (tag) => {
         deleteTag(tag).then(() => {
             tagsProvider.refresh();
-            kanbanProvider.refresh();
-        });
-    }),
-    vscode.commands.registerCommand('chroma.assignTag', (card) => {
-        assignTag(card).then(() => {
-            kanbanProvider.refresh();
-        });
-    }),
-    vscode.commands.registerCommand('chroma.removeTag', (card) => {
-        removeTag(card).then(() => {
             kanbanProvider.refresh();
         });
     }),
