@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { getAllTags } from '../database';
 import { Tag } from '../models/Tag';
 import { hexToName } from '../utils/colors';
+import { ensureSingleColorIcon } from '../utils/tagIcons';
 
 export class TagsProvider implements vscode.TreeDataProvider<Tag> {
     private _onDidChangeTreeData: vscode.EventEmitter<Tag | undefined | null | void> = new vscode.EventEmitter<Tag | undefined | null | void>();
@@ -17,6 +18,10 @@ export class TagsProvider implements vscode.TreeDataProvider<Tag> {
         treeItem.id = element.id;
         const name = hexToName(element.color);
         treeItem.tooltip = name ? `Color: ${name}` : `Color: ${element.color}`;
+        // Assign colored icon
+        try {
+            treeItem.iconPath = ensureSingleColorIcon(element.color);
+        } catch { /* ignore icon errors */ }
         return treeItem;
     }
 
