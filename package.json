@@ -100,6 +100,11 @@
           "default": true,
           "description": "Show task count in the status bar"
         },
+        "chroma.tasks.vacationMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable vacation mode to pause scheduled task-to-card conversion. Tasks will not be converted to cards until vacation mode is disabled."
+        },
         "chroma.export.defaultDateRangeMonths": {
           "type": "number",
           "default": 6,

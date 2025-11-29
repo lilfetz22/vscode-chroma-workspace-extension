@@ -47,6 +47,20 @@ async function addCard(column) {
 }
 
 async function editCard(card) {
+    // Check if vacation mode is enabled and warn user
+    const settings = getSettingsService().getTaskSettings();
+    if (settings.vacationMode) {
+        const proceed = await vscode.window.showWarningMessage(
+            'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to edit this card?',
+            { modal: true },
+            'Yes, Edit Card',
+            'Cancel'
+        );
+        if (proceed !== 'Yes, Edit Card') {
+            return;
+        }
+    }
+
     // Fetch current card to prefill content if available
     let current;
     try {
@@ -126,6 +140,20 @@ async function deleteCard(card) {
 }
 
 async function moveCard(card) {
+    // Check if vacation mode is enabled and warn user
+    const settings = getSettingsService().getTaskSettings();
+    if (settings.vacationMode) {
+        const proceed = await vscode.window.showWarningMessage(
+            'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to move this card?',
+            { modal: true },
+            'Yes, Move Card',
+            'Cancel'
+        );
+        if (proceed !== 'Yes, Move Card') {
+            return;
+        }
+    }
+
     const columns = getColumnsByBoardId(card.boardId);
     const columnNames = columns.map(column => column.title);
     const selectedColumnName = await vscode.window.showQuickPick(columnNames, { placeHolder: 'Select a column to move the card to' });

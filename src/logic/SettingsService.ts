@@ -20,6 +20,7 @@ export interface ChromaSettings {
         enableNotifications: boolean;
         notificationFrequency: 'once' | 'hourly' | 'daily';
         showInStatusBar: boolean;
+        vacationMode: boolean;
     };
     kanban: {
         taskCreationColumn: string;
@@ -117,7 +118,8 @@ export class SettingsService {
             tasks: {
                 enableNotifications: config.get<boolean>('tasks.enableNotifications', true),
                 notificationFrequency: config.get<'once' | 'hourly' | 'daily'>('tasks.notificationFrequency', 'once'),
-                showInStatusBar: config.get<boolean>('tasks.showInStatusBar', true)
+                showInStatusBar: config.get<boolean>('tasks.showInStatusBar', true),
+                vacationMode: config.get<boolean>('tasks.vacationMode', false)
             },
             kanban: {
                 taskCreationColumn: config.get<string>('kanban.taskCreationColumn', 'To Do'),
@@ -197,6 +199,7 @@ export class SettingsService {
             'tasks.enableNotifications',
             'tasks.notificationFrequency',
             'tasks.showInStatusBar',
+            'tasks.vacationMode',
             'kanban.taskCreationColumn',
             'kanban.completionColumn',
             'export.defaultDateRangeMonths',

@@ -121,6 +121,20 @@ export class TaskScheduler {
     let dueTodayCount = 0;
     let cardsCreated = false;
 
+    // Check if vacation mode is enabled
+    const settings = getSettingsService().getTaskSettings();
+    if (settings.vacationMode) {
+      // In vacation mode: count due tasks but don't create cards
+      for (const task of tasks) {
+        const dueDate = new Date(task.dueDate);
+        if (this.isDueToday(dueDate)) {
+          dueTodayCount++;
+        }
+      }
+      this.updateTaskCount(dueTodayCount);
+      return; // Exit early - no card creation in vacation mode
+    }
+
     for (const task of tasks) {
       let dueDate = new Date(task.dueDate);
       if (dueDate <= now) {

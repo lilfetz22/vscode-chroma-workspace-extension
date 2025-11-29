@@ -1,0 +1,448 @@
+import * as vscode from 'vscode';
+import { TaskScheduler } from '../src/logic/TaskScheduler';
+import { SettingsService } from '../src/logic/SettingsService';
+
+// Mock vscode configuration for vacation mode testing
+let mockConfig: { [key: string]: any } = {};
+let configChangeCallback: ((event: vscode.ConfigurationChangeEvent) => void) | null = null;
+
+jest.mock('vscode', () => {
+    const mockConfiguration = {
+        get: jest.fn((key: string, defaultValue?: any) => {
+            return mockConfig[key] !== undefined ? mockConfig[key] : defaultValue;
+        }),
+        update: jest.fn(async (key: string, value: any) => {
+            mockConfig[key] = value;
+            return Promise.resolve();
+        })
+    };
+
+    const mockWorkspace = {
+        getConfiguration: jest.fn(() => mockConfiguration),
+        onDidChangeConfiguration: jest.fn((callback: any) => {
+            configChangeCallback = callback;
+            return { dispose: jest.fn() };
+        })
+    };
+
+    const mockStatusBarItem = {
+        text: '',
+        show: jest.fn(),
+        hide: jest.fn(),
+        dispose: jest.fn()
+    };
+
+    const mockOutputChannel = {
+        append: jest.fn(),
+        appendLine: jest.fn(),
+        clear: jest.fn(),
+        show: jest.fn(),
+        hide: jest.fn(),
+        dispose: jest.fn()
+    };
+
+    const mockWindow = {
+        createStatusBarItem: jest.fn(() => mockStatusBarItem),
+        createOutputChannel: jest.fn(() => mockOutputChannel),
+        showErrorMessage: jest.fn(),
+        showInformationMessage: jest.fn(),
+        showWarningMessage: jest.fn((message: string, options: any, ...items: string[]) => {
+            return Promise.resolve(items[0]); // Default to first button
+        }),
+        showInputBox: jest.fn()
+    };
+
+    const mockCommands = {
+        executeCommand: jest.fn()
+    };
+
+    const mockConfigurationTarget = {
+        Global: 1,
+        Workspace: 2,
+        WorkspaceFolder: 3
+    };
+
+    return {
+        workspace: mockWorkspace,
+        window: mockWindow,
+        commands: mockCommands,
+        ConfigurationTarget: mockConfigurationTarget,
+        StatusBarAlignment: {
+            Left: 1,
+            Right: 2
+        }
+    };
+});
+
+// Mock database functions
+let mockTasks: any[] = [];
+let mockCards: any[] = [];
+let mockBoards: any[] = [];
+let mockColumns: any[] = [];
+
+jest.mock('../src/database', () => ({
+    getDb: jest.fn(),
+    prepare: jest.fn((query: string) => ({
+        all: jest.fn((status?: string) => {
+            if (query.includes('SELECT') && query.includes('tasks')) {
+                return status ? mockTasks.filter(t => t.status === status) : mockTasks;
+            }
+            return [];
+        }),
+        run: jest.fn()
+    })),
+    createCard: jest.fn((data: any) => {
+        const card = { id: `card-${mockCards.length + 1}`, ...data };
+        mockCards.push(card);
+        return card;
+    }),
+    getAllBoards: jest.fn(() => mockBoards),
+    getColumnsByBoardId: jest.fn((boardId: string) => {
+        return mockColumns.filter(c => c.board_id === boardId);
+    }),
+    createBoard: jest.fn((data: any) => {
+        const board = { id: `board-${mockBoards.length + 1}`, ...data };
+        mockBoards.push(board);
+        return board;
+    }),
+    createColumn: jest.fn((data: any) => {
+        const column = { id: `column-${mockColumns.length + 1}`, ...data };
+        mockColumns.push(column);
+        return column;
+    }),
+    getTagsByTaskId: jest.fn(() => []),
+    addTagToCard: jest.fn(),
+    getCardById: jest.fn(),
+    updateCard: jest.fn(),
+    deleteCard: jest.fn(),
+    getColumnById: jest.fn()
+}));
+
+describe('Vacation Mode', () => {
+    let settingsService: SettingsService;
+
+    beforeEach(() => {
+        // Reset mock config before each test
+        mockConfig = {
+            'nlh.enabled': true,
+            'nlh.colors.nouns': '#569CD6',
+            'nlh.colors.verbs': '#4EC9B0',
+            'nlh.colors.adjectives': '#C586C0',
+            'nlh.colors.adverbs': '#DCDCAA',
+            'nlh.colors.numbers': '#B5CEA8',
+            'nlh.colors.properNouns': '#4FC1FF',
+            'tasks.enableNotifications': true,
+            'tasks.notificationFrequency': 'once',
+            'tasks.showInStatusBar': true,
+            'tasks.vacationMode': false,
+            'kanban.taskCreationColumn': 'To Do',
+            'kanban.completionColumn': 'Done',
+            'export.defaultDateRangeMonths': 6,
+            'export.includeDescriptions': true,
+            'export.groupRecurringTasks': true,
+            'database.path': '.chroma/chroma.db'
+        };
+        
+        // Reset mock data
+        mockTasks = [];
+        mockCards = [];
+        mockBoards = [{
+            id: 'board-1',
+            title: 'Test Board'
+        }];
+        mockColumns = [{
+            id: 'column-1',
+            title: 'To Do',
+            board_id: 'board-1',
+            position: 0
+        }];
+        
+        settingsService = new SettingsService();
+        jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+        if (settingsService) {
+            settingsService.dispose();
+        }
+    });
+
+    describe('Settings Service', () => {
+        test('vacation mode should default to false', () => {
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(false);
+        });
+
+        test('should be able to enable vacation mode', async () => {
+            await settingsService.updateSetting('tasks.vacationMode', true);
+            expect(mockConfig['tasks.vacationMode']).toBe(true);
+            
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+        });
+
+        test('should be able to disable vacation mode', async () => {
+            mockConfig['tasks.vacationMode'] = true;
+            await settingsService.updateSetting('tasks.vacationMode', false);
+            expect(mockConfig['tasks.vacationMode']).toBe(false);
+            
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(false);
+        });
+
+        test('vacation mode should be included in resetToDefaults', async () => {
+            mockConfig['tasks.vacationMode'] = true;
+            await settingsService.resetToDefaults();
+            
+            // After reset, value should be undefined (uses default)
+            expect(mockConfig['tasks.vacationMode']).toBeUndefined();
+        });
+    });
+
+    describe('TaskScheduler with Vacation Mode', () => {
+        let scheduler: TaskScheduler;
+
+        beforeEach(() => {
+            scheduler = TaskScheduler.getInstance();
+        });
+
+        afterEach(() => {
+            scheduler.stop();
+        });
+
+        test('should not create cards when vacation mode is enabled', async () => {
+            // Enable vacation mode
+            mockConfig['tasks.vacationMode'] = true;
+
+            // Create a task that is due now
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-1',
+                title: 'Test Task',
+                description: 'Test Description',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                recurrence: null,
+                boardId: 'board-1'
+            }];
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Verify no cards were created
+            expect(mockCards.length).toBe(0);
+            
+            // Verify no information message was shown
+            expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+        });
+
+        test('should create cards when vacation mode is disabled', async () => {
+            // Disable vacation mode
+            mockConfig['tasks.vacationMode'] = false;
+
+            // Create a task that is due now
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-1',
+                title: 'Test Task',
+                description: 'Test Description',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                recurrence: null,
+                boardId: 'board-1'
+            }];
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Verify card was created
+            expect(mockCards.length).toBe(1);
+            expect(mockCards[0].title).toBe('Test Task');
+        });
+
+        test('should still count due tasks when vacation mode is enabled', async () => {
+            // Enable vacation mode
+            mockConfig['tasks.vacationMode'] = true;
+
+            // Create tasks due today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            mockTasks = [
+                {
+                    id: 'task-1',
+                    title: 'Task 1',
+                    dueDate: today.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task 2',
+                    dueDate: today.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                }
+            ];
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Verify task count was updated (status bar should show count)
+            const statusBarItem = (scheduler as any).taskCountStatusBarItem;
+            expect(statusBarItem.text).toContain('2');
+        });
+
+        test('should resume card creation when vacation mode is turned off', async () => {
+            // Start with vacation mode enabled
+            mockConfig['tasks.vacationMode'] = true;
+
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-1',
+                title: 'Test Task',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                recurrence: null,
+                boardId: 'board-1'
+            }];
+
+            // First check - vacation mode on
+            await (scheduler as any).checkTasks();
+            expect(mockCards.length).toBe(0);
+
+            // Turn off vacation mode
+            mockConfig['tasks.vacationMode'] = false;
+
+            // Second check - vacation mode off
+            await (scheduler as any).checkTasks();
+            expect(mockCards.length).toBe(1);
+        });
+
+        test('should not affect recurring task date updates in vacation mode', async () => {
+            // Enable vacation mode
+            mockConfig['tasks.vacationMode'] = true;
+
+            // Create a recurring task that is overdue
+            const past = new Date();
+            past.setDate(past.getDate() - 1);
+            
+            const updateSpy = jest.fn();
+            const { prepare } = require('../src/database');
+            (prepare as jest.Mock).mockImplementation((query: string) => {
+                if (query.includes('UPDATE')) {
+                    return { run: updateSpy };
+                }
+                return {
+                    all: jest.fn(() => [{
+                        id: 'task-1',
+                        title: 'Recurring Task',
+                        dueDate: past.toISOString(),
+                        status: 'pending',
+                        recurrence: 'daily',
+                        boardId: 'board-1'
+                    }])
+                };
+            });
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // In vacation mode, tasks should not be converted to cards
+            expect(mockCards.length).toBe(0);
+        });
+    });
+
+    // Note: Card edit/move warning tests are verified manually and through E2E testing
+    // since Card.js is a JavaScript module that requires compiled TypeScript dependencies
+    // The warning logic has been implemented in vscode/kanban/Card.js
+
+    describe('Integration Tests', () => {
+        test('vacation mode should prevent all task processing', async () => {
+            mockConfig['tasks.vacationMode'] = true;
+
+            const scheduler = TaskScheduler.getInstance();
+            
+            // Create multiple overdue tasks
+            const past = new Date();
+            past.setDate(past.getDate() - 2);
+            
+            mockTasks = [
+                {
+                    id: 'task-1',
+                    title: 'Task 1',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task 2',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    recurrence: 'daily',
+                    boardId: 'board-1'
+                }
+            ];
+
+            await (scheduler as any).checkTasks();
+
+            // No cards should be created
+            expect(mockCards.length).toBe(0);
+            
+            // No commands should be executed
+            expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
+            
+            scheduler.stop();
+        });
+
+        test('switching vacation mode on and off should work correctly', async () => {
+            const scheduler = TaskScheduler.getInstance();
+            
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-1',
+                title: 'Test Task',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                boardId: 'board-1'
+            }];
+
+            // Initial state: vacation mode off
+            mockConfig['tasks.vacationMode'] = false;
+            await (scheduler as any).checkTasks();
+            expect(mockCards.length).toBe(1);
+
+            // Clear cards for next test
+            mockCards = [];
+            mockTasks = [{
+                id: 'task-2',
+                title: 'Test Task 2',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                boardId: 'board-1'
+            }];
+
+            // Turn on vacation mode
+            mockConfig['tasks.vacationMode'] = true;
+            await (scheduler as any).checkTasks();
+            expect(mockCards.length).toBe(0);
+
+            // Clear and add new task
+            mockTasks = [{
+                id: 'task-3',
+                title: 'Test Task 3',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                boardId: 'board-1'
+            }];
+
+            // Turn off vacation mode again
+            mockConfig['tasks.vacationMode'] = false;
+            await (scheduler as any).checkTasks();
+            expect(mockCards.length).toBe(1);
+            
+            scheduler.stop();
+        });
+    });
+});

@@ -56,6 +56,7 @@ describe('SettingsService', () => {
             'tasks.enableNotifications': true,
             'tasks.notificationFrequency': 'once',
             'tasks.showInStatusBar': true,
+            'tasks.vacationMode': false,
             'export.defaultDateRangeMonths': 6,
             'export.includeDescriptions': true,
             'export.groupRecurringTasks': true,
@@ -120,6 +121,23 @@ describe('SettingsService', () => {
             mockConfig['tasks.notificationFrequency'] = 'daily';
             taskSettings = settingsService.getTaskSettings();
             expect(taskSettings.notificationFrequency).toBe('daily');
+        });
+
+        test('should return vacation mode setting', () => {
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(false);
+        });
+
+        test('should handle vacation mode enabled', () => {
+            mockConfig['tasks.vacationMode'] = true;
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+        });
+
+        test('should handle vacation mode disabled', () => {
+            mockConfig['tasks.vacationMode'] = false;
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(false);
         });
     });
 
