@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { Task } from '../models/Task';
 import { getDb, prepare, getTagsByTaskId } from '../database';
+import { ensureSingleColorIcon } from '../utils/tagIcons';
+import { generateTagCompositeIcon } from '../utils/tagIcons';
 import { getRecurrenceLabel } from '../logic/Recurrence';
 
 export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
@@ -25,8 +27,18 @@ export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
     if (element) {
         if (isTaskGroup(element)) {
             return Promise.resolve(element.tasks);
-        } else {
-            return Promise.resolve([]);
+      } else {
+        // element is a Task: return tags as children
+        const tags = getTagsByTaskId((element as Task).id) || [];
+        const items = tags.map(tag => {
+          const item = new vscode.TreeItem(`#${tag.name}`, vscode.TreeItemCollapsibleState.None);
+          item.contextValue = 'task-tag';
+          try {
+            item.iconPath = ensureSingleColorIcon(tag.color);
+          } catch {}
+          return item;
+        });
+        return Promise.resolve(items as any);
         }
     } else {
       return Promise.resolve(this.getGroupedTasks());
@@ -93,14 +105,12 @@ class TaskItem extends vscode.TreeItem {
     constructor(public readonly task: Task) {
         // Get tags for this task
         const tags = getTagsByTaskId(task.id);
-        const tagString = tags.length > 0 ? tags.map(t => `#${t.name}`).join(' ') : '';
-        
-        // Construct label with tags
-        const label = tagString ? `${task.title} ${tagString}` : task.title;
+        const label = task.title;
         
         super(label, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "task";
         this.description = new Date(task.dueDate).toLocaleDateString();
+        // No composite icon; tags will be children with colored icons
     const parts: string[] = [`Due: ${new Date(task.dueDate).toLocaleString()}`];
     if (task.recurrence) {
       parts.push(`Recurrence: ${getRecurrenceLabel(task.recurrence)}`);
