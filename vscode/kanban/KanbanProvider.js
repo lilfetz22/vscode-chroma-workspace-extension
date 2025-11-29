@@ -1,5 +1,6 @@
 const vscode = require('vscode');
 const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/src/database');
+const { generateTagCompositeIcon } = require('../../out/src/utils/tagIcons');
 
 // Constants
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
@@ -38,6 +39,18 @@ class KanbanProvider {
             return this.getColumns(element.boardId);
         } else if (element.contextValue === 'column') {
             return this.getCards(element.columnId);
+        } else if (element.contextValue === 'card') {
+            // Return tags as child items
+            const tags = getTagsByCardId(element.cardId) || [];
+            return tags.map(tag => {
+                const item = new vscode.TreeItem(`#${tag.name}`, vscode.TreeItemCollapsibleState.None);
+                item.contextValue = 'card-tag';
+                try {
+                    const icon = generateTagCompositeIcon([tag.color]);
+                    if (icon) item.iconPath = icon;
+                } catch {}
+                return item;
+            });
         }
         return [];
     }
@@ -67,7 +80,6 @@ class KanbanProvider {
         const cards = getCardsByColumnId(columnId);
         return cards.map(card => {
             const tags = getTagsByCardId(card.id);
-            const tagString = tags.length > 0 ? tags.map(t => `#${t.name}`).join(' ') : '';
             
             // Format completed date if present
             let completedDateString = '';
@@ -86,11 +98,9 @@ class KanbanProvider {
                 }
             }
             
-            const label = tagString 
-                ? `${card.title} ${tagString}${completedDateString}${newFlag}` 
-                : `${card.title}${completedDateString}${newFlag}`;
+            const label = `${card.title}${completedDateString}${newFlag}`;
             
-            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.None);
+            const item = new vscode.TreeItem(label, tags.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;
             item.label = label;
@@ -100,6 +110,7 @@ class KanbanProvider {
             if (card?.content) {
                 item.tooltip = `Content:\n${card.content}`;
             }
+            // Do not place icons on the card title line; icons appear on tag child items only
             return item;
         });
     }
