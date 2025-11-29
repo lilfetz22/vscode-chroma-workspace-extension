@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard } = require('../../out/src/database');
+const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard, removeTagFromCard, getTagsByCardId } = require('../../out/src/database');
 const { selectOrCreateTags } = require('../../out/vscode/Tag');
 const { getDebugLogger } = require('../../out/src/logic/DebugLogger');
 const { getSettingsService } = require('../../out/src/logic/SettingsService');
@@ -76,6 +76,46 @@ async function editCard(card) {
         prompt: 'Optional: Edit content/context for this card'
     });
     updateCard({ id: card.cardId, title: newCardTitle, content: newContent !== undefined ? newContent : current?.content });
+
+    // Tag editing flow integrated into edit
+    try {
+        const debugLog = getDebugLogger();
+        debugLog.log('=== Editing tags for card ===');
+        const existingTags = getTagsByCardId(card.cardId);
+        const existingTagIds = existingTags.map(t => t.id);
+        debugLog.log('Existing tag IDs:', existingTagIds);
+
+        const selectedTagIds = await selectOrCreateTags();
+        if (selectedTagIds === undefined) {
+            debugLog.log('Tag selection cancelled, retaining existing tags');
+            return; // user cancelled tag selection
+        }
+
+        // Determine additions and removals
+        const toAdd = selectedTagIds.filter(id => !existingTagIds.includes(id));
+        const toRemove = existingTagIds.filter(id => !selectedTagIds.includes(id));
+        debugLog.log('Tags to add:', toAdd);
+        debugLog.log('Tags to remove:', toRemove);
+
+        for (const tagId of toAdd) {
+            try {
+                addTagToCard(card.cardId, tagId);
+                debugLog.log(`Added tag ${tagId} to card ${card.cardId}`);
+            } catch (err) {
+                debugLog.log(`ERROR adding tag ${tagId} to card ${card.cardId}:`, err);
+            }
+        }
+        for (const tagId of toRemove) {
+            try {
+                removeTagFromCard(card.cardId, tagId);
+                debugLog.log(`Removed tag ${tagId} from card ${card.cardId}`);
+            } catch (err) {
+                debugLog.log(`ERROR removing tag ${tagId} from card ${card.cardId}:`, err);
+            }
+        }
+    } catch (e) {
+        console.error('Failed during tag edit flow:', e);
+    }
 }
 
 async function deleteCard(card) {
