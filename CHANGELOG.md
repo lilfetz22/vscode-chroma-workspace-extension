@@ -1,3 +1,17 @@
+# [2.6.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.5.0...v2.6.0) (2025-11-29)
+
+
+### Features
+
+* **database:** expose getDatabaseFilePath for callers\n\nAdd getDatabaseFilePath() to return the resolved DB filepath after initDatabase. This helps reinitialize loggers or compute DB directory in other modules. ([018f602](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/018f602e6795778f76d0febb7e037fc449bf68a7))
+* **extension:** reinitialize debug logger with DB path and remove assign/remove tag commands\n\nImport getDatabaseFilePath and reinitialize debug logger to use database directory after initDatabase; drop legacy assign/remove tag commands and menu handlers from command list to keep extension command set consistent with VSCode API and views. ([5c6a8b0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/5c6a8b0ebce6558aee7929b5484527f657b7cbbd))
+* **kanban/card:** integrate tag editing into editCard and add tag removal support\n\nUpdate editCard flow to show selected tags, add tag creation during edit, and handle add/remove operations with debug logging for failures. ([e247497](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e24749717bd751fd12277c9f44d201a5f97d5644))
+* **kanban:** display tag children with composite icons and simplify card labels\n\nCreate tag child items (with composite or single icons) for cards and keep card titles free from inline tag labels. Also show 'New' flag and completed dates in card labels. ([86629a1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/86629a1af78ad519205e57442a7ee1a68f45ff81))
+* **tags:** display colored icons for tags in Tags view\n\nUse ensureSingleColorIcon to provide a colored square icon for each tag in the Tags tree view, improving visual identification. ([411e339](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/411e3390793cd1755733497ffa8059b6a9bc43c5))
+* **task:** integrate tag editing flow into editTask and support tag removal\n\nAdd imports for removeTagFromTask and getTagsByTaskId; update editTask to allow adding/removing tags on edit. Improved robustness by logging failures when tag ops fail. ([0999153](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/09991531bfd4cc30e85b1765f60b44cc056c1b23))
+* **tasks:** render tags as child items with icons and simplify task labels\n\nTags are now shown as children with individual colored icons rather than inlining tags in the task label. Simplifies the task title UX and aligns with Kanban card/tag presentations. ([cef8ded](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/cef8ded764c5ce32f32dfead42587aff0d8830bc))
+* **utils:** add tag icon utilities for single and composite icons\n\nNew utilities ensureSingleColorIcon and generateTagCompositeIcon generate workspace-local SVG icons for tag colors, and support tailwind-like classes and hex normalization. ([1ae9bdf](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/1ae9bdfacca5e8e130b5c1103f1db970ea7f989e))
+
 # [2.5.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.4.0...v2.5.0) (2025-11-28)
 
 
