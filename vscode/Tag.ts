@@ -155,13 +155,13 @@ async function selectOrCreateTags(): Promise<string[] | undefined> {
     
     // Build quick pick items
     const items: (vscode.QuickPickItem & { tagId?: string; action?: 'create' | 'done' })[] = [
+        { label: '$(add) Create new tag…', action: 'create' as const },
+        { label: '$(check) Done selecting tags', action: 'done' as const },
         ...existingTags.map(t => ({ 
             label: t.name, 
             description: t.color,
             tagId: t.id 
-        })),
-        { label: '$(add) Create new tag…', action: 'create' as const },
-        { label: '$(check) Done selecting tags', action: 'done' as const }
+        }))
     ];
 
     const selectedTagIds: string[] = [];
@@ -193,8 +193,8 @@ async function selectOrCreateTags(): Promise<string[] | undefined> {
             const newTag = createTag({ name, color });
             selectedTagIds.push(newTag.id);
             
-            // Add the new tag to items list
-            items.splice(items.length - 2, 0, { 
+            // Add the new tag to items list (after the action items at the top)
+            items.push({ 
                 label: newTag.name, 
                 description: newTag.color,
                 tagId: newTag.id 
