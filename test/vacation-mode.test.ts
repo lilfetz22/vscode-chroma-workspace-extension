@@ -110,6 +110,7 @@ jest.mock('../src/database', () => ({
         mockColumns.push(column);
         return column;
     }),
+    copyTaskTagsToCard: jest.fn(() => 0),
     getTagsByTaskId: jest.fn(() => []),
     addTagToCard: jest.fn(),
     getCardById: jest.fn(),
@@ -317,6 +318,49 @@ describe('Vacation Mode', () => {
             // Second check - vacation mode off
             await (scheduler as any).checkTasks();
             expect(mockCards.length).toBe(1);
+        });
+
+        test('should bulk copy task tags onto new card', async () => {
+            const { copyTaskTagsToCard, getTagsByTaskId, addTagToCard } = require('../src/database');
+            (copyTaskTagsToCard as jest.Mock).mockReturnValue(2);
+
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-with-tags',
+                title: 'Tagged Task',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                boardId: 'board-1'
+            }];
+
+            await (scheduler as any).checkTasks();
+
+            expect(copyTaskTagsToCard).toHaveBeenCalledWith('task-with-tags', 'card-1');
+            expect(getTagsByTaskId).not.toHaveBeenCalled();
+            expect(addTagToCard).not.toHaveBeenCalled();
+        });
+
+        test('should fall back to per-tag copy when bulk copy fails', async () => {
+            const { copyTaskTagsToCard, getTagsByTaskId, addTagToCard } = require('../src/database');
+            (copyTaskTagsToCard as jest.Mock).mockReturnValue(0);
+            (getTagsByTaskId as jest.Mock).mockReturnValue([{ id: 'tag-1' }, { id: 'tag-2' }]);
+
+            const now = new Date();
+            mockTasks = [{
+                id: 'task-fallback',
+                title: 'Fallback Task',
+                dueDate: now.toISOString(),
+                status: 'pending',
+                boardId: 'board-1'
+            }];
+
+            await (scheduler as any).checkTasks();
+
+            expect(copyTaskTagsToCard).toHaveBeenCalledWith('task-fallback', 'card-1');
+            expect(getTagsByTaskId).toHaveBeenCalledWith('task-fallback');
+            expect(addTagToCard).toHaveBeenCalledTimes(2);
+            expect(addTagToCard).toHaveBeenCalledWith('card-1', 'tag-1');
+            expect(addTagToCard).toHaveBeenCalledWith('card-1', 'tag-2');
         });
 
         test('should not affect recurring task date updates in vacation mode', async () => {
