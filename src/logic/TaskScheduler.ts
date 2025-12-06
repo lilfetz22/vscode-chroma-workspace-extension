@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard } from '../database';
+import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard, copyTaskTagsToCard } from '../database';
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
@@ -116,6 +116,7 @@ export class TaskScheduler {
 
   private async checkTasks() {
     getDb(); // Ensure DB is initialized
+    const logger = Logger.getInstance();
     const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, board_id as boardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ?').all('pending') as Task[];
     const now = new Date();
     let dueTodayCount = 0;
@@ -156,10 +157,23 @@ export class TaskScheduler {
               converted_from_task_at: new Date().toISOString()
             });
 
-            // Copy tags from task to card
-            const taskTags = getTagsByTaskId(task.id);
-            for (const tag of taskTags) {
-              addTagToCard(newCard.id, tag.id);
+            // Copy tags from task to card (bulk insert, fallback to per-tag on failure/zero rows)
+            let copiedTags = 0;
+            try {
+              copiedTags = copyTaskTagsToCard(task.id, newCard.id);
+            } catch (tagCopyError: any) {
+              logger.warn(`Failed bulk tag copy for task ${task.id} -> card ${newCard.id}, falling back`, tagCopyError);
+            }
+
+            if (copiedTags === 0) {
+              const taskTags = getTagsByTaskId(task.id);
+              for (const tag of taskTags) {
+                try {
+                  addTagToCard(newCard.id, tag.id);
+                } catch (tagError: any) {
+                  logger.warn(`Failed to copy tag ${tag.id} from task ${task.id} to card ${newCard.id}`, tagError);
+                }
+              }
             }
 
             cardsCreated = true;
@@ -182,14 +196,12 @@ export class TaskScheduler {
             dueDate = nextDueDate;
           } else {
             // If no next due date, log warning and delete the task
-            const logger = Logger.getInstance();
             logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
             prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
             continue;
           }
         } else {
           // For non-recurring tasks, log and delete the task after creating the card
-          const logger = Logger.getInstance();
           logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
           prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
           continue;
