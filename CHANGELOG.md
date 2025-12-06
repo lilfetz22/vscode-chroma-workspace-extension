@@ -1,3 +1,18 @@
+# [2.8.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.7.0...v2.8.0) (2025-12-06)
+
+
+### Bug Fixes
+
+* **database:** stabilize DB instance across modules; safe reload and ordered Done column by completed_at ([29a2794](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/29a2794ed5787a0f136e6b3ef11a1a033f8bc204))
+* **kanban:** show 4-digit year in completed date ([3c590be](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/3c590be441866f3d23072e12b9ca1aeb60bf401a))
+
+
+### Features
+
+* **kanban:** preselect current tags when editing card ([794aeb9](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/794aeb980cba06a55d150bd50ebc5af7dfb40ea4))
+* **tag:** add random color option and improve tag selection UI; robust deletion ([205adcc](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/205adcc0e0bd36c387a1c6a20aac955784ec7f0e))
+* **task-scheduler:** bulk-copy tags when creating cards from tasks with fallback ([c5df588](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c5df58885d46f2bb901931f0f2c7ff34a322be0f))
+
 # [2.7.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.6.0...v2.7.0) (2025-11-29)
 
 
