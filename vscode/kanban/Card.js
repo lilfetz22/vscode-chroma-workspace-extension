@@ -99,7 +99,9 @@ async function editCard(card) {
         const existingTagIds = existingTags.map(t => t.id);
         debugLog.log('Existing tag IDs:', existingTagIds);
 
-        const selectedTagIds = await selectOrCreateTags();
+        // Call selectOrCreateTags with pre-selected current tags and no exclusions
+        // This way user can toggle current tags on/off and see them already checked
+        const selectedTagIds = await selectOrCreateTags(existingTagIds);
         if (selectedTagIds === undefined) {
             debugLog.log('Tag selection cancelled, retaining existing tags');
             return; // user cancelled tag selection
