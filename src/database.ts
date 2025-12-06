@@ -9,6 +9,7 @@ import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 import { getDebugLogger } from './logic/DebugLogger';
+import { getSettingsService } from './logic/SettingsService';
 
 let logger: any;
 
@@ -35,6 +36,51 @@ let memoryDb: SqlJsDatabase | undefined;
 let customDbPath: string | undefined;
 let dbFilePath: string | undefined;
 let dbLastMtime: number | undefined; // Track last modification time for cross-workspace sync
+
+// Module instance ID for debugging duplication issues
+const MODULE_INSTANCE_ID = Math.random().toString(36).substr(2, 9);
+console.log(`[DATABASE MODULE] Loading database.ts module instance: ${MODULE_INSTANCE_ID}`);
+
+// Use a global registry to ensure all module instances share the same database
+// This prevents issues when the module is loaded multiple times (e.g., in bundled builds)
+const globalThis_ = (typeof globalThis !== 'undefined' ? globalThis : global) as any;
+if (!globalThis_.__CHROMA_DB_REGISTRY__) {
+    globalThis_.__CHROMA_DB_REGISTRY__ = {
+        db: undefined as SqlJsDatabase | undefined,
+        memoryDb: undefined as SqlJsDatabase | undefined,
+        dbFilePath: undefined as string | undefined,
+        dbLastMtime: undefined as number | undefined,
+    };
+    console.log(`[DATABASE MODULE] Created global database registry`);
+} else {
+    console.log(`[DATABASE MODULE] Using existing global database registry from another instance`);
+}
+
+// Get the database from the global registry
+function getDbFromRegistry(): SqlJsDatabase | undefined {
+    return globalThis_.__CHROMA_DB_REGISTRY__?.db;
+}
+
+// Set the database in the global registry  
+function setDbInRegistry(database: SqlJsDatabase | undefined): void {
+    if (globalThis_.__CHROMA_DB_REGISTRY__) {
+        globalThis_.__CHROMA_DB_REGISTRY__.db = database;
+    }
+}
+
+// Update local db reference from registry on every access
+function syncDbFromRegistry(): void {
+    db = getDbFromRegistry();
+    memoryDb = globalThis_.__CHROMA_DB_REGISTRY__?.memoryDb;
+    dbFilePath = globalThis_.__CHROMA_DB_REGISTRY__?.dbFilePath;
+    dbLastMtime = globalThis_.__CHROMA_DB_REGISTRY__?.dbLastMtime;
+}
+
+// Set database AND update the registry
+function setDb(database: SqlJsDatabase | undefined): void {
+    db = database;
+    setDbInRegistry(database);
+}
 
 // Wrapper to make sql.js compatible with better-sqlite3 API
 export interface Statement {
@@ -141,6 +187,7 @@ export function getDatabaseFilePath(): string | undefined {
 export async function initDatabase(memory: boolean = false, workspaceRoot?: string): Promise<SqlJsDatabase> {
     try {
         const caller = new Error().stack?.split('\n')[2]?.trim();
+        console.log(`[DATABASE MODULE ${MODULE_INSTANCE_ID}] initDatabase called with memory=${memory}`);
         getLogger().info('initDatabase called', { memory, workspaceRoot, caller });
         
         // Initialize sql.js with WASM file location
@@ -161,7 +208,8 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             }
             getLogger().info('Creating new in-memory database');
             memoryDb = new SQL.Database();
-            db = memoryDb;
+            setDb(memoryDb);
+            console.log(`[DATABASE MODULE ${MODULE_INSTANCE_ID}] Set db = memoryDb`);
         } else {
             if (db) {
                 getLogger().debug('Returning existing database connection');
@@ -204,7 +252,7 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
                 getLogger().info('Loaded existing database file');
             }
             
-            db = new SQL.Database(buffer);
+            setDb(new SQL.Database(buffer));
             dbFilePath = dbPath;
             getLogger().info('Database initialized from file');
         }
@@ -224,7 +272,8 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
         }
         
         getLogger().info('Database initialized successfully');
-        return db;
+        syncDbFromRegistry(); // Ensure db is up to date before returning
+        return db!; // We know db is set if we get here
     } catch (error: any) {
         getLogger().error('Failed to initialize database', error);
         getDebugLogger().log('ERROR: Database initialization failed:', error.message, error.stack);
@@ -287,6 +336,9 @@ export async function reloadDatabaseIfChanged(): Promise<{ reloaded: boolean; ex
     getLogger().info('Database file changed externally, reloading...');
     getDebugLogger().log('Database file changed externally, reloading from disk');
     
+    // Keep reference to old database in case reload fails
+    const oldDb = db;
+    
     try {
         // Read the updated file
         const buffer = fs.readFileSync(dbFilePath);
@@ -300,13 +352,15 @@ export async function reloadDatabaseIfChanged(): Promise<{ reloaded: boolean; ex
             }
         });
         
-        // Close the old database if it exists
-        if (db) {
-            db.close();
+        // Create new database from the updated file
+        const newDb = new SQL.Database(buffer);
+        
+        // Close the old database only after successfully creating the new one
+        if (oldDb) {
+            oldDb.close();
         }
         
-        // Create new database from the updated file
-        db = new SQL.Database(buffer);
+        setDb(newDb);
         dbLastMtime = currentMtime;
         
         getLogger().info('Database reloaded from disk successfully');
@@ -314,19 +368,34 @@ export async function reloadDatabaseIfChanged(): Promise<{ reloaded: boolean; ex
         
         return { reloaded: true, externalChange: true };
     } catch (error: any) {
-        getLogger().error('Failed to reload database', error);
+        // If reload failed, keep the old database active
+        getLogger().error('Failed to reload database, keeping old connection active', error);
         getDebugLogger().log('ERROR: Failed to reload database:', error.message);
+        // db remains set to oldDb, so operations continue to work
         return { reloaded: false, externalChange: true };
     }
 }
 
 export function getDb(): SqlJsDatabase {
+    // Always sync from global registry first to handle module duplication
+    syncDbFromRegistry();
+    
     if (!db) {
-        getLogger().error('Database not initialized when getDb() called');
+        const msg = `Database not initialized when getDb() called in module instance ${MODULE_INSTANCE_ID}. db is: ${db === undefined ? 'undefined' : 'null'}`;
+        getLogger().error(msg);
+        getLogger().error('Stack trace:', new Error().stack);
+        console.error(`[DATABASE MODULE ${MODULE_INSTANCE_ID}] ERROR:`, msg);
         throw new Error('Database not initialized. Call initDatabase() first.');
     }
-    getLogger().debug('getDb() returning existing database instance');
+    getLogger().debug(`getDb() returning database instance from module ${MODULE_INSTANCE_ID}`);
     return db;
+}
+
+/**
+ * Get the database instance, or throw if not initialized
+ */
+export function getDbSafe(): SqlJsDatabase | null {
+    return db || null;
 }
 
 /**
@@ -613,7 +682,7 @@ export function deleteNote(id: string): void {
 export function closeDb(): void {
     if (db) {
         db.close();
-        db = undefined;
+        setDb(undefined);
     }
 }
 
@@ -743,7 +812,20 @@ export function getCardById(id: string): Card {
 
 export function getCardsByColumnId(columnId: string): Card[] {
     const db = getDb();
-    const rows = prepare('SELECT * FROM cards WHERE column_id = ? ORDER BY position').all(columnId);
+    
+    // Get column to check if it's a completion column
+    const column = getColumnById(columnId);
+    const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+    const isCompletionColumn = column.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+    
+    // If it's a completion column, sort by completed_at DESC (most recent first)
+    // SQLite treats NULL as smallest value, so DESC puts NULLs last naturally
+    // Then use position as secondary sort for cards without completed_at
+    const orderBy = isCompletionColumn 
+        ? 'ORDER BY completed_at DESC, position' 
+        : 'ORDER BY position';
+    
+    const rows = prepare(`SELECT * FROM cards WHERE column_id = ? ${orderBy}`).all(columnId);
     return rows.map(rowToCard);
 }
 
@@ -822,8 +904,28 @@ export function updateTag(tag: Partial<Tag>): Tag {
 }
 
 export function deleteTag(id: string): void {
-    const db = getDb();
-    prepare('DELETE FROM tags WHERE id = ?').run(id);
+    const logger = getLogger();
+    
+    try {
+        logger.debug(`deleteTag: Deleting tag with id=${id}`);
+        
+        // Capture the database reference EARLY to protect against reloadDatabaseIfChanged()
+        // being called mid-execution (which can clear the global db variable)
+        const database = getDb();
+        
+        // Now execute the deletion using the captured database instance
+        database.run('DELETE FROM tags WHERE id = ?', [id]);
+        
+        const changes = database.getRowsModified();
+        logger.debug(`deleteTag: Successfully deleted tag ${id}. Changes: ${changes}`);
+        
+        if (changes === 0) {
+            logger.warn(`deleteTag: No tag found with id=${id}`);
+        }
+    } catch (err) {
+        logger.error(`deleteTag: Failed to delete tag ${id}`, err);
+        throw err;
+    }
 }
 
 // Card-Tag Relationships
@@ -916,6 +1018,17 @@ export function addTagToTask(taskId: string, tagId: string): void {
 export function removeTagFromTask(taskId: string, tagId: string): void {
     const db = getDb();
     prepare('DELETE FROM task_tags WHERE task_id = ? AND tag_id = ?').run(taskId, tagId);
+}
+
+// Copy all task tags onto a card in one statement (idempotent via OR IGNORE)
+export function copyTaskTagsToCard(taskId: string, cardId: string): number {
+    getDb(); // Ensure DB is initialized
+    const stmt = prepare(`
+        INSERT OR IGNORE INTO card_tags (card_id, tag_id)
+        SELECT ?, tag_id FROM task_tags WHERE task_id = ?
+    `);
+    const result = stmt.run(cardId, taskId);
+    return result.changes;
 }
 
 export function getTagsByTaskId(taskId: string): Tag[] {
