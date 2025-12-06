@@ -6,15 +6,15 @@ const { generateTagCompositeIcon } = require('../../out/src/utils/tagIcons');
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
 /**
- * Format a date string to MM-DD-YY format
+ * Format a date string to MM-DD-YYYY format
  * @param {string | Date} dateString ISO date string or Date object
- * @returns {string} Formatted date string (MM-DD-YY)
+ * @returns {string} Formatted date string (MM-DD-YYYY)
  */
 function formatDate(dateString) {
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    const year = String(date.getFullYear()).slice(-2);
+    const year = String(date.getFullYear());
     return `${month}-${day}-${year}`;
 }
 
