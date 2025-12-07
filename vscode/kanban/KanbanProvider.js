@@ -78,6 +78,11 @@ class KanbanProvider {
 
     getCards(columnId) {
         const cards = getCardsByColumnId(columnId);
+        const column = getColumnById(columnId);
+        const { getSettingsService } = require('../../out/src/logic/SettingsService');
+        const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+        const isCompletionColumn = column.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+        
         return cards.map(card => {
             const tags = getTagsByCardId(card.id);
             
@@ -98,14 +103,19 @@ class KanbanProvider {
                 }
             }
             
-            const label = `${card.title}${completedDateString}${newFlag}`;
+            // Add position number to label only for non-completion columns (1-based position)
+            let label;
+            if (isCompletionColumn) {
+                label = `${card.title}${completedDateString}${newFlag}`;
+            } else {
+                label = `${card.position}. ${card.title}${completedDateString}${newFlag}`;
+            }
             
             const item = new vscode.TreeItem(label, tags.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;
             item.label = label;
             item.columnId = columnId;
-            const column = getColumnById(columnId);
             item.boardId = column.board_id;
             if (card?.content) {
                 item.tooltip = `Content:\n${card.content}`;
