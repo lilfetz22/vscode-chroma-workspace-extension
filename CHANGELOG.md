@@ -1,3 +1,13 @@
+# [2.10.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.9.0...v2.10.0) (2025-12-07)
+
+
+### Features
+
+* **kanban:** add 'Current' position option in edit card flow ([b2ded19](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b2ded19807cb2dd5c7b5909d864dc7232c77f155))
+* **kanban:** split long text in kanban tree view ([abc5126](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/abc51263784f9b60fca4e9fa3dfaab9c81598b0f))
+* **task:** split long task titles in tree view ([b8bfa4d](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b8bfa4d21f6040da3692fc60e1276f86f0a72da3))
+* **utils:** add treeItemHelpers utility for text splitting ([af614ef](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/af614ef07aa908ca6414798daecad1f8cb6af7e6))
+
 # [2.9.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.8.0...v2.9.0) (2025-12-07)
 
 
