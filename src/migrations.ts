@@ -406,6 +406,60 @@ const migrations: Migration[] = [
                 }
             }
         }
+    },
+    {
+        version: 12,
+        name: 'assign_sequential_positions_to_existing_cards',
+        up: (db) => {
+            console.log('Assigning sequential positions to all existing cards in each column');
+            
+            // Get completion column name from settings (default: "Done")
+            // Note: We'll check this at runtime, but for migration we'll use a safe default
+            const completionColumnName = 'Done';
+            
+            // Get all columns
+            const columnsResult = db.exec('SELECT id, title FROM columns');
+            if (!columnsResult || columnsResult.length === 0) {
+                console.log('No columns found, skipping position assignment');
+                return;
+            }
+            
+            const columns = columnsResult[0].values;
+            
+            for (const [columnId, columnTitle] of columns) {
+                // Check if this is a completion column (case-insensitive comparison)
+                const isCompletionColumn = String(columnTitle).toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+                
+                if (isCompletionColumn) {
+                    console.log(`Skipping position assignment for completion column: ${columnTitle}`);
+                    continue;
+                }
+                
+                // Get all cards in this column ordered by current position, then created_at
+                const cardsResult = db.exec(`
+                    SELECT id FROM cards 
+                    WHERE column_id = '${columnId}' 
+                    ORDER BY position, created_at
+                `);
+                
+                if (!cardsResult || cardsResult.length === 0 || cardsResult[0].values.length === 0) {
+                    console.log(`No cards found in column: ${columnTitle}`);
+                    continue;
+                }
+                
+                const cards = cardsResult[0].values;
+                console.log(`Assigning positions to ${cards.length} cards in column: ${columnTitle}`);
+                
+                // Assign sequential positions starting from 1
+                for (let i = 0; i < cards.length; i++) {
+                    const cardId = cards[i][0];
+                    const newPosition = i + 1;
+                    db.exec(`UPDATE cards SET position = ${newPosition} WHERE id = '${cardId}'`);
+                }
+            }
+            
+            console.log('Sequential position assignment complete');
+        }
     }
 ];
 
