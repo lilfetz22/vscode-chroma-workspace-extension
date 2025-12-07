@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getColumnById, getTagsByCardId } = require('../../out/src/database');
 const { generateTagCompositeIcon } = require('../../out/src/utils/tagIcons');
+const { splitLongText } = require('../../out/src/utils/treeItemHelpers');
 
 // Constants
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
@@ -58,9 +59,13 @@ class KanbanProvider {
     getBoards() {
         const boards = getAllBoards();
         return boards.map(board => {
-            const item = new vscode.TreeItem(board.title, vscode.TreeItemCollapsibleState.Collapsed);
+            const { label, description } = splitLongText(board.title);
+            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'board';
             item.boardId = board.id;
+            if (description) {
+                item.description = description;
+            }
             return item;
         });
     }
@@ -68,10 +73,14 @@ class KanbanProvider {
     getColumns(boardId) {
         const columns = getColumnsByBoardId(boardId);
         return columns.map(column => {
-            const item = new vscode.TreeItem(column.title, vscode.TreeItemCollapsibleState.Collapsed);
+            const { label, description } = splitLongText(column.title);
+            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'column';
             item.columnId = column.id;
             item.boardId = boardId;
+            if (description) {
+                item.description = description;
+            }
             return item;
         });
     }
@@ -104,21 +113,29 @@ class KanbanProvider {
             }
             
             // Add position number to label only for non-completion columns (1-based position)
-            let label;
+            let fullText;
             if (isCompletionColumn) {
-                label = `${card.title}${completedDateString}${newFlag}`;
+                fullText = `${card.title}${completedDateString}${newFlag}`;
             } else {
-                label = `${card.position}. ${card.title}${completedDateString}${newFlag}`;
+                fullText = `${card.position}. ${card.title}${completedDateString}${newFlag}`;
             }
             
+            const { label, description } = splitLongText(fullText);
             const item = new vscode.TreeItem(label, tags.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
             item.contextValue = 'card';
             item.cardId = card.id;
             item.label = label;
             item.columnId = columnId;
             item.boardId = column.board_id;
+            if (description) {
+                item.description = description;
+            }
+            // Build tooltip: always show title when there's content, or show full title if it was split
             if (card?.content) {
-                item.tooltip = `Content:\n${card.content}`;
+                item.tooltip = `Title: ${fullText}\n\nContent:\n${card.content}`;
+            } else if (description) {
+                // No content but title was split, show full title
+                item.tooltip = fullText;
             }
             // Do not place icons on the card title line; icons appear on tag child items only
             return item;
