@@ -10,9 +10,10 @@ const { getSettingsService } = require('../../out/src/logic/SettingsService');
  * @param {string} columnId - The column where the card will be placed
  * @param {string} columnTitle - The title of the column (for display)
  * @param {string} [excludeCardId] - Optional card ID to exclude from the list (useful when moving within the same column)
+ * @param {number} [currentPosition] - Optional current position of the card being edited (shows "Current" option if provided)
  * @returns {Promise<number>} The selected position (1-based), or 1 if cancelled
  */
-async function promptForCardPosition(columnId, columnTitle, excludeCardId) {
+async function promptForCardPosition(columnId, columnTitle, excludeCardId, currentPosition) {
     const debugLog = getDebugLogger();
     debugLog.log(`=== Prompting for card position in column: ${columnTitle} ===`);
     
@@ -25,6 +26,16 @@ async function promptForCardPosition(columnId, columnTitle, excludeCardId) {
     
     while (true) {
         const items = [];
+        
+        // Add "Current" option if editing (currentPosition is provided)
+        if (currentPosition !== undefined) {
+            items.push({
+                label: '$(circle-large-filled) Current',
+                description: 'Keep the card at its current position',
+                position: currentPosition
+            });
+            items.push({ label: '', kind: vscode.QuickPickItemKind.Separator });
+        }
         
         // Add "Top" option (position 1)
         items.push({
@@ -212,7 +223,8 @@ async function editCard(card) {
     // Only allow position editing in non-completion columns
     if (!isCompletionColumn) {
         debugLog.log('Prompting user for new position...');
-        const newPosition = await promptForCardPosition(card.columnId, currentColumn.title, card.cardId);
+        const currentPos = current?.position || card.position;
+        const newPosition = await promptForCardPosition(card.columnId, currentColumn.title, card.cardId, currentPos);
         debugLog.log(`User selected new position: ${newPosition}`);
         
         const currentPosition = current?.position || card.position;
