@@ -47,19 +47,29 @@ Visual task tracking with full VS Code integration:
 - **Two Card Types**:
   - **Simple Cards**: Standalone tasks with rich descriptions
   - **Linked Cards**: Cards connected to existing notes
+- **Interactive Card Positioning**: Choose exactly where new or moved cards appear in columns
+  - Select position during card creation and movement
+  - Visual position picker with pagination for large columns
+  - Auto-positioning for completion columns
+  - Position numbers displayed in card labels
 - **Command-Based Movement**: Move cards with VS Code commands
-- **Tag Support**: Organize cards with flexible tagging
+- **Tag Support**: Organize cards with flexible tagging and colored icons for visual identification
 
 ###  Task Scheduling & Automation
 
 Advanced scheduling capabilities for recurring and time-based tasks:
 
 - **Scheduled Tasks View**: Dedicated TreeView showing overdue, today, this week, and all tasks
-- **Recurrence Patterns**: Daily, weekdays, weekly, bi-weekly, monthly, custom
+- **Enhanced Recurrence Patterns**: 
+  - Daily, weekdays only, weekly, bi-weekly, monthly
+  - Custom weekly patterns (select specific days of the week)
+  - Human-readable recurrence labels in tooltips
 - **Time-Based Activation**: Set specific times for tasks to appear on your board
+- **Vacation Mode**: Temporarily pause scheduled task-to-card conversion when away
 - **Status Bar Integration**: Quick view of upcoming tasks
 - **Notifications**: Reminders for due tasks
 - **Board Assignment**: Tasks can be targeted to a specific board; you'll be prompted to pick a board when multiple boards exist, one board is auto-selected, and a default board+column is created if none exist.
+- **Tag Inheritance**: Tags from scheduled tasks are automatically copied to created cards
 
 ###  Accomplishments Export (FUTURE FEATURE)
 
@@ -193,6 +203,20 @@ Configure accomplishments export defaults:
 - **`chroma.export.includeDescriptions`**: Include task descriptions in CSV export (default: `true`)
 - **`chroma.export.groupRecurringTasks`**: Group multiple completions of recurring tasks (default: `true`)
 
+### Kanban Settings
+
+Customize Kanban board behavior:
+
+```json
+{
+  "chroma.kanban.completionColumn": "Done"
+}
+```
+
+- **`chroma.kanban.completionColumn`**: Name of the column that marks tasks as complete (default: `"Done"`)
+  - Cards moved to this column are timestamped and sorted by completion date
+  - Position selection is skipped for completion columns (cards auto-placed at top)
+
 ### Database Settings
 
 Configure where your data is stored:
@@ -215,6 +239,24 @@ Configure where your data is stored:
 - **No Cloud Dependencies**: Works completely offline
 - **Git-Friendly**: Commit `.chroma/` for version control
 - **Portable**: Copy folder to sync manually across machines
+
+---
+
+##  Debugging & Troubleshooting
+
+### Debug Logging
+
+Chroma Workspace includes comprehensive debug logging for troubleshooting:
+
+- **Output Panel**: View logs in VS Code's Output panel (select "Chroma Workspace Debug")
+- **SQL-Level Debugging**: Track database queries and operations
+- **Operation Logging**: Monitor tag operations, card movements, and task scheduling
+- **Automatic Logging**: Debug logs stored in `.chroma/debug.log` within your workspace
+
+To view debug output:
+1. Open VS Code's Output panel (`Ctrl+Shift+U` or `Cmd+Shift+U`)
+2. Select **"Chroma Workspace Debug"** from the dropdown
+3. Monitor real-time operations as you use the extension
 
 ---
 
