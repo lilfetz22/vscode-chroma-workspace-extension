@@ -4,6 +4,7 @@ import { getDb, prepare, getTagsByTaskId } from '../database';
 import { ensureSingleColorIcon } from '../utils/tagIcons';
 import { generateTagCompositeIcon } from '../utils/tagIcons';
 import { getRecurrenceLabel } from '../logic/Recurrence';
+import { splitLongText } from '../utils/treeItemHelpers';
 
 export class TaskProvider implements vscode.TreeDataProvider<Task | TaskGroup> {
   private _onDidChangeTreeData: vscode.EventEmitter<Task | TaskGroup | undefined | null | void> = new vscode.EventEmitter<Task | TaskGroup | undefined | null | void>();
@@ -105,20 +106,33 @@ class TaskItem extends vscode.TreeItem {
     constructor(public readonly task: Task) {
         // Get tags for this task
         const tags = getTagsByTaskId(task.id);
-        const label = task.title;
+        const { label, description: overflowText } = splitLongText(task.title);
         
         super(label, vscode.TreeItemCollapsibleState.None);
         this.contextValue = "task";
-        this.description = new Date(task.dueDate).toLocaleDateString();
+        
+        // Combine overflow text and date in description
+        const datePart = new Date(task.dueDate).toLocaleDateString();
+        if (overflowText) {
+            this.description = `${overflowText} (${datePart})`;
+        } else {
+            this.description = datePart;
+        }
+        
         // No composite icon; tags will be children with colored icons
-    const parts: string[] = [`Due: ${new Date(task.dueDate).toLocaleString()}`];
-    if (task.recurrence) {
-      parts.push(`Recurrence: ${getRecurrenceLabel(task.recurrence)}`);
-    }
-    if (task.description && task.description.trim().length > 0) {
-      parts.push('', 'Content:', task.description);
-    }
-    this.tooltip = parts.join('\n');
+        const parts: string[] = [];
+        if (overflowText) {
+            parts.push(`Title: ${task.title}`);
+            parts.push('');
+        }
+        parts.push(`Due: ${new Date(task.dueDate).toLocaleString()}`);
+        if (task.recurrence) {
+            parts.push(`Recurrence: ${getRecurrenceLabel(task.recurrence)}`);
+        }
+        if (task.description && task.description.trim().length > 0) {
+            parts.push('', 'Content:', task.description);
+        }
+        this.tooltip = parts.join('\n');
     }
 }
 
