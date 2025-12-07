@@ -1,3 +1,13 @@
+# [2.9.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.8.0...v2.9.0) (2025-12-07)
+
+
+### Features
+
+* **database:** add reorderCardsOnInsert and reorderCardsOnRemove utilities for card position adjustments ([4884ee3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/4884ee3c1beddb3913ad69685d1dab6770c0a397))
+* **kanban/card:** add interactive card position QuickPick and reordering logic; support edit/move/add position changes ([fd88dbc](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/fd88dbcc65a59e42fdd20e21291f87f6b2d1a4ff))
+* **kanban/provider:** display card positions in labels and hide them for completion column ([c39d5ab](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c39d5ab9c4f5f1ad0bf3a2ac29d2f3e9f4b6d51d))
+* **migrations:** add v12 migration to assign sequential positions to existing cards ([d0444df](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d0444dfd3fdb8fb9e248b1b135c8aed79cecc857))
+
 # [2.8.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.7.0...v2.8.0) (2025-12-06)
 
 
