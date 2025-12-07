@@ -1041,3 +1041,37 @@ export function getTagsByTaskId(taskId: string): Tag[] {
     return stmt.all(taskId) as Tag[];
 }
 
+/**
+ * Reorder cards in a column when inserting a new card at a specific position.
+ * Increments the position of all cards at or above the insertion position by 1.
+ * @param columnId - The ID of the column containing the cards
+ * @param insertPosition - The position where the new card will be inserted
+ */
+export function reorderCardsOnInsert(columnId: string, insertPosition: number): void {
+    const logger = getLogger();
+    logger.debug(`Reordering cards in column ${columnId} for insertion at position ${insertPosition}`);
+    
+    // Increment position of all cards at or above the insertion position
+    const stmt = prepare('UPDATE cards SET position = position + 1 WHERE column_id = ? AND position >= ?');
+    const result = stmt.run(columnId, insertPosition);
+    
+    logger.debug(`Reordered ${result.changes} cards`);
+}
+
+/**
+ * Decrement positions of cards in a column when removing a card.
+ * Decrements the position of all cards positioned after the removed position by 1.
+ * @param columnId - The ID of the column containing the cards
+ * @param removedPosition - The position of the card being removed
+ */
+export function reorderCardsOnRemove(columnId: string, removedPosition: number): void {
+    const logger = getLogger();
+    logger.debug(`Reordering cards in column ${columnId} after removal from position ${removedPosition}`);
+    
+    // Decrement position of all cards positioned after the removed position
+    const stmt = prepare('UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?');
+    const result = stmt.run(columnId, removedPosition);
+    
+    logger.debug(`Reordered ${result.changes} cards`);
+}
+
