@@ -116,7 +116,10 @@ jest.mock('../src/database', () => ({
     getCardById: jest.fn(),
     updateCard: jest.fn(),
     deleteCard: jest.fn(),
-    getColumnById: jest.fn()
+    getColumnById: jest.fn((columnId: string) => {
+        return mockColumns.find(c => c.id === columnId);
+    }),
+    reorderCardsOnInsert: jest.fn()
 }));
 
 describe('Vacation Mode', () => {
