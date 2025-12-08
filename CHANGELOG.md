@@ -1,3 +1,10 @@
+## [2.10.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.0...v2.10.1) (2025-12-08)
+
+
+### Bug Fixes
+
+* **tasks:** correct position numbering for scheduled task cards ([913fbde](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/913fbde0033e45e0393ad366ae3299c17683430d))
+
 # [2.10.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.9.0...v2.10.0) (2025-12-07)
 
 
