@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard, copyTaskTagsToCard } from '../database';
+import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById } from '../database';
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
@@ -144,14 +144,24 @@ export class TaskScheduler {
         
         if (todoColumnId) {
           try {
-            // Create the card
+            // Get the column to check if it's a completion column
+            const targetColumn = getColumnById(todoColumnId);
+            const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+            const isCompletionColumn = targetColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+            
+            // For non-completion columns, reorder existing cards to make space at position 1
+            if (!isCompletionColumn) {
+              reorderCardsOnInsert(todoColumnId, 1);
+            }
+            
+            // Create the card at position 1 (top of column)
             const cardTitle = task.title;
             const cardContent = task.description || '';
             const newCard = createCard({ 
               title: cardTitle, 
               content: cardContent, 
               column_id: todoColumnId, 
-              position: 0, 
+              position: 1, 
               card_type: 'simple', 
               priority: 0,
               converted_from_task_at: new Date().toISOString()
