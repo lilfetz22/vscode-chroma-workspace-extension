@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById } from '../database';
+import { getDb, prepare, createCard, getAllBoards, getColumnsByBoardId, createBoard, createColumn, getTagsByTaskId, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById, saveDatabase } from '../database';
 import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
@@ -187,6 +187,9 @@ export class TaskScheduler {
             }
 
             cardsCreated = true;
+
+            // Save database after creating card and copying tags
+            saveDatabase();
 
             if (this.shouldShowNotification(task.id)) {
               vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
