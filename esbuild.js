@@ -16,7 +16,7 @@ async function main() {
     platform: 'node',
     outfile: 'dist/extension_bundled.js',
   // Externalize only vscode API - sql.js is pure WebAssembly and bundles perfectly
-  external: ['vscode'],
+    external: ['vscode'],
     logLevel: 'silent',
     plugins: [
       /* add to the end of plugins array */
