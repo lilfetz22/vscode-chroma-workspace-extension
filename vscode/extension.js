@@ -44,23 +44,35 @@ const tokenModifiers = [];
 const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath } = require('../out/src/database');
 const { search } = require('../out/src/logic/search');
 const { getSettingsService } = require('../out/src/logic/SettingsService');
-const { initDebugLogger, getDebugLogger, closeDebugLogger } = require('../out/src/logic/DebugLogger');
+const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
 
 
 exports.activate = async function activate(context) {
-  // Initialize debug logger first
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const config = vscode.workspace.getConfiguration('chroma');
+  const configuredPath = config.get('database.path');
+
+  // Resolve database path early so the debug logger writes to the same file as the database
+  let resolvedDbPath;
+  if (configuredPath && typeof configuredPath === 'string') {
+    resolvedDbPath = paths.isAbsolute(configuredPath)
+      ? configuredPath
+      : (workspaceRoot ? paths.join(workspaceRoot, configuredPath) : configuredPath);
+  } else if (workspaceRoot) {
+    resolvedDbPath = paths.join(workspaceRoot, '.chroma', 'chroma.db');
+  }
+
+  const logDir = resolvedDbPath ? paths.dirname(resolvedDbPath) : (workspaceRoot || process.cwd());
+  initDebugLogger(logDir);
+  getDebugLogger().log('=== Extension Activated ===');
   if (workspaceRoot) {
-    initDebugLogger(workspaceRoot);
-    getDebugLogger().log('=== Extension Activated ===');
     getDebugLogger().log('Workspace root:', workspaceRoot);
   }
+  getDebugLogger().log('Configured database path:', configuredPath);
+  getDebugLogger().log('Log directory:', logDir);
 
   // Initialize database FIRST before creating any providers
   try {
-    const config = vscode.workspace.getConfiguration('chroma');
-    const configuredPath = config.get('database.path');
-    getDebugLogger().log('Configured database path:', configuredPath);
     if (configuredPath && typeof configuredPath === 'string') {
       setDatabasePath(configuredPath);
     }
@@ -68,17 +80,6 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Initializing database with workspace root');
       await initDatabase(false, workspaceRoot);
       getDebugLogger().log('Database initialized successfully');
-      
-      // Reinitialize debug logger with database directory
-      const dbFilePath = getDatabaseFilePath();
-      if (dbFilePath) {
-        const dbDir = paths.dirname(dbFilePath);
-        closeDebugLogger();
-        initDebugLogger(dbDir);
-        getDebugLogger().log('=== Debug Logger Reinitialized with Database Directory ===');
-        getDebugLogger().log('Database file path:', dbFilePath);
-        getDebugLogger().log('Log directory:', dbDir);
-      }
     }
   } catch (e) {
     getDebugLogger().log('ERROR: Database initialization failed');
