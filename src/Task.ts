@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 
@@ -268,6 +268,7 @@ export async function convertCardToTask(card: Card) {
         }
         
         vscode.window.showInformationMessage('Card converted to task.');
+        saveDatabase();
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to convert card to task: ' + err.message);
     }
@@ -342,6 +343,7 @@ export async function addTask() {
         }
         
         vscode.window.showInformationMessage('Task added.');
+        saveDatabase();
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to add task: ' + err.message);
     }
@@ -425,6 +427,7 @@ export async function editTask(task: Task) {
             }
         }
         vscode.window.showInformationMessage('Task updated.');
+        saveDatabase();
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to update task: ' + err.message);
     }
@@ -439,6 +442,7 @@ export async function completeTask(task: Task) {
     try {
         const db = getDb();
         prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
+        saveDatabase();
         vscode.window.showInformationMessage('Task completed.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to complete task: ' + err.message);
@@ -454,6 +458,7 @@ export async function deleteTask(task: Task) {
     try {
         const db = getDb();
         prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+        saveDatabase();
         vscode.window.showInformationMessage('Task deleted.');
     } catch (err: any) {
         vscode.window.showErrorMessage('Failed to delete task: ' + err.message);
