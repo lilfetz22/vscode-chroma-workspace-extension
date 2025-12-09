@@ -13,6 +13,8 @@ class DebugLogger {
 
     private initLogFile() {
         try {
+            // Ensure directory exists so log file can be created alongside the database
+            fs.mkdirSync(path.dirname(this.logFile), { recursive: true });
             // Create new log file, overwriting if exists
             this.stream = fs.createWriteStream(this.logFile, { flags: 'w' });
             this.log('=== Chroma Debug Log Started ===');
