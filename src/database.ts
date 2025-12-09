@@ -82,6 +82,22 @@ function setDb(database: SqlJsDatabase | undefined): void {
     setDbInRegistry(database);
 }
 
+// Set dbFilePath AND update the registry
+function setDbFilePath(path: string): void {
+    dbFilePath = path;
+    if (globalThis_.__CHROMA_DB_REGISTRY__) {
+        globalThis_.__CHROMA_DB_REGISTRY__.dbFilePath = path;
+    }
+}
+
+// Set memoryDb AND update the registry
+function setMemoryDb(database: SqlJsDatabase | undefined): void {
+    memoryDb = database;
+    if (globalThis_.__CHROMA_DB_REGISTRY__) {
+        globalThis_.__CHROMA_DB_REGISTRY__.memoryDb = database;
+    }
+}
+
 // Wrapper to make sql.js compatible with better-sqlite3 API
 export interface Statement {
     run(...params: any[]): { changes: number; lastInsertRowid: number };
@@ -207,8 +223,8 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
                 return memoryDb;
             }
             getLogger().info('Creating new in-memory database');
-            memoryDb = new SQL.Database();
-            setDb(memoryDb);
+            setMemoryDb(new SQL.Database());
+            setDb(memoryDb!);
             console.log(`[DATABASE MODULE ${MODULE_INSTANCE_ID}] Set db = memoryDb`);
         } else {
             if (db) {
@@ -253,7 +269,7 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             }
             
             setDb(new SQL.Database(buffer));
-            dbFilePath = dbPath;
+            setDbFilePath(dbPath);
             getLogger().info('Database initialized from file');
         }
 
@@ -283,17 +299,32 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
 
 // Save database to file
 export function saveDatabase(): void {
+    syncDbFromRegistry(); // Sync from registry first to get latest db instance
+    getDebugLogger().log('[saveDatabase] Called. db:', !!db, 'dbFilePath:', dbFilePath, 'memoryDb:', memoryDb);
     if (!db || !dbFilePath || memoryDb) {
+        getDebugLogger().log('[saveDatabase] Skipping save - not initialized or memory DB');
         return; // Don't save memory databases
     }
     try {
+        getDebugLogger().log('[saveDatabase] Exporting database...');
         const data = db.export();
+        getDebugLogger().log('[saveDatabase] Export complete. Data length:', data.length, 'bytes');
+        getDebugLogger().log('[saveDatabase] Writing to:', dbFilePath);
         fs.writeFileSync(dbFilePath, data);
+        getDebugLogger().log('[saveDatabase] writeFileSync completed');
         // Update our tracked mtime after saving
-        dbLastMtime = fs.statSync(dbFilePath).mtimeMs;
+        const newMtime = fs.statSync(dbFilePath).mtimeMs;
+        getDebugLogger().log('[saveDatabase] File mtime after write:', newMtime);
+        dbLastMtime = newMtime;
+        // Update the registry as well
+        if (globalThis_.__CHROMA_DB_REGISTRY__) {
+            globalThis_.__CHROMA_DB_REGISTRY__.dbLastMtime = newMtime;
+        }
         getLogger().debug('Database saved to file');
+        getDebugLogger().log('[saveDatabase] Database saved successfully to:', dbFilePath);
     } catch (error: any) {
         getLogger().error('Failed to save database', error);
+        getDebugLogger().log('[saveDatabase] ERROR saving database:', error.message, error.stack);
     }
 }
 
