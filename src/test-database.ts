@@ -477,6 +477,24 @@ export function deleteCard(db: any, id: string): void {
     stmt.run(id);
 }
 
+/**
+ * Reorder cards in a column when inserting a new card at a specific position.
+ * Increments the position of all cards at or above the insertion position by 1.
+ */
+export function reorderCardsOnInsert(db: any, columnId: string, insertPosition: number): void {
+    const stmt = db.prepare('UPDATE cards SET position = position + 1 WHERE column_id = ? AND position >= ?');
+    stmt.run(columnId, insertPosition);
+}
+
+/**
+ * Decrement positions of cards in a column when removing a card.
+ * Decrements the position of all cards positioned after the removed position by 1.
+ */
+export function reorderCardsOnRemove(db: any, columnId: string, removedPosition: number): void {
+    const stmt = db.prepare('UPDATE cards SET position = position - 1 WHERE column_id = ? AND position > ?');
+    stmt.run(columnId, removedPosition);
+}
+
 // Task-related functions
 export function createTask(db: any, task: any): any {
     const id = task.id || randomBytes(16).toString('hex');
