@@ -1,3 +1,10 @@
+## [2.10.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.2...v2.10.3) (2025-12-09)
+
+
+### Bug Fixes
+
+* reorder card positions when deleting cards ([26ec0cd](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/26ec0cd6bcfaa2ef4b5641c8eddebf1a5011ef65))
+
 ## [2.10.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.1...v2.10.2) (2025-12-09)
 
 
