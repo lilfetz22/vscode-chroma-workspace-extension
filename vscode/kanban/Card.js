@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard, removeTagFromCard, getTagsByCardId, getCardsByColumnId, reorderCardsOnInsert, reorderCardsOnRemove, getCardById } = require('../../out/src/database');
+const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard, removeTagFromCard, getTagsByCardId, getCardsByColumnId, reorderCardsOnInsert, reorderCardsOnRemove, getCardById, saveDatabase } = require('../../out/src/database');
 const { selectOrCreateTags } = require('../../out/vscode/Tag');
 const { getDebugLogger } = require('../../out/src/logic/DebugLogger');
 const { getSettingsService } = require('../../out/src/logic/SettingsService');
@@ -157,6 +157,10 @@ async function addCard(column) {
             }
         }
     }
+    
+    // Save database after all operations
+    saveDatabase();
+    debugLog.log('Database saved after card creation');
 }
 
 async function editCard(card) {
@@ -304,12 +308,20 @@ async function editCard(card) {
     } catch (e) {
         console.error('Failed during tag edit flow:', e);
     }
+    
+    // Save database after all operations
+    saveDatabase();
+    debugLog.log('Database saved after card edit');
 }
 
 async function deleteCard(card) {
+    const debugLog = getDebugLogger();
     const confirm = await vscode.window.showWarningMessage(`Are you sure you want to delete the card "${card.label}"?`, { modal: true }, 'Delete');
     if (confirm === 'Delete') {
+        debugLog.log('Deleting card:', card.cardId);
         dbDeleteCard(card.cardId);
+        saveDatabase();
+        debugLog.log('Database saved after card deletion');
     }
 }
 
@@ -412,6 +424,10 @@ async function moveCard(card) {
             debugLog.log(`STEP 4: Updating card with new column (${selectedColumn.id}) and position (${position})`);
             // Update card with new column and position
             updateCard(updateData);
+            
+            // Save database after all position updates and column changes
+            saveDatabase();
+            debugLog.log('Database saved after card move');
             
             debugLog.log('==================== MOVE CARD COMPLETE ====================\n');
         }
