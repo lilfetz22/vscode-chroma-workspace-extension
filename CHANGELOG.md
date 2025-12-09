@@ -1,3 +1,18 @@
+## [2.10.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.1...v2.10.2) (2025-12-09)
+
+
+### Bug Fixes
+
+* **build:** correct indentation in esbuild configuration ([b5347f7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b5347f7a16d2c621c961aa73c9e30f5bbf5d5eea))
+* **database:** synchronize global registry for database persistence ([cb2f47b](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/cb2f47b5e321026331e2bf3c8295ece9834273ee))
+* **extension:** initialize debug logger with correct database directory ([65b616e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/65b616e6691f4ef9ef50f8798175a3f71de9d2f9))
+* **kanban:** ensure database persistence for board and column operations ([d62ee2e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d62ee2e0fa79e0beb41d1f995d2b551120ebb105))
+* **kanban:** ensure database persistence for card operations ([c20f227](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c20f22764919721b9dec9da62a0ee70e16868ac7))
+* **logger:** ensure log directory exists before creating log file ([f2f2912](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f2f2912cf9b62aaf48fa912214b58f1cf242bf70))
+* **tags:** ensure database persistence for tag operations ([a6e0765](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/a6e07655eb71ce9d20052902ea782c553b326cb0))
+* **tasks:** ensure database persistence for all task operations ([a9f6329](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/a9f63298449bf13e36c7e47b8b88f426ee0ff510))
+* **tasks:** persist database after task scheduler creates cards ([e20b744](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e20b7441147193798a73128bfbcd247b0629ddcc))
+
 ## [2.10.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.0...v2.10.1) (2025-12-08)
 
 
