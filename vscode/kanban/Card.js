@@ -319,7 +319,21 @@ async function deleteCard(card) {
     const confirm = await vscode.window.showWarningMessage(`Are you sure you want to delete the card "${card.label}"?`, { modal: true }, 'Delete');
     if (confirm === 'Delete') {
         debugLog.log('Deleting card:', card.cardId);
+        
+        // Get the card's current position and column before deletion
+        const currentCard = getCardById(card.cardId);
+        const columnId = currentCard.column_id;
+        const position = currentCard.position;
+        
+        debugLog.log(`Card position: ${position}, column: ${columnId}`);
+        
+        // Delete the card
         dbDeleteCard(card.cardId);
+        
+        // Reorder remaining cards in the column
+        reorderCardsOnRemove(columnId, position);
+        debugLog.log(`Reordered cards in column ${columnId} after deletion`);
+        
         saveDatabase();
         debugLog.log('Database saved after card deletion');
     }
