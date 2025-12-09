@@ -16,7 +16,8 @@ import {
     getCardById,
     getCardsByColumnId,
     updateCard,
-    deleteCard
+    deleteCard,
+    reorderCardsOnRemove
 } from '../src/test-database';
 import { randomBytes } from 'crypto';
 
@@ -341,6 +342,34 @@ describe('Database Functions', () => {
 
             const fetchedCard = getCardById(db, card.id);
             expect(fetchedCard).toBeUndefined();
+        });
+
+        it('should reorder card positions when a card is deleted', () => {
+            // Create multiple cards in the same column
+            const card1 = createCard(db, { title: 'Card 1', content: '', column_id: columnId, position: 0, priority: 0, note_id: null });
+            const card2 = createCard(db, { title: 'Card 2', content: '', column_id: columnId, position: 1, priority: 0, note_id: null });
+            const card3 = createCard(db, { title: 'Card 3', content: '', column_id: columnId, position: 2, priority: 0, note_id: null });
+            const card4 = createCard(db, { title: 'Card 4', content: '', column_id: columnId, position: 3, priority: 0, note_id: null });
+
+            // Delete the card at position 1 (Card 2) and reorder remaining cards
+            deleteCard(db, card2.id);
+            reorderCardsOnRemove(db, columnId, 1);
+
+            // Get remaining cards
+            const cards = getCardsByColumnId(db, columnId);
+            
+            // Should have 3 cards left
+            expect(cards).toHaveLength(3);
+            
+            // Positions should be 0, 1, 2 (no gap at position 1)
+            expect(cards[0].id).toBe(card1.id);
+            expect(cards[0].position).toBe(0);
+            
+            expect(cards[1].id).toBe(card3.id);
+            expect(cards[1].position).toBe(1); // Decremented from 2 to 1
+            
+            expect(cards[2].id).toBe(card4.id);
+            expect(cards[2].position).toBe(2); // Decremented from 3 to 2
         });
 
         it('should link a card to a note', () => {
