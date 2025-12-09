@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId, getCardById, getDb } from '../src/database';
+import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId, getCardById, getDb, saveDatabase } from '../src/database';
 import { getDebugLogger } from '../src/logic/DebugLogger';
 import { CSS_COLOR_MAP, CLASSIC_COLORS, normalizeHex as utilNormalizeHex } from '../src/utils/colors';
 
@@ -70,6 +70,7 @@ async function addTag() {
         return;
     }
     createTag({ name, color });
+    saveDatabase();
 }
 
 async function editTag(tag: any) {
@@ -82,6 +83,7 @@ async function editTag(tag: any) {
         return;
     }
     updateTag({ id: tag.id, name: newName, color: newColor });
+    saveDatabase();
 }
 
 async function deleteTagWithConfirmation(tag: any) {
@@ -106,6 +108,7 @@ async function deleteTagWithConfirmation(tag: any) {
         try {
             debugLog.log(`Deleting tag ${tagId}...`);
             deleteTag(tagId);
+            saveDatabase();
             debugLog.log(`Tag ${tagId} deleted successfully`);
             vscode.window.showInformationMessage(`Tag "${tagName}" deleted successfully.`);
         } catch (err: any) {
