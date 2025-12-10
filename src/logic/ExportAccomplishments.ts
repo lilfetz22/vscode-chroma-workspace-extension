@@ -190,10 +190,23 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     
     const cards = prepare(query).all(completionColumn.id, startDateStr, endDateStr) as CompletedCard[];
 
-    // Attach tags for each card
+    // Attach tags for each card using a single batch query
+    const cardIds = cards.map(card => card.id);
+    // Fetch all tags for these cards in one query
+    const db = getDb();
+    const tagRows = db.prepare(`
+        SELECT card_id, name FROM card_tags
+        WHERE card_id IN (${cardIds.map(() => '?').join(',')})
+    `).all(...cardIds);
+    // Map card_id to array of tag names
+    const tagsByCardId: { [key: string]: string[] } = {};
+    for (const row of tagRows) {
+        if (!tagsByCardId[row.card_id]) tagsByCardId[row.card_id] = [];
+        tagsByCardId[row.card_id].push(row.name);
+    }
     return cards.map((card) => ({
         ...card,
-        tags: (getTagsByCardId(card.id) || []).map(t => t.name)
+        tags: tagsByCardId[card.id] || []
     }));
 }
 
