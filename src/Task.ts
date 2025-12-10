@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
+import { getSettingsService } from './logic/SettingsService';
+import { getNextDueDate } from './logic/Recurrence';
+import { Logger } from './logic/Logger';
 
 type Card = any;
 type Task = any;
@@ -433,6 +436,98 @@ export async function editTask(task: Task) {
     }
 }
 
+/**
+ * Internal helper to create a card from a task
+ * This is called both from manual conversion and automatic scheduling
+ * Returns the created card or null if creation failed
+ */
+export async function createCardFromTask(task: Task, isManualConversion: boolean = false): Promise<any> {
+    try {
+        const logger = Logger.getInstance();
+        const settings = getSettingsService().getKanbanSettings();
+        
+        // Determine the target column
+        const boards = getAllBoards();
+        let targetColumnId: string | null = null;
+        
+        if (boards.length === 0) {
+            // No boards exist, create a default one
+            const newBoard = createBoard({ title: 'My Board' });
+            const column = createColumn({ title: settings.taskCreationColumn, board_id: newBoard.id, position: 0 });
+            targetColumnId = column.id;
+        } else {
+            // Use the specified board_id if provided, otherwise use the first board
+            let targetBoard = task.boardId ? boards.find((b: any) => b.id === task.boardId) : undefined;
+            if (!targetBoard) {
+                targetBoard = boards[0];
+            }
+            
+            const columns = getColumnsByBoardId(targetBoard.id);
+            
+            // Look for the task creation column
+            const todoColumn = columns.find((col: any) => col.title.toLowerCase() === settings.taskCreationColumn.toLowerCase());
+            if (todoColumn) {
+                targetColumnId = todoColumn.id;
+            } else {
+                // If the configured column doesn't exist, create one at the beginning
+                const column = createColumn({ title: settings.taskCreationColumn, board_id: targetBoard.id, position: 0 });
+                targetColumnId = column.id;
+            }
+        }
+        
+        if (!targetColumnId) {
+            logger.error(`Failed to determine target column for task ${task.id}`);
+            return null;
+        }
+        
+        // Get the column to check if it's a completion column
+        const targetColumn = getColumnById(targetColumnId);
+        const completionColumnName = settings.completionColumn;
+        const isCompletionColumn = targetColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+        
+        // For non-completion columns, reorder existing cards to make space at position 1
+        if (!isCompletionColumn) {
+            reorderCardsOnInsert(targetColumnId, 1);
+        }
+        
+        // Create the card at position 1 (top of column)
+        const newCard = createCard({ 
+            title: task.title, 
+            content: task.description || '', 
+            column_id: targetColumnId, 
+            position: 1, 
+            card_type: 'simple', 
+            priority: 0,
+            converted_from_task_at: new Date().toISOString()
+        });
+        
+        // Copy tags from task to card (bulk insert, fallback to per-tag on failure/zero rows)
+        let copiedTags = 0;
+        try {
+            copiedTags = copyTaskTagsToCard(task.id, newCard.id);
+        } catch (tagCopyError: any) {
+            logger.warn(`Failed bulk tag copy for task ${task.id} -> card ${newCard.id}, falling back`, tagCopyError);
+        }
+        
+        if (copiedTags === 0) {
+            const taskTags = getTagsByTaskId(task.id);
+            for (const tag of taskTags) {
+                try {
+                    addTagToCard(newCard.id, tag.id);
+                } catch (tagError: any) {
+                    logger.warn(`Failed to copy tag ${tag.id} from task ${task.id} to card ${newCard.id}`, tagError);
+                }
+            }
+        }
+        
+        saveDatabase();
+        return newCard;
+    } catch (error) {
+        Logger.getInstance().error(`Failed to create card from task ${task.id}:`, error);
+        return null;
+    }
+}
+
 export async function completeTask(task: Task) {
     if (!task) {
         vscode.window.showErrorMessage('No task selected.');
@@ -464,5 +559,46 @@ export async function deleteTask(task: Task) {
         vscode.window.showErrorMessage('Failed to delete task: ' + err.message);
     }
 }
+
+export async function convertTaskToCard(task: Task) {
+    if (!task) {
+        vscode.window.showErrorMessage('No task selected.');
+        return;
+    }
+
+    try {
+        const logger = Logger.getInstance();
+        const newCard = await createCardFromTask(task, true);
+        
+        if (!newCard) {
+            vscode.window.showErrorMessage('Failed to convert task to card.');
+            return;
+        }
+        
+        // For recurring tasks, calculate the next due date and update the task
+        if (task.recurrence) {
+            const nextDueDate = getNextDueDate(task);
+            if (nextDueDate) {
+                prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
+                logger.info(`Recurring task "${task.title}" (ID: ${task.id}) converted to card. Next occurrence scheduled for ${nextDueDate.toISOString()}`);
+            } else {
+                // If no next due date, log warning and delete the task
+                logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date after manual conversion - deleting. This may indicate an invalid recurrence pattern.`);
+                prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+            }
+        } else {
+            // For non-recurring tasks, delete after conversion
+            logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) converted to card and deleted.`);
+            prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+        }
+        
+        saveDatabase();
+        vscode.window.showInformationMessage(`Task "${task.title}" converted to card.`);
+    } catch (err: any) {
+        vscode.window.showErrorMessage('Failed to convert task to card: ' + err.message);
+        Logger.getInstance().error(`Error converting task ${task.id} to card:`, err);
+    }
+}
+
 
 
