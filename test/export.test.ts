@@ -495,7 +495,8 @@ describe('Export Accomplishments', () => {
                 recurrence: 'daily',
                 count: 5,
                 firstCompleted: new Date().toISOString(),
-                lastCompleted: new Date().toISOString()
+                lastCompleted: new Date().toISOString(),
+                tags: ['test']
             };
 
             expect(isGroupedCard(groupedCard)).toBe(true);
