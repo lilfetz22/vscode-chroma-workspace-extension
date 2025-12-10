@@ -2,23 +2,25 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getDb } from '../database';
+import { getAllBoards, prepare, getTagsByCardId, getDb } from '../database';
 import { getSettingsService } from './SettingsService';
+import { Board } from '../models/Board';
 
-export interface CompletedTask {
+export interface CompletedCard {
     id: string;
     title: string;
-    description: string | null;
-    due_date: string;
+    content: string | null;
     recurrence: string | null;
+    tags: string[];
     completed_at: string;
     created_at: string;
 }
 
-export interface GroupedTask {
+export interface GroupedCard {
     title: string;
-    description: string | null;
+    content: string | null;
     recurrence: string | null;
+    tags: string[];
     count: number;
     firstCompleted: string;
     lastCompleted: string;
@@ -144,139 +146,178 @@ export async function promptCustomDateRange(): Promise<DateRange | null> {
 }
 
 /**
- * Fetch completed tasks within a date range
+ * Fetch completed cards from a specific board's completion column within a date range
  */
-export function getCompletedTasks(startDate: Date, endDate: Date, dbInstance?: any): CompletedTask[] {
-    const db = dbInstance || getDb();
+export function getCompletedCards(boardId: string, startDate: Date, endDate: Date): CompletedCard[] {
+    // Get the completion column name from settings
+    const settings = getSettingsService().getKanbanSettings();
+    const completionColumnName = settings.completionColumn;
     
+    // Find the completion column for this board
+    const columnsQuery = 'SELECT * FROM columns WHERE board_id = ? ORDER BY position';
+    const columns = prepare(columnsQuery).all(boardId);
+    // Case-insensitive and trimmed match to handle variations in user-configured column naming
+    const completionColumn = columns.find((col: any) => 
+        col.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim()
+    );
+    
+    if (!completionColumn) {
+        return [];
+    }
+    
+    // Query cards from the completion column with date filtering
+    // Return all individual completions, not pre-grouped
     const query = `
         SELECT 
             id,
             title,
-            description,
-            due_date,
+            content,
             recurrence,
-            updated_at as completed_at,
+            completed_at,
             created_at
-        FROM tasks
-        WHERE status = 'completed'
-        AND updated_at >= ?
-        AND updated_at <= ?
-        ORDER BY updated_at DESC
+        FROM cards
+        WHERE column_id = ?
+        AND completed_at IS NOT NULL
+        AND completed_at >= ?
+        AND completed_at <= ?
+        ORDER BY completed_at DESC
     `;
     
     const startDateStr = startDate.toISOString();
     const endDateStr = endDate.toISOString();
     
-    const tasks = db.prepare(query).all(startDateStr, endDateStr) as CompletedTask[];
-    return tasks;
+    const cards = prepare(query).all(completionColumn.id, startDateStr, endDateStr) as CompletedCard[];
+
+    // Attach tags for each card using a single batch query
+    const cardIds = cards.map(card => card.id);
+    // Fetch all tags for these cards in one query
+    const db = getDb();
+    const tagRows = db.prepare(`
+        SELECT ct.card_id, t.name FROM card_tags ct
+        JOIN tags t ON ct.tag_id = t.id
+        WHERE ct.card_id IN (${cardIds.map(() => '?').join(',')})
+    `).all(...cardIds);
+    // Map card_id to array of tag names
+    const tagsByCardId: { [key: string]: string[] } = {};
+    for (const row of tagRows) {
+        if (!tagsByCardId[row.card_id]) tagsByCardId[row.card_id] = [];
+        tagsByCardId[row.card_id].push(row.name);
+    }
+    return cards.map((card) => ({
+        ...card,
+        tags: tagsByCardId[card.id] || []
+    }));
 }
 
 /**
- * Group recurring tasks together for cleaner export
+ * Group recurring cards together by title, content, and recurrence
+ * Groups cards with the same title, content, and recurrence pattern
+ * and returns aggregated data (count, min/max dates, merged tags)
  */
-export function groupRecurringTasks(tasks: CompletedTask[]): (CompletedTask | GroupedTask)[] {
+export function groupRecurringCards(cards: CompletedCard[]): (CompletedCard | GroupedCard)[] {
     const settings = getSettingsService().getExportSettings();
     
-    // If grouping is disabled, return tasks as-is
+    // If grouping is disabled, return cards as-is
     if (!settings.groupRecurringTasks) {
-        return tasks;
+        return cards;
     }
     
-    const recurringGroups = new Map<string, CompletedTask[]>();
-    const nonRecurringTasks: CompletedTask[] = [];
-
-    // Separate recurring and non-recurring tasks
-    for (const task of tasks) {
-        if (task.recurrence) {
-            // Use title + recurrence as the group key
-            const key = `${task.title}|${task.recurrence}`;
-            if (!recurringGroups.has(key)) {
-                recurringGroups.set(key, []);
-            }
-            recurringGroups.get(key)!.push(task);
-        } else {
-            nonRecurringTasks.push(task);
+    // Group by title + content + recurrence
+    const groups = new Map<string, CompletedCard[]>();
+    
+    for (const card of cards) {
+        // Only group by title+content+recurrence if the card is recurring
+        // For non-recurring cards, make each one unique by including its ID
+        const key = card.recurrence 
+            ? `${card.title}|${card.content || ''}|${card.recurrence}`
+            : card.id; // Each non-recurring card gets its own group (never merged)
+        if (!groups.has(key)) {
+            groups.set(key, []);
         }
+        groups.get(key)!.push(card);
     }
-
-    // Create grouped results
-    const result: (CompletedTask | GroupedTask)[] = [];
-
-    // Add grouped recurring tasks
-    for (const [, group] of recurringGroups) {
+    
+    // Convert groups to result, grouping if count > 1
+    const result: (CompletedCard | GroupedCard)[] = [];
+    
+    for (const group of groups.values()) {
         if (group.length > 1) {
-            // Group multiple completions
+            // Multiple completions - aggregate them
             const sortedGroup = [...group].sort((a, b) => 
                 new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
             );
             
+            // Merge unique tags from all cards in group
+            const uniqueTags = Array.from(
+                new Set(group.flatMap(g => g.tags || []))
+            ).sort();
+            
             result.push({
                 title: group[0].title,
-                description: group[0].description,
+                content: group[0].content,
                 recurrence: group[0].recurrence,
+                tags: uniqueTags,
                 count: group.length,
                 firstCompleted: sortedGroup[0].completed_at,
                 lastCompleted: sortedGroup[sortedGroup.length - 1].completed_at
             });
         } else {
-            // Single completion, treat as regular task
+            // Single completion - keep as individual card
             result.push(group[0]);
         }
     }
-
-    // Add non-recurring tasks
-    result.push(...nonRecurringTasks);
 
     return result;
 }
 
 /**
- * Check if item is a grouped task
+ * Check if item is a grouped card
  */
-export function isGroupedTask(item: CompletedTask | GroupedTask): item is GroupedTask {
+export function isGroupedCard(item: CompletedCard | GroupedCard): item is GroupedCard {
     return 'count' in item;
 }
 
 /**
- * Convert tasks to CSV format
+ * Convert cards to CSV format
  */
-export function convertToCSV(tasks: (CompletedTask | GroupedTask)[]): string {
+export function convertToCSV(cards: (CompletedCard | GroupedCard)[]): string {
     const settings = getSettingsService().getExportSettings();
     const includeDescriptions = settings.includeDescriptions;
     
     const headers = includeDescriptions 
-        ? ['Title', 'Description', 'Recurrence', 'Count', 'Completed Date', 'Date Range']
-        : ['Title', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
+        ? ['Title', 'Description', 'Tags', 'Recurrence', 'Count', 'Completed Date', 'Date Range']
+        : ['Title', 'Tags', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
     const rows: string[][] = [headers];
 
-    for (const task of tasks) {
-        if (isGroupedTask(task)) {
+    for (const card of cards) {
+        if (isGroupedCard(card)) {
             const row = [
-                escapeCSV(task.title),
+                escapeCSV(card.title),
             ];
             if (includeDescriptions) {
-                row.push(escapeCSV(task.description || ''));
+                row.push(escapeCSV(card.content || ''));
             }
+            row.push(escapeCSV((card.tags || []).join('; ')));
             row.push(
-                escapeCSV(task.recurrence || ''),
-                task.count.toString(),
-                formatDate(task.lastCompleted),
-                `${formatDate(task.firstCompleted)} - ${formatDate(task.lastCompleted)}`
+                escapeCSV(card.recurrence || ''),
+                card.count.toString(),
+                formatDate(card.lastCompleted),
+                `${formatDate(card.firstCompleted)} - ${formatDate(card.lastCompleted)}`
             );
             rows.push(row);
         } else {
             const row = [
-                escapeCSV(task.title),
+                escapeCSV(card.title),
             ];
             if (includeDescriptions) {
-                row.push(escapeCSV(task.description || ''));
+                row.push(escapeCSV(card.content || ''));
             }
+            row.push(escapeCSV((card.tags || []).join('; ')));
             row.push(
-                escapeCSV(task.recurrence || ''),
+                escapeCSV(card.recurrence || ''),
                 '1',
-                formatDate(task.completed_at),
-                formatDate(task.completed_at)
+                formatDate(card.completed_at),
+                formatDate(card.completed_at)
             );
             rows.push(row);
         }
@@ -312,7 +353,40 @@ function formatDate(dateStr: string): string {
  */
 export async function exportAccomplishments(): Promise<void> {
     try {
-        // Step 1: Select date range
+        // Step 1: Get all boards
+        const boards = getAllBoards();
+        
+        if (boards.length === 0) {
+            vscode.window.showInformationMessage('No boards found. Please create a board first.');
+            return;
+        }
+
+        // Step 2: If multiple boards, let user select one
+        let selectedBoard: Board;
+        if (boards.length === 1) {
+            selectedBoard = boards[0];
+        } else {
+            const boardItems = boards.map(board => ({
+                label: board.title,
+                description: `Board ID: ${board.id}`,
+                board: board
+            }));
+
+            const selectedItem = await vscode.window.showQuickPick(
+                boardItems,
+                {
+                    placeHolder: 'Select a board to export accomplishments from'
+                }
+            );
+
+            if (!selectedItem) {
+                return; // User cancelled
+            }
+
+            selectedBoard = selectedItem.board;
+        }
+
+        // Step 3: Select date range
         const dateRangeOptions = getDateRangeOptions();
         const selected = await vscode.window.showQuickPick(
             dateRangeOptions,
@@ -340,28 +414,30 @@ export async function exportAccomplishments(): Promise<void> {
             }
         }
 
-        // Step 2: Fetch completed tasks
-        const completedTasks = getCompletedTasks(dateRange.startDate, dateRange.endDate);
+        // Step 4: Fetch completed cards from the selected board
+        const completedCards = getCompletedCards(selectedBoard.id, dateRange.startDate, dateRange.endDate);
 
-        if (completedTasks.length === 0) {
+        if (completedCards.length === 0) {
+            const settings = getSettingsService().getKanbanSettings();
             vscode.window.showInformationMessage(
-                `No completed tasks found for ${dateRange.label}`
+                `No completed cards found in "${settings.completionColumn}" column for ${dateRange.label}`
             );
             return;
         }
 
-        // Step 3: Group recurring tasks
-        const groupedTasks = groupRecurringTasks(completedTasks);
+        // Step 5: Group recurring cards
+        const groupedCards = groupRecurringCards(completedCards);
 
-        // Step 4: Convert to CSV
-        const csvContent = convertToCSV(groupedTasks);
+        // Step 6: Convert to CSV
+        const csvContent = convertToCSV(groupedCards);
 
-        // Step 5: Prompt for save location
+        // Step 7: Prompt for save location
         // Use workspace folder if available, otherwise use user's Documents folder
         const defaultFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || 
                              path.join(os.homedir(), 'Documents');
         
-        const defaultFilename = `accomplishments_${dateRange.startDate.toISOString().split('T')[0]}_to_${dateRange.endDate.toISOString().split('T')[0]}.csv`;
+        const boardNameSafe = selectedBoard.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'board';
+        const defaultFilename = `${boardNameSafe}_accomplishments_${dateRange.startDate.toISOString().split('T')[0]}_to_${dateRange.endDate.toISOString().split('T')[0]}.csv`;
         
         const saveUri = await vscode.window.showSaveDialog({
             defaultUri: vscode.Uri.file(path.join(defaultFolder, defaultFilename)),
@@ -375,12 +451,12 @@ export async function exportAccomplishments(): Promise<void> {
             return; // User cancelled save dialog
         }
 
-        // Step 6: Write file
+        // Step 8: Write file
         fs.writeFileSync(saveUri.fsPath, csvContent, 'utf8');
 
-        // Step 7: Success notification with action to open file
+        // Step 9: Success notification with action to open file
         const action = await vscode.window.showInformationMessage(
-            `Successfully exported ${completedTasks.length} task${completedTasks.length !== 1 ? 's' : ''} (${groupedTasks.length} row${groupedTasks.length !== 1 ? 's' : ''}) to ${path.basename(saveUri.fsPath)}`,
+            `Successfully exported ${completedCards.length} card${completedCards.length !== 1 ? 's' : ''} (${groupedCards.length} row${groupedCards.length !== 1 ? 's' : ''}) from "${selectedBoard.title}" to ${path.basename(saveUri.fsPath)}`,
             'Open File'
         );
 
