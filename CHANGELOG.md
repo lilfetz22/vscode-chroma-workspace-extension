@@ -1,3 +1,17 @@
+# [2.12.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.11.0...v2.12.0) (2025-12-10)
+
+
+### Bug Fixes
+
+* **export:** correct grouping logic for non-recurring tasks and fix tag query join ([1a0c6bb](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/1a0c6bb7cb5644246c0a16c26024e6cfbfaef2ff))
+* **export:** optimize tag fetching by using a prepared statement ([2d85bd1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/2d85bd14208dfeca707ebcfe2893056e85aeff6e))
+
+
+### Features
+
+* **export:** add board-specific accomplishments export from Done column ([a12c64c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/a12c64c6062ed2f78da903bf2b6c46c972624ff1))
+* **export:** include tags and improve grouping/CSV for ExportAccomplishments ([b94c52c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b94c52c08c08fe97d247e5c7c3e33494bfb4c7be))
+
 # [2.11.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.3...v2.11.0) (2025-12-10)
 
 
