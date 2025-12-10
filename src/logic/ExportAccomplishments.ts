@@ -5,7 +5,6 @@ import * as os from 'os';
 import { getAllBoards, prepare, getTagsByCardId } from '../database';
 import { getSettingsService } from './SettingsService';
 import { Board } from '../models/Board';
-import { Column } from '../models/Column';
 
 export interface CompletedCard {
     id: string;
