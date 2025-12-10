@@ -20,7 +20,7 @@ const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
 const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
-const { convertCardToTask, addTask, editTask, completeTask, deleteTask } = require('../out/src/Task');
+const { convertCardToTask, addTask, editTask, completeTask, deleteTask, convertTaskToCard } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
@@ -197,6 +197,12 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.editTask', (task) => {
       editTask(task).then(() => {
         taskProvider.refresh();
+      });
+    }),
+    vscode.commands.registerCommand('chroma.convertTaskToCard', (task) => {
+      convertTaskToCard(task).then(() => {
+        taskProvider.refresh();
+        kanbanProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.completeTask', (task) => {
