@@ -420,7 +420,7 @@ export async function exportAccomplishments(): Promise<void> {
         const defaultFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || 
                              path.join(os.homedir(), 'Documents');
         
-        const boardNameSafe = selectedBoard.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const boardNameSafe = selectedBoard.title.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'board';
         const defaultFilename = `${boardNameSafe}_accomplishments_${dateRange.startDate.toISOString().split('T')[0]}_to_${dateRange.endDate.toISOString().split('T')[0]}.csv`;
         
         const saveUri = await vscode.window.showSaveDialog({
