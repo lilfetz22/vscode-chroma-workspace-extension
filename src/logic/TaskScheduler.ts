@@ -4,6 +4,7 @@ import { Task } from '../models/Task';
 import { getNextDueDate } from './Recurrence';
 import { getSettingsService } from './SettingsService';
 import { Logger } from './Logger';
+import { createCardFromTask } from '../Task';
 
 export class TaskScheduler {
   private static instance: TaskScheduler;
@@ -78,42 +79,6 @@ export class TaskScheduler {
     this.lastNotificationTime.set(taskId, Date.now());
   }
 
-  private getOrCreateToDoColumn(boardId?: string): string | null {
-    try {
-      const db = getDb();
-      const boards = getAllBoards();
-      const taskCreationColumn = getSettingsService().getKanbanSettings().taskCreationColumn;
-      
-      // If no boards exist, create a default one
-      if (boards.length === 0) {
-        const newBoard = createBoard({ title: 'My Board' });
-        const column = createColumn({ title: taskCreationColumn, board_id: newBoard.id, position: 0 });
-        return column.id;
-      }
-
-      // Use the specified board_id if provided, otherwise use the first board
-      let targetBoard = boardId ? boards.find(b => b.id === boardId) : undefined;
-      if (!targetBoard) {
-        targetBoard = boards[0];
-      }
-
-      const columns = getColumnsByBoardId(targetBoard.id);
-      
-      // Look for the task creation column (configured or default "To Do")
-      const todoColumn = columns.find(col => col.title.toLowerCase() === taskCreationColumn.toLowerCase());
-      if (todoColumn) {
-        return todoColumn.id;
-      }
-
-      // If the configured column doesn't exist, create one at the beginning
-      const column = createColumn({ title: taskCreationColumn, board_id: targetBoard.id, position: 0 });
-      return column.id;
-    } catch (error) {
-      console.error(`Failed to get/create ${getSettingsService().getKanbanSettings().taskCreationColumn} column:`, error);
-      return null;
-    }
-  }
-
   private async checkTasks() {
     getDb(); // Ensure DB is initialized
     const logger = Logger.getInstance();
@@ -139,65 +104,22 @@ export class TaskScheduler {
     for (const task of tasks) {
       let dueDate = new Date(task.dueDate);
       if (dueDate <= now) {
-        // Task is due - create a card in the "To Do" column of the task's specified board
-        const todoColumnId = this.getOrCreateToDoColumn(task.boardId);
-        
-        if (todoColumnId) {
-          try {
-            // Get the column to check if it's a completion column
-            const targetColumn = getColumnById(todoColumnId);
-            const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
-            const isCompletionColumn = targetColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
-            
-            // For non-completion columns, reorder existing cards to make space at position 1
-            if (!isCompletionColumn) {
-              reorderCardsOnInsert(todoColumnId, 1);
-            }
-            
-            // Create the card at position 1 (top of column)
-            const cardTitle = task.title;
-            const cardContent = task.description || '';
-            const newCard = createCard({ 
-              title: cardTitle, 
-              content: cardContent, 
-              column_id: todoColumnId, 
-              position: 1, 
-              card_type: 'simple', 
-              priority: 0,
-              converted_from_task_at: new Date().toISOString()
-            });
-
-            // Copy tags from task to card (bulk insert, fallback to per-tag on failure/zero rows)
-            let copiedTags = 0;
-            try {
-              copiedTags = copyTaskTagsToCard(task.id, newCard.id);
-            } catch (tagCopyError: any) {
-              logger.warn(`Failed bulk tag copy for task ${task.id} -> card ${newCard.id}, falling back`, tagCopyError);
-            }
-
-            if (copiedTags === 0) {
-              const taskTags = getTagsByTaskId(task.id);
-              for (const tag of taskTags) {
-                try {
-                  addTagToCard(newCard.id, tag.id);
-                } catch (tagError: any) {
-                  logger.warn(`Failed to copy tag ${tag.id} from task ${task.id} to card ${newCard.id}`, tagError);
-                }
-              }
-            }
-
+        // Task is due - create a card using the reusable function
+        try {
+          const newCard = await createCardFromTask(task, false);
+          
+          if (newCard) {
             cardsCreated = true;
-
-            // Save database after creating card and copying tags
-            saveDatabase();
 
             if (this.shouldShowNotification(task.id)) {
               vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
               this.recordNotification(task.id);
             }
-          } catch (error) {
-            console.error('Failed to create card for task:', error);
+          } else {
+            logger.error(`Failed to create card for task ${task.id}`);
           }
+        } catch (error) {
+          logger.error('Failed to create card for task:', error);
         }
 
         if (task.recurrence) {
