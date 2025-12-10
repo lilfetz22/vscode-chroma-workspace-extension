@@ -77,6 +77,9 @@ describe('Export Accomplishments', () => {
             };
         });
 
+        // Mock getDb to return the test database
+        jest.spyOn(database, 'getDb').mockImplementation(() => db);
+
         // Mock tag lookup to use the test database without requiring initDatabase()
         jest.spyOn(database, 'getTagsByCardId').mockImplementation((cardId: string) => {
             const stmt = db.prepare(`
