@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getAllBoards, prepare, getTagsByCardId } from '../database';
+import { getAllBoards, prepare, getTagsByCardId, getDb } from '../database';
 import { getSettingsService } from './SettingsService';
 import { Board } from '../models/Board';
 
@@ -193,8 +193,9 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     // Fetch all tags for these cards in one query
     const db = getDb();
     const tagRows = db.prepare(`
-        SELECT card_id, name FROM card_tags
-        WHERE card_id IN (${cardIds.map(() => '?').join(',')})
+        SELECT ct.card_id, t.name FROM card_tags ct
+        JOIN tags t ON ct.tag_id = t.id
+        WHERE ct.card_id IN (${cardIds.map(() => '?').join(',')})
     `).all(...cardIds);
     // Map card_id to array of tag names
     const tagsByCardId: { [key: string]: string[] } = {};
@@ -225,8 +226,11 @@ export function groupRecurringCards(cards: CompletedCard[]): (CompletedCard | Gr
     const groups = new Map<string, CompletedCard[]>();
     
     for (const card of cards) {
-        // Create a unique key based on title, content, and recurrence
-        const key = `${card.title}|${card.content || ''}|${card.recurrence || ''}`;
+        // Only group by title+content+recurrence if the card is recurring
+        // For non-recurring cards, make each one unique by including its ID
+        const key = card.recurrence 
+            ? `${card.title}|${card.content || ''}|${card.recurrence}`
+            : card.id; // Each non-recurring card gets its own group (never merged)
         if (!groups.has(key)) {
             groups.set(key, []);
         }
