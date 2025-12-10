@@ -191,8 +191,7 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     // Attach tags for each card using a single batch query
     const cardIds = cards.map(card => card.id);
     // Fetch all tags for these cards in one query
-    const db = getDb();
-    const tagRows = db.prepare(`
+    const tagRows = prepare(`
         SELECT ct.card_id, t.name FROM card_tags ct
         JOIN tags t ON ct.tag_id = t.id
         WHERE ct.card_id IN (${cardIds.map(() => '?').join(',')})
