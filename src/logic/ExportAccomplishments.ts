@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getDb, getAllBoards, prepare } from '../database';
+import { getDb, getAllBoards, prepare, getTagsByCardId } from '../database';
 import { getSettingsService } from './SettingsService';
 import { Card } from '../models/Card';
 import { Board } from '../models/Board';
@@ -13,6 +13,7 @@ export interface CompletedCard {
     title: string;
     content: string | null;
     recurrence: string | null;
+    tags: string[];
     completed_at: string;
     created_at: string;
 }
@@ -21,6 +22,7 @@ export interface GroupedCard {
     title: string;
     content: string | null;
     recurrence: string | null;
+    tags: string[];
     count: number;
     firstCompleted: string;
     lastCompleted: string;
@@ -165,6 +167,7 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     }
     
     // Query cards from the completion column with date filtering
+    // Return all individual completions, not pre-grouped
     const query = `
         SELECT 
             id,
@@ -185,11 +188,18 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     const endDateStr = endDate.toISOString();
     
     const cards = prepare(query).all(completionColumn.id, startDateStr, endDateStr) as CompletedCard[];
-    return cards;
+
+    // Attach tags for each card
+    return cards.map((card) => ({
+        ...card,
+        tags: (getTagsByCardId(card.id) || []).map(t => t.name)
+    }));
 }
 
 /**
- * Group recurring cards together for cleaner export
+ * Group recurring cards together by title, content, and recurrence
+ * Groups cards with the same title, description, and recurrence pattern
+ * and returns aggregated data (count, min/max dates, merged tags)
  */
 export function groupRecurringCards(cards: CompletedCard[]): (CompletedCard | GroupedCard)[] {
     const settings = getSettingsService().getExportSettings();
@@ -199,50 +209,47 @@ export function groupRecurringCards(cards: CompletedCard[]): (CompletedCard | Gr
         return cards;
     }
     
-    const recurringGroups = new Map<string, CompletedCard[]>();
-    const nonRecurringCards: CompletedCard[] = [];
-
-    // Separate recurring and non-recurring cards
+    // Group by title + content + recurrence
+    const groups = new Map<string, CompletedCard[]>();
+    
     for (const card of cards) {
-        if (card.recurrence) {
-            // Use title + recurrence as the group key
-            const key = `${card.title}|${card.recurrence}`;
-            if (!recurringGroups.has(key)) {
-                recurringGroups.set(key, []);
-            }
-            recurringGroups.get(key)!.push(card);
-        } else {
-            nonRecurringCards.push(card);
+        // Create a unique key based on title, content, and recurrence
+        const key = `${card.title}|${card.content || ''}|${card.recurrence || ''}`;
+        if (!groups.has(key)) {
+            groups.set(key, []);
         }
+        groups.get(key)!.push(card);
     }
-
-    // Create grouped results
+    
+    // Convert groups to result, grouping if count > 1
     const result: (CompletedCard | GroupedCard)[] = [];
-
-    // Add grouped recurring cards
-    for (const [, group] of recurringGroups) {
+    
+    for (const group of groups.values()) {
         if (group.length > 1) {
-            // Group multiple completions
+            // Multiple completions - aggregate them
             const sortedGroup = [...group].sort((a, b) => 
                 new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime()
             );
+            
+            // Merge unique tags from all cards in group
+            const uniqueTags = Array.from(
+                new Set(group.flatMap(g => g.tags || []))
+            ).sort();
             
             result.push({
                 title: group[0].title,
                 content: group[0].content,
                 recurrence: group[0].recurrence,
+                tags: uniqueTags,
                 count: group.length,
                 firstCompleted: sortedGroup[0].completed_at,
                 lastCompleted: sortedGroup[sortedGroup.length - 1].completed_at
             });
         } else {
-            // Single completion, treat as regular card
+            // Single completion - keep as individual card
             result.push(group[0]);
         }
     }
-
-    // Add non-recurring cards
-    result.push(...nonRecurringCards);
 
     return result;
 }
@@ -262,8 +269,8 @@ export function convertToCSV(cards: (CompletedCard | GroupedCard)[]): string {
     const includeDescriptions = settings.includeDescriptions;
     
     const headers = includeDescriptions 
-        ? ['Title', 'Description', 'Recurrence', 'Count', 'Completed Date', 'Date Range']
-        : ['Title', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
+        ? ['Title', 'Description', 'Tags', 'Recurrence', 'Count', 'Completed Date', 'Date Range']
+        : ['Title', 'Tags', 'Recurrence', 'Count', 'Completed Date', 'Date Range'];
     const rows: string[][] = [headers];
 
     for (const card of cards) {
@@ -274,6 +281,7 @@ export function convertToCSV(cards: (CompletedCard | GroupedCard)[]): string {
             if (includeDescriptions) {
                 row.push(escapeCSV(card.content || ''));
             }
+            row.push(escapeCSV((card.tags || []).join('; ')));
             row.push(
                 escapeCSV(card.recurrence || ''),
                 card.count.toString(),
@@ -288,6 +296,7 @@ export function convertToCSV(cards: (CompletedCard | GroupedCard)[]): string {
             if (includeDescriptions) {
                 row.push(escapeCSV(card.content || ''));
             }
+            row.push(escapeCSV((card.tags || []).join('; ')));
             row.push(
                 escapeCSV(card.recurrence || ''),
                 '1',
