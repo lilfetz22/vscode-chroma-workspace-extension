@@ -158,6 +158,7 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
     // Find the completion column for this board
     const columnsQuery = 'SELECT * FROM columns WHERE board_id = ? ORDER BY position';
     const columns = prepare(columnsQuery).all(boardId);
+    // Case-insensitive and trimmed match to handle variations in user-configured column naming
     const completionColumn = columns.find((col: any) => 
         col.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim()
     );
