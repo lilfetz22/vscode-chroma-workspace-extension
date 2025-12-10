@@ -247,6 +247,10 @@
         "title": "Edit Task"
       },
       {
+        "command": "chroma.convertTaskToCard",
+        "title": "Convert to Card"
+      },
+      {
         "command": "chroma.completeTask",
         "title": "Complete Task"
       },
@@ -358,7 +362,7 @@
           "group": "inline"
         },
         {
-          "command": "chroma.completeTask",
+          "command": "chroma.convertTaskToCard",
           "when": "view == scheduledTasks && viewItem == task",
           "group": "inline"
         },
