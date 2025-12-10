@@ -70,6 +70,7 @@ Advanced scheduling capabilities for recurring and time-based tasks:
 - **Notifications**: Reminders for due tasks
 - **Board Assignment**: Tasks can be targeted to a specific board; you'll be prompted to pick a board when multiple boards exist, one board is auto-selected, and a default board+column is created if none exist.
 - **Tag Inheritance**: Tags from scheduled tasks are automatically copied to created cards
+- **Manual Early Conversion**: Convert scheduled tasks to cards before their scheduled time by hovering over a task in the Scheduled Tasks View and clicking the 'Convert to Card' button.
 
 ###  Accomplishments Export (FUTURE FEATURE)
 
