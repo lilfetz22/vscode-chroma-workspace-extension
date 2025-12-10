@@ -198,7 +198,7 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
 
 /**
  * Group recurring cards together by title, content, and recurrence
- * Groups cards with the same title, description, and recurrence pattern
+ * Groups cards with the same title, content, and recurrence pattern
  * and returns aggregated data (count, min/max dates, merged tags)
  */
 export function groupRecurringCards(cards: CompletedCard[]): (CompletedCard | GroupedCard)[] {
