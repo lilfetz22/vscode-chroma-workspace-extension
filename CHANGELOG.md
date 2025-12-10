@@ -1,3 +1,12 @@
+# [2.11.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.3...v2.11.0) (2025-12-10)
+
+
+### Features
+
+* **extension:** register convert task to card command ([859b29f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/859b29fe3a8e542938ac545fb75aad5fd8837310))
+* **tasks:** add convert to card command for scheduled tasks ([001123f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/001123f2dbb584189d4fd676ae16e76cb8258e92))
+* **tasks:** add manual task to card conversion functionality ([734cd76](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/734cd763bb566735daec427a790b918a06ab942f))
+
 ## [2.10.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.10.2...v2.10.3) (2025-12-09)
 
 
