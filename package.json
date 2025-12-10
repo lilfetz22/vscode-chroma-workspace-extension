@@ -290,6 +290,10 @@
       {
         "command": "chroma.search",
         "title": "Search"
+      },
+      {
+        "command": "chroma.addNote",
+        "title": "Add Note"
       }
     ],
     "menus": {
@@ -307,6 +311,11 @@
         {
           "command": "chroma.addTag",
           "when": "view == tags",
+          "group": "navigation"
+        },
+        {
+          "command": "chroma.addNote",
+          "when": "view == notes",
           "group": "navigation"
         }
       ],
