@@ -76,6 +76,16 @@ describe('Export Accomplishments', () => {
                 all: (...params: any[]) => db.prepare(sql).all(...params)
             };
         });
+
+        // Mock tag lookup to use the test database without requiring initDatabase()
+        jest.spyOn(database, 'getTagsByCardId').mockImplementation((cardId: string) => {
+            const stmt = db.prepare(`
+                SELECT t.* FROM tags t
+                INNER JOIN card_tags ct ON t.id = ct.tag_id
+                WHERE ct.card_id = ?
+            `);
+            return stmt.all(cardId);
+        });
     });
 
     afterAll(() => {
@@ -85,6 +95,8 @@ describe('Export Accomplishments', () => {
 
     beforeEach(() => {
         // Clear tables before each test
+        db.exec('DELETE FROM card_tags');
+        db.exec('DELETE FROM tags');
         db.exec('DELETE FROM cards');
         db.exec('DELETE FROM columns');
         db.exec('DELETE FROM boards');
@@ -239,6 +251,7 @@ describe('Export Accomplishments', () => {
                     title: 'Daily Standup',
                     content: 'Team meeting',
                     recurrence: 'daily',
+                    tags: ['standup'],
                     completed_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
                     created_at: now.toISOString()
                 },
@@ -247,6 +260,7 @@ describe('Export Accomplishments', () => {
                     title: 'Daily Standup',
                     content: 'Team meeting',
                     recurrence: 'daily',
+                    tags: ['standup'],
                     completed_at: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
                     created_at: now.toISOString()
                 },
@@ -255,6 +269,7 @@ describe('Export Accomplishments', () => {
                     title: 'Daily Standup',
                     content: 'Team meeting',
                     recurrence: 'daily',
+                    tags: ['standup', 'team'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -280,6 +295,7 @@ describe('Export Accomplishments', () => {
                     title: 'Weekly Review',
                     content: 'Review progress',
                     recurrence: 'weekly',
+                    tags: ['weekly'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -299,6 +315,7 @@ describe('Export Accomplishments', () => {
                     title: 'One-time Task',
                     content: 'Complete project',
                     recurrence: null,
+                    tags: [],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 },
@@ -307,6 +324,7 @@ describe('Export Accomplishments', () => {
                     title: 'Another One-time Task',
                     content: 'Another project',
                     recurrence: null,
+                    tags: ['solo'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -327,6 +345,7 @@ describe('Export Accomplishments', () => {
                     title: 'Meeting',
                     content: 'Team sync',
                     recurrence: 'daily',
+                    tags: ['daily'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 },
@@ -335,6 +354,7 @@ describe('Export Accomplishments', () => {
                     title: 'Meeting',
                     content: 'Team sync',
                     recurrence: 'daily',
+                    tags: ['daily','team'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 },
@@ -343,6 +363,7 @@ describe('Export Accomplishments', () => {
                     title: 'Meeting',
                     content: 'Team sync',
                     recurrence: 'weekly',
+                    tags: ['weekly'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -373,6 +394,7 @@ describe('Export Accomplishments', () => {
                     title: 'Card 1',
                     content: 'Content 1',
                     recurrence: null,
+                    tags: ['tag-a', 'tag-b'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -382,9 +404,10 @@ describe('Export Accomplishments', () => {
             const lines = csv.split('\n');
             
             expect(lines.length).toBe(2); // Header + 1 card
-            expect(lines[0]).toBe('Title,Description,Recurrence,Count,Completed Date,Date Range');
+            expect(lines[0]).toBe('Title,Description,Tags,Recurrence,Count,Completed Date,Date Range');
             expect(lines[1]).toContain('Card 1');
             expect(lines[1]).toContain('Content 1');
+            expect(lines[1]).toContain('tag-a; tag-b');
             expect(lines[1]).toContain(',1,'); // Count
         });
 
@@ -396,6 +419,7 @@ describe('Export Accomplishments', () => {
                     title: 'Daily Standup',
                     content: 'Team meeting',
                     recurrence: 'daily',
+                    tags: ['daily', 'team'],
                     count: 5,
                     firstCompleted: yesterday.toISOString(),
                     lastCompleted: now.toISOString()
@@ -408,6 +432,7 @@ describe('Export Accomplishments', () => {
             expect(lines.length).toBe(2);
             expect(lines[1]).toContain('Daily Standup');
             expect(lines[1]).toContain('daily');
+            expect(lines[1]).toContain('daily; team');
             expect(lines[1]).toContain(',5,'); // Count
             expect(lines[1]).toContain(' - '); // Date range separator
         });
@@ -420,6 +445,7 @@ describe('Export Accomplishments', () => {
                     title: 'Card with, comma',
                     content: 'Content with "quotes"',
                     recurrence: null,
+                    tags: ['comma,tag', 'quote"tag'],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -429,6 +455,7 @@ describe('Export Accomplishments', () => {
             
             expect(csv).toContain('"Card with, comma"'); // Should be quoted
             expect(csv).toContain('"Content with ""quotes"""'); // Quotes should be escaped
+            expect(csv).toContain('"comma,tag; quote""tag"');
         });
 
         it('should handle empty card list', () => {
@@ -436,7 +463,7 @@ describe('Export Accomplishments', () => {
             const lines = csv.split('\n');
             
             expect(lines.length).toBe(1); // Only header
-            expect(lines[0]).toBe('Title,Description,Recurrence,Count,Completed Date,Date Range');
+            expect(lines[0]).toBe('Title,Description,Tags,Recurrence,Count,Completed Date,Date Range');
         });
 
         it('should handle cards with null content', () => {
@@ -447,6 +474,7 @@ describe('Export Accomplishments', () => {
                     title: 'Card without content',
                     content: null,
                     recurrence: null,
+                    tags: [],
                     completed_at: now.toISOString(),
                     created_at: now.toISOString()
                 }
@@ -479,6 +507,7 @@ describe('Export Accomplishments', () => {
                 title: 'Test',
                 content: 'Desc',
                 recurrence: null,
+                tags: ['sample'],
                 completed_at: new Date().toISOString(),
                 created_at: new Date().toISOString()
             };
