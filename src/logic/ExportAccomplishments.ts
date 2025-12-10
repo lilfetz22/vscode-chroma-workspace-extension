@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { getDb, getAllBoards, prepare, getTagsByCardId } from '../database';
+import { getAllBoards, prepare, getTagsByCardId } from '../database';
 import { getSettingsService } from './SettingsService';
 import { Card } from '../models/Card';
 import { Board } from '../models/Board';
