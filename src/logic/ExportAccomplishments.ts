@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as os from 'os';
 import { getAllBoards, prepare, getTagsByCardId } from '../database';
 import { getSettingsService } from './SettingsService';
-import { Card } from '../models/Card';
 import { Board } from '../models/Board';
 import { Column } from '../models/Column';
 
