@@ -61,11 +61,6 @@ For example:
 4. Alternatively, manually create `.notesnlh` files in the `.chroma/notes/` folder
 5. Files will appear in the Notes view automatically
 6. Click any note to open it
-1. Open the Chroma Workspace panel in VS Code
-2. Click on the "Notes" view (below Tags)
-3. Create `.notesnlh` files in the `.chroma/notes/` folder
-4. Files will appear in the Notes view automatically
-5. Click any note to open it
 
 ## Testing
 To test the feature:
