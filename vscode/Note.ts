@@ -83,6 +83,9 @@ export async function editNote(noteFile: NoteFile): Promise<void> {
         return;
     }
 
+    // Track the current file path throughout the flow (handles optional rename)
+    let currentPath = noteFile.path;
+
     // Step 1: Edit note name
     const currentName = noteFile.name.replace(/\.notesnlh$/, '');
     const newName = await vscode.window.showInputBox({
@@ -115,11 +118,12 @@ export async function editNote(noteFile: NoteFile): Promise<void> {
     // If name was actually changed, rename the file
     if (newName.trim() !== currentName) {
         try {
-            const oldPath = noteFile.path;
+            const oldPath = currentPath;
             const newPath = path.join(notesFolder, `${newName.trim()}.notesnlh`);
             
             // Rename the file
             fs.renameSync(oldPath, newPath);
+            currentPath = newPath;
             
             // Update the file content to reflect new name in the header
             const content = fs.readFileSync(newPath, 'utf8');
@@ -173,10 +177,9 @@ export async function editNote(noteFile: NoteFile): Promise<void> {
         return;
     }
 
-    // Delete the note file
+    // Delete the note file (use tracked currentPath which accounts for rename/no-rename)
     try {
-        const newPath = path.join(notesFolder, `${newName.trim()}.notesnlh`);
-        fs.unlinkSync(newPath);
+        fs.unlinkSync(currentPath);
         vscode.window.showInformationMessage('Note deleted successfully.');
     } catch (error: any) {
         vscode.window.showErrorMessage(`Failed to delete note: ${error.message || error}`);
