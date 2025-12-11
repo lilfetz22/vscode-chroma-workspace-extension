@@ -7,6 +7,7 @@ A comprehensive workspace management extension for Visual Studio Code that combi
 **Chroma Workspace** brings together the best features of modern project management into VS Code:
 
 - ** Notes with Natural Language Highlighting** - Intelligent syntax highlighting for natural language based on parts of speech
+- ** Notes View** - Centralized panel to browse and create all your `.notesnlh` notes
 - ** Kanban Boards** - Visual task management with customizable columns and cards
 - ** Task Scheduling** - Schedule tasks with recurrence patterns and time-based automation
 - ** Tag System** - Organize cards and tasks with flexible tagging
@@ -38,6 +39,22 @@ Built on the proven **notesnlh** extension foundation with enhanced workspace in
 - **File Format**: Uses `.notesnlh` files for seamless compatibility
 
 **NLP Engine**: Uses the [Compromise NLP library](https://github.com/spencermountain/compromise) for intelligent text analysis.
+
+###  Notes View
+
+Centralized panel for managing all your notes in one place:
+
+- **Dedicated Notes Panel**: Browse all `.notesnlh` files from the sidebar view
+- **Quick Access**: Click any note to open it instantly in the editor
+- **Add Note Button**: Create new notes directly from the view with the "+" button
+  - Validates note names and prevents duplicates
+  - Auto-creates notes folder if it doesn't exist
+  - Opens newly created notes immediately
+- **Live Updates**: Notes view refreshes automatically when files are created, modified, or deleted
+- **Smart Location**: Notes stored in `.chroma/notes/` folder (or custom path based on database location)
+- **Flexible Sorting**: Notes displayed by last modified date (default) or alphabetically
+
+**Note**: The notes folder location follows your `chroma.database.path` setting. If you use a shared database, notes will be in the same parent directory.
 
 ###  Kanban Board Management
 
@@ -138,8 +155,9 @@ Run without installing (for development/testing):
 
 1. Open a workspace folder in VS Code
 2. Extension auto-creates `.chroma/chroma.db` 
-3. Create first note: `Ctrl+Shift+P`  `Chroma: New Note`
-4. Set up Kanban board from sidebar view
+3. Open Chroma Workspace panel from the sidebar
+4. Click the Notes view and use the "+" button to create your first note
+5. Set up Kanban boards, scheduled tasks, and tags as needed
 
 ---
 

@@ -17,11 +17,13 @@ const {
 const { KanbanProvider } = require('./kanban/KanbanProvider');
 const { TaskProvider } = require('../out/src/views/TaskProvider');
 const { TagsProvider } = require('../out/src/views/TagsProvider');
+const { NotesProvider } = require('../out/src/views/NotesProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
 const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard } = require('./kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask, convertTaskToCard } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
+const { addNote, editNote } = require('./Note');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 
@@ -29,6 +31,7 @@ let kanbanProvider;
 let kanbanTreeView;
 let taskProvider;
 let tagsProvider;
+let notesProvider;
 
 // Define color for each part of speech
 const posColors = {
@@ -98,6 +101,8 @@ exports.activate = async function activate(context) {
   vscode.window.registerTreeDataProvider('scheduledTasks', taskProvider);
   tagsProvider = new TagsProvider();
   vscode.window.registerTreeDataProvider('tags', tagsProvider);
+  notesProvider = new NotesProvider();
+  vscode.window.registerTreeDataProvider('notes', notesProvider);
 
   // Cross-workspace sync: Reload database from disk when window gains focus
   // This supports shared databases where multiple VS Code workspaces access the same .db file
@@ -113,6 +118,7 @@ exports.activate = async function activate(context) {
             kanbanProvider.refresh();
             taskProvider.refresh();
             tagsProvider.refresh();
+            notesProvider.refresh();
           } else if (result.externalChange && !result.reloaded) {
             getDebugLogger().log('WARNING: Database changed externally but reload failed');
             vscode.window.showWarningMessage('Chroma: Database was modified externally but reload failed. Consider reloading the window.');
@@ -133,6 +139,9 @@ exports.activate = async function activate(context) {
     }),
     vscode.commands.registerCommand('chroma.refreshKanban', () => {
       kanbanProvider.refresh();
+    }),
+    vscode.commands.registerCommand('chroma.refreshNotes', () => {
+      notesProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
@@ -218,6 +227,16 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.addTag', () => {
         addTag().then(() => {
             tagsProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.addNote', () => {
+        addNote().then(() => {
+            notesProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.editNote', (noteFile) => {
+        editNote(noteFile).then(() => {
+            notesProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.editTag', (tag) => {
@@ -403,6 +422,15 @@ exports.activate = async function activate(context) {
   const watcher = vscode.workspace.createFileSystemWatcher('**/*.notesnlh');
   context.subscriptions.push(watcher);
 
+  watcher.onDidCreate(uri => {
+    try {
+      // Refresh notes view when a new note file is created
+      notesProvider.refresh();
+    } catch (err) {
+      console.error("Error handling file creation for", uri.fsPath, ":", err);
+    }
+  });
+
   watcher.onDidChange(uri => {
     try {
       const note = getNoteByFilePath(uri.fsPath);
@@ -410,6 +438,8 @@ exports.activate = async function activate(context) {
         const content = fs.readFileSync(uri.fsPath, 'utf8');
         updateNote({ ...note, content });
       }
+      // Refresh notes view in case file is in notes folder
+      notesProvider.refresh();
     } catch (err) {
       console.error("Error handling file change for", uri.fsPath, ":", err);
       vscode.window.showErrorMessage("Failed to update note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));
@@ -422,6 +452,8 @@ exports.activate = async function activate(context) {
       if (note) {
         deleteNote(note.id);
       }
+      // Refresh notes view in case file was in notes folder
+      notesProvider.refresh();
     } catch (err) {
       console.error("Error handling file delete for", uri.fsPath, ":", err);
       vscode.window.showErrorMessage("Failed to delete note for " + uri.fsPath + ": " + (err && err.message ? err.message : err));

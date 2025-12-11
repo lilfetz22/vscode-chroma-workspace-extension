@@ -31,6 +31,11 @@
           "icon": "images/icon.svg"
         },
         {
+          "id": "notes",
+          "name": "Notes",
+          "icon": "images/icon.svg"
+        },
+        {
           "id": "scheduledTasks",
           "name": "Scheduled Tasks",
           "icon": "images/icon.svg"
@@ -163,6 +168,19 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight numbers in the document"
+        },
+        "chroma.notes.sortOrder": {
+          "type": "string",
+          "enum": [
+            "lastModified",
+            "alphabetical"
+          ],
+          "default": "lastModified",
+          "description": "Sort order for notes in the Notes view. 'lastModified' shows most recently modified notes first, 'alphabetical' sorts by filename A-Z.",
+          "enumDescriptions": [
+            "Sort by last modified date (newest first)",
+            "Sort alphabetically by filename (A-Z)"
+          ]
         }
       }
     },
@@ -285,6 +303,14 @@
       {
         "command": "chroma.search",
         "title": "Search"
+      },
+      {
+        "command": "chroma.addNote",
+        "title": "Add Note"
+      },
+      {
+        "command": "chroma.editNote",
+        "title": "Edit Note"
       }
     ],
     "menus": {
@@ -302,6 +328,11 @@
         {
           "command": "chroma.addTag",
           "when": "view == tags",
+          "group": "navigation"
+        },
+        {
+          "command": "chroma.addNote",
+          "when": "view == notes",
           "group": "navigation"
         }
       ],
@@ -379,6 +410,11 @@
         {
           "command": "chroma.deleteTag",
           "when": "view == tags && viewItem == tag",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editNote",
+          "when": "view == notes && viewItem == note",
           "group": "inline"
         }
       ]
