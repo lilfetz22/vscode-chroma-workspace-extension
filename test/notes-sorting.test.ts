@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { NotesProvider, NoteFile } from '../src/views/NotesProvider';
+import { NotesProvider } from '../src/views/NotesProvider';
 
 // Mock vscode module
 jest.mock('vscode', () => {
@@ -85,7 +85,7 @@ describe('Notes Sorting Feature', () => {
             createTestNote('a.notesnlh', 100);
             createTestNote('b.notesnlh', 200);
 
-            const notes = notesProvider.getChildren();
+            notesProvider.getChildren();
 
             expect(mockConfig.get).toHaveBeenCalledWith('notes.sortOrder', 'lastModified');
         });
@@ -410,7 +410,6 @@ describe('Notes Sorting Feature', () => {
         });
 
         it('should handle notes with identical timestamps', async () => {
-            const fixedTime = Date.now() - 5000;
             
             // Create multiple notes with exact same timestamp
             createTestNote('note1.notesnlh', -5000);
