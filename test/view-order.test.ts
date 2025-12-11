@@ -113,7 +113,6 @@ describe('View Order Configuration', () => {
     describe('View Configuration Consistency', () => {
         it('should ensure all views in container are defined in views section', () => {
             const views = packageJson.contributes.views['chroma-workspace'];
-            const viewIds = views.map((v: any) => v.id);
             
             // Each view should have required properties
             views.forEach((view: any) => {
