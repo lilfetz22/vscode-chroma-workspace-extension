@@ -121,7 +121,7 @@ export class NotesProvider implements vscode.TreeDataProvider<NoteFile> {
             chromaFolder = path.dirname(fullDbPath);
         }
 
-        // The notes folder is within the .chroma folder
+        // The notes folder is in the same directory as the database file
         return path.join(chromaFolder, 'notes');
     }
 }
