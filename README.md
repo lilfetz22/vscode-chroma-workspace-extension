@@ -52,7 +52,7 @@ Centralized panel for managing all your notes in one place:
   - Opens newly created notes immediately
 - **Live Updates**: Notes view refreshes automatically when files are created, modified, or deleted
 - **Smart Location**: Notes stored in `.chroma/notes/` folder (or custom path based on database location)
-- **Alphabetical Sorting**: Notes displayed in easy-to-scan alphabetical order
+- **Flexible Sorting**: Notes displayed by last modified date (default) or alphabetically
 
 **Note**: The notes folder location follows your `chroma.database.path` setting. If you use a shared database, notes will be in the same parent directory.
 
