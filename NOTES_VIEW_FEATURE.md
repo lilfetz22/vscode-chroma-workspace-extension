@@ -52,6 +52,7 @@ For example:
    - Creates file with basic template (`# NoteName\n\n`)
    - Automatically opens the new note in the editor
 2. **Automatic folder creation**: The notes folder is created automatically if it doesn't exist
+
 ## Usage
 1. Open the Chroma Workspace panel in VS Code
 2. Click on the "Notes" view (below Tags)
