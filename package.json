@@ -31,6 +31,11 @@
           "icon": "images/icon.svg"
         },
         {
+          "id": "notes",
+          "name": "Notes",
+          "icon": "images/icon.svg"
+        },
+        {
           "id": "scheduledTasks",
           "name": "Scheduled Tasks",
           "icon": "images/icon.svg"
@@ -38,11 +43,6 @@
         {
           "id": "tags",
           "name": "Tags",
-          "icon": "images/icon.svg"
-        },
-        {
-          "id": "notes",
-          "name": "Notes",
           "icon": "images/icon.svg"
         }
       ]
