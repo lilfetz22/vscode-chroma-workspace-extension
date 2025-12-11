@@ -21,6 +21,18 @@ describe('NotesProvider', () => {
         mockGetNotesFolder = notesFolder.getNotesFolder as jest.Mock;
         mockGetNotesFolder.mockReturnValue(tempDir);
 
+        // Mock workspace.getConfiguration for sorting
+        const mockGetConfiguration = vscode.workspace.getConfiguration as jest.Mock;
+        mockGetConfiguration.mockReturnValue({
+            get: jest.fn((key: string, defaultValue: any) => {
+                // Return 'alphabetical' to match the original test expectations
+                if (key === 'notes.sortOrder') {
+                    return 'alphabetical';
+                }
+                return defaultValue;
+            })
+        });
+
         // Create a fresh provider for each test
         provider = new NotesProvider();
     });
