@@ -85,13 +85,45 @@ export class NotesProvider implements vscode.TreeDataProvider<NoteFile> {
                 .map(file => ({
                     name: file,
                     path: path.join(notesFolder, file)
-                }))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                }));
 
-            return noteFiles;
+            // Sort based on configuration setting
+            return this.sortNotes(noteFiles);
         } catch (error) {
             console.error('Error reading notes folder:', error);
             return [];
+        }
+    }
+
+    /**
+     * Sort notes based on user preference
+     */
+    private sortNotes(notes: NoteFile[]): NoteFile[] {
+        const config = vscode.workspace.getConfiguration('chroma');
+        const sortOrder = config.get<string>('notes.sortOrder', 'lastModified');
+
+        if (sortOrder === 'alphabetical') {
+            // Sort alphabetically by name (A-Z)
+            return notes.sort((a, b) => a.name.localeCompare(b.name));
+        } else {
+            // Sort by last modified date (newest first)
+            return notes.sort((a, b) => {
+                try {
+                    const statA = fs.statSync(a.path);
+                    const statB = fs.statSync(b.path);
+                    // Sort descending (newest first)
+                    const timeDiff = statB.mtime.getTime() - statA.mtime.getTime();
+                    // If times are equal, fallback to alphabetical
+                    if (timeDiff === 0) {
+                        return a.name.localeCompare(b.name);
+                    }
+                    return timeDiff;
+                } catch (error) {
+                    console.error('Error getting file stats for sorting:', error);
+                    // Fallback to alphabetical if stats fail
+                    return a.name.localeCompare(b.name);
+                }
+            });
         }
     }
 
