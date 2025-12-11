@@ -162,10 +162,7 @@ describe('Note Functions', () => {
                 nlh_enabled: true
             });
 
-            // Get the full note object (includes created_at and updated_at)
-            const fullNote = getNoteByIdTest(db, note.id);
-
-            // This should work even though fullNote has extra properties
+            // Ensure updates work as expected regardless of extra timestamp fields
             updateNoteTest(db, note.id, {
                 content: 'Updated content with extra props'
             });
