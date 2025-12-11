@@ -123,7 +123,14 @@ export async function editNote(noteFile: NoteFile): Promise<void> {
             
             // Update the file content to reflect new name in the header
             const content = fs.readFileSync(newPath, 'utf8');
-            const updatedContent = content.replace(/^# .*\n/, `# ${newName.trim()}\n`);
+            // Use a robust pattern to match header, and add header if missing
+            const headerRegex = /^(# .*)?(\n|$)/;
+            let updatedContent;
+            if (headerRegex.test(content)) {
+                updatedContent = content.replace(headerRegex, `# ${newName.trim()}\n`);
+            } else {
+                updatedContent = `# ${newName.trim()}\n${content}`;
+            }
             fs.writeFileSync(newPath, updatedContent, 'utf8');
             
             vscode.window.showInformationMessage(`Note renamed to "${newName.trim()}".`);
