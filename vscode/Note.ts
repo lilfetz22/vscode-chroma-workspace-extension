@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getNotesFolder } from '../src/utils/notesFolder';
+import { NoteFile } from '../out/src/views/NotesProvider';
 
 /**
  * Create a new note file in the notes folder
@@ -65,5 +66,112 @@ export async function addNote(): Promise<void> {
         vscode.window.showInformationMessage(`Note "${fileName}" created successfully.`);
     } catch (error: any) {
         vscode.window.showErrorMessage(`Failed to create note: ${error.message || error}`);
+    }
+}
+
+/**
+ * Edit an existing note with a multi-step flow:
+ * 1. Edit the note name
+ * 2. Ask if user wants to delete the note (default: No)
+ * 3. If yes, ask for confirmation again (default: No)
+ */
+export async function editNote(noteFile: NoteFile): Promise<void> {
+    const notesFolder = getNotesFolder();
+    
+    if (!notesFolder) {
+        vscode.window.showErrorMessage('No workspace folder found.');
+        return;
+    }
+
+    // Step 1: Edit note name
+    const currentName = noteFile.name.replace(/\.notesnlh$/, '');
+    const newName = await vscode.window.showInputBox({
+        prompt: 'Edit note name (without extension)',
+        value: currentName,
+        validateInput: (text: string) => {
+            if (!text || text.trim().length === 0) {
+                return 'Note name cannot be empty';
+            }
+            // Check for invalid filename characters
+            if (/[<>:"/\\|?*]/.test(text)) {
+                return 'Note name contains invalid characters';
+            }
+            // Check if file already exists (but allow same name)
+            if (text.trim() !== currentName) {
+                const filePath = path.join(notesFolder!, `${text.trim()}.notesnlh`);
+                if (fs.existsSync(filePath)) {
+                    return 'A note with this name already exists';
+                }
+            }
+            return undefined;
+        }
+    });
+
+    // User cancelled the edit
+    if (newName === undefined) {
+        return;
+    }
+
+    // If name was actually changed, rename the file
+    if (newName.trim() !== currentName) {
+        try {
+            const oldPath = noteFile.path;
+            const newPath = path.join(notesFolder, `${newName.trim()}.notesnlh`);
+            
+            // Rename the file
+            fs.renameSync(oldPath, newPath);
+            
+            // Update the file content to reflect new name in the header
+            const content = fs.readFileSync(newPath, 'utf8');
+            const updatedContent = content.replace(/^# .*\n/, `# ${newName.trim()}\n`);
+            fs.writeFileSync(newPath, updatedContent, 'utf8');
+            
+            vscode.window.showInformationMessage(`Note renamed to "${newName.trim()}".`);
+        } catch (error: any) {
+            vscode.window.showErrorMessage(`Failed to rename note: ${error.message || error}`);
+            return;
+        }
+    }
+
+    // Step 2: Ask if user wants to delete the note (default: No)
+    const deleteChoice = await vscode.window.showQuickPick(
+        [
+            { label: 'No', picked: true }, // Default to No
+            { label: 'Yes' }
+        ],
+        {
+            placeHolder: 'Delete note?',
+            canPickMany: false
+        }
+    );
+
+    if (!deleteChoice || deleteChoice.label === 'No') {
+        return;
+    }
+
+    // Step 3: If yes, ask for confirmation again (default: No)
+    const confirmDelete = await vscode.window.showQuickPick(
+        [
+            { label: 'No', picked: true }, // Default to No
+            { label: 'Yes' }
+        ],
+        {
+            placeHolder: 'Are you sure you want to delete this note? This cannot be undone.',
+            canPickMany: false
+        }
+    );
+
+    if (!confirmDelete || confirmDelete.label === 'No') {
+        vscode.window.showInformationMessage('Delete cancelled.');
+        return;
+    }
+
+    // Delete the note file
+    try {
+        const newPath = path.join(notesFolder, `${newName.trim()}.notesnlh`);
+        fs.unlinkSync(newPath);
+        vscode.window.showInformationMessage('Note deleted successfully.');
+    } catch (error: any) {
+        vscode.window.showErrorMessage(`Failed to delete note: ${error.message || error}`);
     }
 }
