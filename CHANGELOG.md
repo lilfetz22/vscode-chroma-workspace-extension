@@ -1,3 +1,24 @@
+# [2.13.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.12.0...v2.13.0) (2025-12-11)
+
+
+### Bug Fixes
+
+* **database:** use positional parameters instead of named parameters for sql.js compatibility ([b501066](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b50106670b40eef62873883e0480b977d9045fb9))
+* **notes:** track current path across rename and use for deletion ([f10bb64](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f10bb64d938b208fa5a7d04c574d09c66295a274))
+
+
+### Features
+
+* **notes:** add 'Add Note' button to Notes view ([ee12751](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/ee12751c2963d540d99b395a552ecf2e75ff182f))
+* **notes:** add configurable sorting to NotesProvider ([41cef39](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/41cef3951b0846f2c3c7733b37501f1e8279439e))
+* **notes:** implement edit note with multi-step flow ([0a69d7d](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/0a69d7d5d15f055b05b091f647b31bcddc766cd0))
+* **notes:** register edit note command in extension ([91849d3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/91849d36b782654de63fc9929b062f8114945a5b))
+* **settings): add configurable notes sort order (lastModified | alphabetical)\n\nAdds a new setting chroma.notes.sortOrder to control how notes are ordered in the Notes view. The setting supports two values:\n- lastModified (default:** shows most recently modified notes first\n- lphabetical: sorts by note filename A-Z\n\nMotivation:\n- Give users flexibility in viewing notes, accommodating both recency and alphabetical workflows.\n- Default remains lastModified to show recent work by default.\n\nTests / Verification:\n- Tests added for sorting behavior are included in 	est/notes-sorting.test.ts (alphabetical/lastModified behavior and default handling). ([b62a501](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b62a501b14e1de9315d86dc7699af028529b4747))
+* **ui:** add edit note command to sidebar context menu ([1c9785c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/1c9785c3d1547513f4c43d9a7a8f5b743c73f978))
+* **ui:** reorder sidebar views to place Notes second after Kanban ([9eac940](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/9eac940f8424d759697c473f1dc0b0d8da6b2107))
+* **utils:** add notesFolder utility for determining note storage directory ([e297b70](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e297b70ea18cf51e79cb3f56464f673e66a8609e))
+* **views:** add Notes view to display .notesnlh files from notes folder ([de70c31](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/de70c31451b97d60651a6ad90a0dcc05e0903ebf))
+
 # [2.12.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.11.0...v2.12.0) (2025-12-10)
 
 
