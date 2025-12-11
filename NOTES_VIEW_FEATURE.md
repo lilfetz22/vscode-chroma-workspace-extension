@@ -55,7 +55,7 @@ For example:
 
 ## Usage
 1. Open the Chroma Workspace panel in VS Code
-2. Click on the "Notes" view (below Tags)
+2. Click on the "Notes" view
 3. Click the "+" button in the Notes view title to create a new note
    - Enter a note name (without .notesnlh extension)
    - The note will be created and opened automatically
