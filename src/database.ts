@@ -690,12 +690,16 @@ export function updateNote(note: Partial<Note>): Note {
         getLogger().debug('Updating note', { id: note.id });
         getDb(); // Ensure DB is initialized
         const stmt = prepare(
-            'UPDATE notes SET title = @title, content = @content, file_path = @file_path, nlh_enabled = @nlh_enabled, updated_at = CURRENT_TIMESTAMP WHERE id = @id'
+            'UPDATE notes SET title = ?, content = ?, file_path = ?, nlh_enabled = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
         );
-        stmt.run({
-            ...note,
-            nlh_enabled: note.nlh_enabled ? 1 : 0,
-        });
+        // sql.js requires positional parameters in the correct order
+        stmt.run(
+            note.title,
+            note.content,
+            note.file_path,
+            note.nlh_enabled ? 1 : 0,
+            note.id
+        );
         getLogger().info('Note updated successfully', { id: note.id });
         return getNoteById(note.id as string);
     } catch (error: any) {
