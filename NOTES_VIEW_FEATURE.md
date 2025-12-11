@@ -21,7 +21,7 @@ Added a new "Notes" view to the Chroma Workspace extension panel that displays `
 ### Files Modified
 - **`package.json`**: 
   - Added Notes view to the `chroma-workspace` views container
-  - Positioned after Kanban, Scheduled Tasks, and Tags
+  - Positioned after Kanban and before Scheduled Tasks and Tags
   - Added `chroma.addNote` command
   - Added "Add Note" button to Notes view title menu
 
