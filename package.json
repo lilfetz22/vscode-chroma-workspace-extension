@@ -168,6 +168,19 @@
           "type": "boolean",
           "default": true,
           "description": "Highlight numbers in the document"
+        },
+        "chroma.notes.sortOrder": {
+          "type": "string",
+          "enum": [
+            "lastModified",
+            "alphabetical"
+          ],
+          "default": "lastModified",
+          "description": "Sort order for notes in the Notes view. 'lastModified' shows most recently modified notes first, 'alphabetical' sorts by filename A-Z.",
+          "enumDescriptions": [
+            "Sort by last modified date (newest first)",
+            "Sort alphabetically by filename (A-Z)"
+          ]
         }
       }
     },
