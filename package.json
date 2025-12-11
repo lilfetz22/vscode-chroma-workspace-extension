@@ -294,6 +294,10 @@
       {
         "command": "chroma.addNote",
         "title": "Add Note"
+      },
+      {
+        "command": "chroma.editNote",
+        "title": "Edit Note"
       }
     ],
     "menus": {
@@ -393,6 +397,11 @@
         {
           "command": "chroma.deleteTag",
           "when": "view == tags && viewItem == tag",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editNote",
+          "when": "view == notes && viewItem == note",
           "group": "inline"
         }
       ]
