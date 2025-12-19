@@ -450,9 +450,128 @@ async function moveCard(card) {
     }
 }
 
+/**
+ * Edit the completed date of a card.
+ * Only works for cards in completion columns.
+ * @param {Object} card - The card to edit
+ */
+async function editCardCompletedDate(card) {
+    const debugLog = getDebugLogger();
+    debugLog.log('=== Editing card completed date ===');
+    
+    // Check if card exists and fetch current data
+    let current;
+    try {
+        current = getCardById(card.cardId);
+    } catch (e) {
+        console.error('Failed to fetch card:', e);
+        vscode.window.showErrorMessage(`Card not found: ${card.label}`);
+        return;
+    }
+    
+    // Verify this is a completion column
+    const { getColumnById } = require('../../out/src/database');
+    const currentColumn = getColumnById(card.columnId);
+    const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+    const isCompletionColumn = currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+    
+    if (!isCompletionColumn) {
+        vscode.window.showErrorMessage('Can only edit completed date for cards in the completion column.');
+        return;
+    }
+    
+    if (!current.completed_at) {
+        vscode.window.showErrorMessage('This card does not have a completed date set.');
+        return;
+    }
+    
+    // Parse current completed date
+    const currentCompletedDate = new Date(current.completed_at);
+    const currentDateStr = formatDate(currentCompletedDate);
+    const currentTimeStr = formatTime(currentCompletedDate);
+    
+    debugLog.log(`Current completed_at: ${current.completed_at}`);
+    debugLog.log(`Parsed date: ${currentDateStr}, time: ${currentTimeStr}`);
+    
+    // Prompt for new date
+    const newDateStr = await vscode.window.showInputBox({
+        prompt: 'Enter completed date (YYYY-MM-DD)',
+        value: currentDateStr,
+        ignoreFocusOut: true,
+        validateInput: text => {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+                return 'Invalid date format. Use YYYY-MM-DD (e.g., 2025-12-18)';
+            }
+            const date = new Date(text);
+            if (isNaN(date.getTime())) {
+                return 'Invalid date';
+            }
+            return null;
+        }
+    });
+    
+    if (!newDateStr) {
+        debugLog.log('User cancelled date input');
+        return;
+    }
+    
+    // Prompt for new time
+    const newTimeStr = await vscode.window.showInputBox({
+        prompt: 'Enter completed time (HH:MM in 24-hour format)',
+        value: currentTimeStr,
+        ignoreFocusOut: true,
+        validateInput: text => {
+            if (!/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(text)) {
+                return 'Invalid time format. Use HH:MM (e.g., 09:30, 14:00, 17:45)';
+            }
+            return null;
+        }
+    });
+    
+    if (!newTimeStr) {
+        debugLog.log('User cancelled time input');
+        return;
+    }
+    
+    // Combine date and time into ISO string
+    const [hours, minutes] = newTimeStr.split(':').map(Number);
+    const newDate = new Date(newDateStr);
+    newDate.setHours(hours, minutes, 0, 0);
+    const newCompletedAt = newDate.toISOString();
+    
+    debugLog.log(`New completed_at: ${newCompletedAt}`);
+    
+    // Update the card
+    updateCard({ id: card.cardId, completed_at: newCompletedAt });
+    saveDatabase();
+    
+    debugLog.log('Card completed date updated successfully');
+    vscode.window.showInformationMessage(`Completed date updated to ${newDateStr} ${newTimeStr}`);
+}
+
+/**
+ * Format a date to YYYY-MM-DD
+ */
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Format a date to HH:MM
+ */
+function formatTime(date) {
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+}
+
 module.exports = {
     addCard,
     editCard,
     deleteCard,
-    moveCard
+    moveCard,
+    editCardCompletedDate
 };
