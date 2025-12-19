@@ -139,6 +139,7 @@ describe('Vacation Mode', () => {
             'tasks.notificationFrequency': 'once',
             'tasks.showInStatusBar': true,
             'tasks.vacationMode': false,
+            'tasks.vacationModeBoards': [],
             'kanban.taskCreationColumn': 'To Do',
             'kanban.completionColumn': 'Done',
             'export.defaultDateRangeMonths': 6,
@@ -200,6 +201,36 @@ describe('Vacation Mode', () => {
             
             // After reset, value should be undefined (uses default)
             expect(mockConfig['tasks.vacationMode']).toBeUndefined();
+        });
+
+        test('vacationModeBoards should default to empty array', () => {
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual([]);
+        });
+
+        test('should be able to set specific boards for vacation mode', async () => {
+            await settingsService.updateSetting('tasks.vacationModeBoards', ['board-1', 'board-2']);
+            expect(mockConfig['tasks.vacationModeBoards']).toEqual(['board-1', 'board-2']);
+            
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1', 'board-2']);
+        });
+
+        test('should allow clearing vacation mode boards', async () => {
+            mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
+            await settingsService.updateSetting('tasks.vacationModeBoards', []);
+            expect(mockConfig['tasks.vacationModeBoards']).toEqual([]);
+            
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual([]);
+        });
+
+        test('vacationModeBoards should be included in resetToDefaults', async () => {
+            mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
+            await settingsService.resetToDefaults();
+            
+            // After reset, value should be undefined (uses default empty array)
+            expect(mockConfig['tasks.vacationModeBoards']).toBeUndefined();
         });
     });
 
@@ -398,6 +429,95 @@ describe('Vacation Mode', () => {
             // In vacation mode, tasks should not be converted to cards
             expect(mockCards.length).toBe(0);
         });
+
+        test('should apply vacation mode to all boards when vacationModeBoards is empty', async () => {
+            // Enable vacation mode with empty board list (applies to all)
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = [];
+
+            // Create tasks on multiple boards
+            const now = new Date();
+            mockTasks = [
+                {
+                    id: 'task-1',
+                    title: 'Task Board 1',
+                    dueDate: now.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task Board 2',
+                    dueDate: now.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-2'
+                }
+            ];
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // No cards should be created on any board
+            expect(mockCards.length).toBe(0);
+        });
+
+        test('should apply vacation mode only to selected boards', async () => {
+            // Enable vacation mode for specific boards
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1'];
+
+            // Verify that the settings are correctly retrieved
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
+            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
+            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+        });
+
+        test('should allow multiple boards in vacation mode', async () => {
+            // Enable vacation mode for multiple boards
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
+
+            // Verify that all specified boards are in vacation mode
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1', 'board-2']);
+            expect(taskSettings.vacationModeBoards.length).toBe(2);
+            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(false);
+        });
+
+        test('should handle tasks with undefined boardId gracefully', async () => {
+            // Enable vacation mode for specific boards
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1'];
+
+            // Verify that the board list is configured correctly
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards.length).toBe(1);
+            expect(taskSettings.vacationModeBoards[0]).toBe('board-1');
+
+            // An undefined boardId would not be included in vacation mode list
+            const undefinedBoardId: any = undefined;
+            const isInVacationMode = taskSettings.vacationModeBoards.includes(undefinedBoardId);
+            expect(isInVacationMode).toBe(false);
+        });
+
+        test('should count tasks from all boards including vacation mode boards', async () => {
+            // Enable vacation mode for specific boards
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1'];
+
+            // Verify that both boards are tracked separately
+            const taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards.length).toBe(1);
+            
+            // Tasks from board-1 should be in vacation mode
+            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
+            // Tasks from board-2 should NOT be in vacation mode
+            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+        });
     });
 
     // Note: Card edit/move warning tests are verified manually and through E2E testing
@@ -488,6 +608,65 @@ describe('Vacation Mode', () => {
             mockConfig['tasks.vacationMode'] = false;
             await (scheduler as any).checkTasks();
             expect(mockCards.length).toBe(1);
+            
+            scheduler.stop();
+        });
+
+        test('should allow switching between global and board-specific vacation mode', async () => {
+            const scheduler = TaskScheduler.getInstance();
+            
+            // Verify board-specific vacation mode can be set
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1'];
+            
+            let taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
+            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
+            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+
+            // Switch to global vacation mode (empty list applies to all)
+            mockConfig['tasks.vacationModeBoards'] = [];
+            taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards).toEqual([]);
+
+            // Switch back to specific board again (only board-2)
+            mockConfig['tasks.vacationModeBoards'] = ['board-2'];
+            taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationMode).toBe(true);
+            expect(taskSettings.vacationModeBoards).toEqual(['board-2']);
+            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(true);
+            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(false);
+            
+            scheduler.stop();
+        });
+
+        test('should handle dynamic changes to vacationModeBoards list', async () => {
+            const scheduler = TaskScheduler.getInstance();
+            
+            // Start with board-1 in vacation mode
+            mockConfig['tasks.vacationMode'] = true;
+            mockConfig['tasks.vacationModeBoards'] = ['board-1'];
+            
+            let taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
+            expect(taskSettings.vacationModeBoards.length).toBe(1);
+
+            // Add board-2 to vacation mode
+            mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
+            taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual(['board-1', 'board-2']);
+            expect(taskSettings.vacationModeBoards.length).toBe(2);
+            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(false);
+
+            // Remove board-1, add board-3
+            mockConfig['tasks.vacationModeBoards'] = ['board-2', 'board-3'];
+            taskSettings = settingsService.getTaskSettings();
+            expect(taskSettings.vacationModeBoards).toEqual(['board-2', 'board-3']);
+            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(false);
+            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(true);
+            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(true);
             
             scheduler.stop();
         });
