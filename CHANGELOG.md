@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.13.0...v2.14.0) (2025-12-19)
+
+
+### Features
+
+* **tasks:** add vacation mode per-board multi-select and scheduler support ([501f7c7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/501f7c7ce870d0eb65ac6189d4b24e2617d442d8))
+
 # [2.13.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.12.0...v2.13.0) (2025-12-11)
 
 
