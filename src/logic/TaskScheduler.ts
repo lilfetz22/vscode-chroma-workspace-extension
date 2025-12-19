@@ -113,7 +113,14 @@ export class TaskScheduler {
       // In vacation mode: count due tasks but don't create cards
       for (const task of tasks) {
         const dueDate = new Date(task.dueDate);
-        const shouldPauseForBoard = task.boardId ? boardIdsToPause.has(task.boardId) : entries.length === 0;
+        // Tasks without a boardId are only paused in "global" vacation mode
+        // (when no specific boards are configured in vacationModeBoards).
+        let shouldPauseForBoard: boolean;
+        if (task.boardId) {
+          shouldPauseForBoard = boardIdsToPause.has(task.boardId);
+        } else {
+          shouldPauseForBoard = entries.length === 0;
+        }
 
         if (shouldPauseForBoard) {
           if (this.isDueToday(dueDate)) {
