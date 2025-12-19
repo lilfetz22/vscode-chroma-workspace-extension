@@ -6,9 +6,51 @@ import { SettingsService } from '../src/logic/SettingsService';
 let mockConfig: { [key: string]: any } = {};
 let configChangeCallback: ((event: vscode.ConfigurationChangeEvent) => void) | null = null;
 
+// Wrapper object that holds array references - NEVER reassign this object
+const mockData = {
+    tasks: [] as any[],
+    cards: [] as any[],
+    boards: [] as any[],
+    columns: [] as any[]
+};
+
+// Mock createCardFromTask before other mocks
+jest.mock('../src/Task', () => ({
+    createCardFromTask: jest.fn(async (task: any, _ignoreRecurrence: boolean) => {
+        try {
+            console.log('[MOCK] createCardFromTask called for task:', task.id, task.title);
+            // Access arrays through mockData object (not reassigned, so closure is safe)
+            const card = { id: `card-${mockData.cards.length + 1}`, title: task.title, description: task.description || '' };
+            console.log('[MOCK] Pushing card to mockData.cards. Current length:', mockData.cards.length);
+            mockData.cards.push(card);
+            console.log('[MOCK] After push, mockData.cards.length:', mockData.cards.length);
+            
+            // Import database functions for tag copying
+            const { copyTaskTagsToCard, getTagsByTaskId, addTagToCard } = require('../src/database');
+            
+            // Copy tags from task to card (bulk copy)
+            const tagsCopied = copyTaskTagsToCard(task.id, card.id);
+            
+            // Fallback to individual tag copying if bulk copy failed
+            if (tagsCopied === 0) {
+                const tags = getTagsByTaskId(task.id);
+                for (const tag of tags) {
+                    addTagToCard(card.id, tag.id);
+                }
+            }
+            
+            console.log('[MOCK] Returning card:', card.id);
+            return card;
+        } catch (error) {
+            console.error('[MOCK] Error in createCardFromTask:', error);
+            throw error;
+        }
+    })
+}));
 jest.mock('vscode', () => {
     const mockConfiguration = {
         get: jest.fn((key: string, defaultValue?: any) => {
+            console.log(`[MOCK CONFIG] get('${key}') => `, mockConfig[key] !== undefined ? mockConfig[key] : defaultValue);
             return mockConfig[key] !== undefined ? mockConfig[key] : defaultValue;
         }),
         update: jest.fn(async (key: string, value: any) => {
@@ -74,40 +116,45 @@ jest.mock('vscode', () => {
     };
 });
 
-// Mock database functions
-let mockTasks: any[] = [];
-let mockCards: any[] = [];
-let mockBoards: any[] = [];
-let mockColumns: any[] = [];
-
+// Mock database functions  
 jest.mock('../src/database', () => ({
     getDb: jest.fn(),
-    prepare: jest.fn((query: string) => ({
-        all: jest.fn((status?: string) => {
-            if (query.includes('SELECT') && query.includes('tasks')) {
-                return status ? mockTasks.filter(t => t.status === status) : mockTasks;
-            }
-            return [];
-        }),
-        run: jest.fn()
-    })),
+    prepare: jest.fn((query: string) => {
+        const mockStatement = {
+            all: jest.fn((status?: string) => {
+                if (query.includes('SELECT') && query.includes('tasks')) {
+                    return status ? mockData.tasks.filter(t => t.status === status) : mockData.tasks;
+                }
+                return [];
+            }),
+            get: jest.fn((taskId?: string) => {
+                // Always try to find task by ID regardless of query
+                if (taskId) {
+                    return mockData.tasks.find(t => t.id === taskId);
+                }
+                return undefined;
+            }),
+            run: jest.fn()
+        };
+        return mockStatement;
+    }),
     createCard: jest.fn((data: any) => {
-        const card = { id: `card-${mockCards.length + 1}`, ...data };
-        mockCards.push(card);
+        const card = { id: `card-${mockData.cards.length + 1}`, ...data };
+        mockData.cards.push(card);
         return card;
     }),
-    getAllBoards: jest.fn(() => mockBoards),
+    getAllBoards: jest.fn(() => mockData.boards),
     getColumnsByBoardId: jest.fn((boardId: string) => {
-        return mockColumns.filter(c => c.board_id === boardId);
+        return mockData.columns.filter(c => c.board_id === boardId);
     }),
     createBoard: jest.fn((data: any) => {
-        const board = { id: `board-${mockBoards.length + 1}`, ...data };
-        mockBoards.push(board);
+        const board = { id: `board-${mockData.boards.length + 1}`, ...data };
+        mockData.boards.push(board);
         return board;
     }),
     createColumn: jest.fn((data: any) => {
-        const column = { id: `column-${mockColumns.length + 1}`, ...data };
-        mockColumns.push(column);
+        const column = { id: `column-${mockData.columns.length + 1}`, ...data };
+        mockData.columns.push(column);
         return column;
     }),
     copyTaskTagsToCard: jest.fn(() => 0),
@@ -117,50 +164,85 @@ jest.mock('../src/database', () => ({
     updateCard: jest.fn(),
     deleteCard: jest.fn(),
     getColumnById: jest.fn((columnId: string) => {
-        return mockColumns.find(c => c.id === columnId);
+        return mockData.columns.find(c => c.id === columnId);
     }),
-    reorderCardsOnInsert: jest.fn()
+    reorderCardsOnInsert: jest.fn(),
+    saveDatabase: jest.fn()
 }));
 
 describe('Vacation Mode', () => {
     let settingsService: SettingsService;
 
+    test('VERIFY MOCK: createCardFromTask should be mocked', async () => {
+        const { createCardFromTask } = require('../src/Task');
+        console.log('createCardFromTask is:', typeof createCardFromTask);
+        console.log('createCardFromTask._isMockFunction:', (createCardFromTask as any)._isMockFunction);
+        expect(jest.isMockFunction(createCardFromTask)).toBe(true);
+    });
+
     beforeEach(() => {
-        // Reset mock config before each test
-        mockConfig = {
-            'nlh.enabled': true,
-            'nlh.colors.nouns': '#569CD6',
-            'nlh.colors.verbs': '#4EC9B0',
-            'nlh.colors.adjectives': '#C586C0',
-            'nlh.colors.adverbs': '#DCDCAA',
-            'nlh.colors.numbers': '#B5CEA8',
-            'nlh.colors.properNouns': '#4FC1FF',
-            'tasks.enableNotifications': true,
-            'tasks.notificationFrequency': 'once',
-            'tasks.showInStatusBar': true,
-            'tasks.vacationMode': false,
-            'tasks.vacationModeBoards': [],
-            'kanban.taskCreationColumn': 'To Do',
-            'kanban.completionColumn': 'Done',
-            'export.defaultDateRangeMonths': 6,
-            'export.includeDescriptions': true,
-            'export.groupRecurringTasks': true,
-            'database.path': '.chroma/chroma.db'
-        };
+        // Reset mock config before each test - set each property directly to avoid closure issues
+        mockConfig['nlh.enabled'] = true;
+        mockConfig['nlh.colors.nouns'] = '#569CD6';
+        mockConfig['nlh.colors.verbs'] = '#4EC9B0';
+        mockConfig['nlh.colors.adjectives'] = '#C586C0';
+        mockConfig['nlh.colors.adverbs'] = '#DCDCAA';
+        mockConfig['nlh.colors.numbers'] = '#B5CEA8';
+        mockConfig['nlh.colors.properNouns'] = '#4FC1FF';
+        mockConfig['tasks.enableNotifications'] = true;
+        mockConfig['tasks.notificationFrequency'] = 'once';
+        mockConfig['tasks.showInStatusBar'] = true;
+        mockConfig['tasks.vacationMode'] = false;
+        mockConfig['tasks.vacationModeBoards'] = [];
+        mockConfig['kanban.taskCreationColumn'] = 'To Do';
+        mockConfig['kanban.completionColumn'] = 'Done';
+        mockConfig['export.defaultDateRangeMonths'] = 6;
+        mockConfig['export.includeDescriptions'] = true;
+        mockConfig['export.groupRecurringTasks'] = true;
+        mockConfig['database.path'] = '.chroma/chroma.db';
         
-        // Reset mock data
-        mockTasks = [];
-        mockCards = [];
-        mockBoards = [{
-            id: 'board-1',
-            title: 'Test Board'
-        }];
-        mockColumns = [{
-            id: 'column-1',
-            title: 'To Do',
-            board_id: 'board-1',
-            position: 0
-        }];
+        // Reset mock data - clear and repopulate arrays (don't reassign mockData object!)
+        mockData.tasks.length = 0;
+        mockData.cards.length = 0;
+        mockData.boards.length = 0;
+        mockData.boards.push(
+            { id: 'board-1', title: 'Test Board' },
+            { id: 'board-2', title: 'Board 2' },
+            { id: 'board-3', title: 'Board 3' }
+        );
+        mockData.columns.length = 0;
+        mockData.columns.push(
+            { id: 'column-1', title: 'To Do', board_id: 'board-1', position: 0 },
+            { id: 'column-2', title: 'To Do', board_id: 'board-2', position: 0 },
+            { id: 'column-3', title: 'To Do', board_id: 'board-3', position: 0 }
+        );
+
+        const database = require('../src/database');
+
+        // Restore prepare mock
+        (database.prepare as jest.Mock).mockImplementation((query: string) => {
+            const mockStatement = {
+                all: jest.fn((status?: string) => {
+                    if (query.includes('SELECT') && query.includes('tasks')) {
+                        return status ? mockData.tasks.filter(t => t.status === status) : mockData.tasks;
+                    }
+                    return [];
+                }),
+                get: jest.fn((taskId?: string) => {
+                    // Always try to find task by ID regardless of query
+                    if (taskId) {
+                        return mockData.tasks.find(t => t.id === taskId);
+                    }
+                    return undefined;
+                }),
+                run: jest.fn()
+            };
+            return mockStatement;
+        });
+
+        // Restore tag function mocks
+        (database.copyTaskTagsToCard as jest.Mock).mockImplementation(() => 0);
+        (database.getTagsByTaskId as jest.Mock).mockImplementation(() => []);
         
         settingsService = new SettingsService();
         jest.clearAllMocks();
@@ -251,7 +333,7 @@ describe('Vacation Mode', () => {
 
             // Create a task that is due now
             const now = new Date();
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-1',
                 title: 'Test Task',
                 description: 'Test Description',
@@ -259,13 +341,13 @@ describe('Vacation Mode', () => {
                 status: 'pending',
                 recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // Manually trigger checkTasks
             await (scheduler as any).checkTasks();
 
             // Verify no cards were created
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
             
             // Verify no information message was shown
             expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
@@ -277,7 +359,7 @@ describe('Vacation Mode', () => {
 
             // Create a task that is due now
             const now = new Date();
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-1',
                 title: 'Test Task',
                 description: 'Test Description',
@@ -285,14 +367,14 @@ describe('Vacation Mode', () => {
                 status: 'pending',
                 recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // Manually trigger checkTasks
             await (scheduler as any).checkTasks();
 
             // Verify card was created
-            expect(mockCards.length).toBe(1);
-            expect(mockCards[0].title).toBe('Test Task');
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Test Task');
         });
 
         test('should still count due tasks when vacation mode is enabled', async () => {
@@ -303,7 +385,7 @@ describe('Vacation Mode', () => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            mockTasks = [
+            mockData.tasks.length = 0; mockData.tasks.push(
                 {
                     id: 'task-1',
                     title: 'Task 1',
@@ -317,8 +399,7 @@ describe('Vacation Mode', () => {
                     dueDate: today.toISOString(),
                     status: 'pending',
                     boardId: 'board-1'
-                }
-            ];
+                });
 
             // Manually trigger checkTasks
             await (scheduler as any).checkTasks();
@@ -333,25 +414,25 @@ describe('Vacation Mode', () => {
             mockConfig['tasks.vacationMode'] = true;
 
             const now = new Date();
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-1',
                 title: 'Test Task',
                 dueDate: now.toISOString(),
                 status: 'pending',
                 recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // First check - vacation mode on
             await (scheduler as any).checkTasks();
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
 
             // Turn off vacation mode
             mockConfig['tasks.vacationMode'] = false;
 
             // Second check - vacation mode off
             await (scheduler as any).checkTasks();
-            expect(mockCards.length).toBe(1);
+            expect(mockData.cards.length).toBe(1);
         });
 
         test('should bulk copy task tags onto new card', async () => {
@@ -359,13 +440,13 @@ describe('Vacation Mode', () => {
             (copyTaskTagsToCard as jest.Mock).mockReturnValue(2);
 
             const now = new Date();
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-with-tags',
                 title: 'Tagged Task',
                 dueDate: now.toISOString(),
                 status: 'pending',
                 boardId: 'board-1'
-            }];
+            });
 
             await (scheduler as any).checkTasks();
 
@@ -380,13 +461,13 @@ describe('Vacation Mode', () => {
             (getTagsByTaskId as jest.Mock).mockReturnValue([{ id: 'tag-1' }, { id: 'tag-2' }]);
 
             const now = new Date();
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-fallback',
                 title: 'Fallback Task',
                 dueDate: now.toISOString(),
                 status: 'pending',
                 boardId: 'board-1'
-            }];
+            });
 
             await (scheduler as any).checkTasks();
 
@@ -427,7 +508,7 @@ describe('Vacation Mode', () => {
             await (scheduler as any).checkTasks();
 
             // In vacation mode, tasks should not be converted to cards
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
         });
 
         test('should apply vacation mode to all boards when vacationModeBoards is empty', async () => {
@@ -437,7 +518,7 @@ describe('Vacation Mode', () => {
 
             // Create tasks on multiple boards
             const now = new Date();
-            mockTasks = [
+            mockData.tasks.length = 0; mockData.tasks.push(
                 {
                     id: 'task-1',
                     title: 'Task Board 1',
@@ -451,14 +532,13 @@ describe('Vacation Mode', () => {
                     dueDate: now.toISOString(),
                     status: 'pending',
                     boardId: 'board-2'
-                }
-            ];
+                });
 
             // Manually trigger checkTasks
             await (scheduler as any).checkTasks();
 
             // No cards should be created on any board
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
         });
 
         test('should apply vacation mode only to selected boards', async () => {
@@ -466,12 +546,31 @@ describe('Vacation Mode', () => {
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1'];
 
-            // Verify that the settings are correctly retrieved
-            const taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
-            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
-            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+            // Create tasks on both boards - use past date to ensure they're due
+            const past = new Date();
+            past.setHours(past.getHours() - 1);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                {
+                    id: 'task-1',
+                    title: 'Task Board 1',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task Board 2',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-2'
+                });
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Only task from board-2 should be converted to card (board-1 is in vacation mode)
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task Board 2');
         });
 
         test('should allow multiple boards in vacation mode', async () => {
@@ -479,28 +578,71 @@ describe('Vacation Mode', () => {
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
 
-            // Verify that all specified boards are in vacation mode
-            const taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards).toEqual(['board-1', 'board-2']);
-            expect(taskSettings.vacationModeBoards.length).toBe(2);
-            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(false);
+            // Create tasks on all three boards - use past date to ensure they're due
+            const past = new Date();
+            past.setHours(past.getHours() - 1);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                {
+                    id: 'task-1',
+                    title: 'Task Board 1',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task Board 2',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-2'
+                },
+                {
+                    id: 'task-3',
+                    title: 'Task Board 3',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-3'
+                });
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Only task from board-3 should be converted to card (board-1 and board-2 are in vacation mode)
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task Board 3');
         });
 
         test('should handle tasks with undefined boardId gracefully', async () => {
-            // Enable vacation mode for specific boards
+            // Enable vacation mode for specific boards (not global)
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1'];
 
-            // Verify that the board list is configured correctly
-            const taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationModeBoards.length).toBe(1);
-            expect(taskSettings.vacationModeBoards[0]).toBe('board-1');
+            // Create a task with undefined boardId - use past date to ensure it's due
+            const past = new Date();
+            past.setHours(past.getHours() - 1);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                {
+                    id: 'task-undefined',
+                    title: 'Task No Board',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: undefined
+                },
+                {
+                    id: 'task-1',
+                    title: 'Task Board 1',
+                    dueDate: past.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                });
 
-            // An undefined boardId would not be included in vacation mode list
-            const undefinedBoardId: any = undefined;
-            const isInVacationMode = taskSettings.vacationModeBoards.includes(undefinedBoardId);
-            expect(isInVacationMode).toBe(false);
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Task with undefined boardId should be converted (only specific boards are paused)
+            // Task from board-1 should NOT be converted (it's in vacation mode)
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task No Board');
         });
 
         test('should count tasks from all boards including vacation mode boards', async () => {
@@ -508,15 +650,37 @@ describe('Vacation Mode', () => {
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1'];
 
-            // Verify that both boards are tracked separately
-            const taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards.length).toBe(1);
+            // Create tasks due today on both boards - use early morning to ensure they're both
+            // "due today" and also <= now (past due)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);  // Midnight today - definitely in the past
             
-            // Tasks from board-1 should be in vacation mode
-            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
-            // Tasks from board-2 should NOT be in vacation mode
-            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                {
+                    id: 'task-1',
+                    title: 'Task Board 1',
+                    dueDate: today.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-1'
+                },
+                {
+                    id: 'task-2',
+                    title: 'Task Board 2',
+                    dueDate: today.toISOString(),
+                    status: 'pending',
+                    boardId: 'board-2'
+                });
+
+            // Manually trigger checkTasks
+            await (scheduler as any).checkTasks();
+
+            // Verify task count includes tasks from both boards
+            const statusBarItem = (scheduler as any).taskCountStatusBarItem;
+            expect(statusBarItem.text).toContain('1');
+            
+            // Verify only board-2 task was converted to card
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task Board 2');
         });
     });
 
@@ -534,7 +698,7 @@ describe('Vacation Mode', () => {
             const past = new Date();
             past.setDate(past.getDate() - 2);
             
-            mockTasks = [
+            mockData.tasks.length = 0; mockData.tasks.push(
                 {
                     id: 'task-1',
                     title: 'Task 1',
@@ -549,13 +713,12 @@ describe('Vacation Mode', () => {
                     status: 'pending',
                     recurrence: 'daily',
                     boardId: 'board-1'
-                }
-            ];
+                });
 
             await (scheduler as any).checkTasks();
 
             // No cards should be created
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
             
             // No commands should be executed
             expect(vscode.commands.executeCommand).not.toHaveBeenCalled();
@@ -566,109 +729,137 @@ describe('Vacation Mode', () => {
         test('switching vacation mode on and off should work correctly', async () => {
             const scheduler = TaskScheduler.getInstance();
             
-            const now = new Date();
-            mockTasks = [{
+            const past = new Date(Date.now() - 3600000); // 1 hour ago
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-1',
                 title: 'Test Task',
-                dueDate: now.toISOString(),
+                dueDate: past.toISOString(),
                 status: 'pending',
+                recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // Initial state: vacation mode off
             mockConfig['tasks.vacationMode'] = false;
             await (scheduler as any).checkTasks();
-            expect(mockCards.length).toBe(1);
+            expect(mockData.cards.length).toBe(1);
 
             // Clear cards for next test
-            mockCards = [];
-            mockTasks = [{
+            mockData.cards.length = 0;
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-2',
                 title: 'Test Task 2',
-                dueDate: now.toISOString(),
+                dueDate: past.toISOString(),
                 status: 'pending',
+                recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // Turn on vacation mode
             mockConfig['tasks.vacationMode'] = true;
             await (scheduler as any).checkTasks();
-            expect(mockCards.length).toBe(0);
+            expect(mockData.cards.length).toBe(0);
 
             // Clear and add new task
-            mockTasks = [{
+            mockData.tasks.length = 0; mockData.tasks.push({
                 id: 'task-3',
                 title: 'Test Task 3',
-                dueDate: now.toISOString(),
+                dueDate: past.toISOString(),
                 status: 'pending',
+                recurrence: null,
                 boardId: 'board-1'
-            }];
+            });
 
             // Turn off vacation mode again
             mockConfig['tasks.vacationMode'] = false;
             await (scheduler as any).checkTasks();
-            expect(mockCards.length).toBe(1);
+            expect(mockData.cards.length).toBe(1);
             
             scheduler.stop();
         });
 
         test('should allow switching between global and board-specific vacation mode', async () => {
             const scheduler = TaskScheduler.getInstance();
+            const past = new Date();
+            past.setHours(past.getHours() - 1);
             
-            // Verify board-specific vacation mode can be set
+            // Board-specific vacation mode (only board-1)
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1'];
-            
-            let taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
-            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(true);
-            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(false);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1a', title: 'Task B1 A', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2a', title: 'Task B2 A', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task B2 A');
 
             // Switch to global vacation mode (empty list applies to all)
+            mockData.cards.length = 0;
             mockConfig['tasks.vacationModeBoards'] = [];
-            taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards).toEqual([]);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1b', title: 'Task B1 B', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2b', title: 'Task B2 B', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(0);
 
-            // Switch back to specific board again (only board-2)
+            // Switch to board-2 specific vacation mode
+            mockData.cards.length = 0;
             mockConfig['tasks.vacationModeBoards'] = ['board-2'];
-            taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationMode).toBe(true);
-            expect(taskSettings.vacationModeBoards).toEqual(['board-2']);
-            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(true);
-            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(false);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1c', title: 'Task B1 C', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2c', title: 'Task B2 C', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task B1 C');
             
             scheduler.stop();
         });
 
         test('should handle dynamic changes to vacationModeBoards list', async () => {
             const scheduler = TaskScheduler.getInstance();
+            const past = new Date();
+            past.setHours(past.getHours() - 1);
             
             // Start with board-1 in vacation mode
             mockConfig['tasks.vacationMode'] = true;
             mockConfig['tasks.vacationModeBoards'] = ['board-1'];
             
-            let taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationModeBoards).toEqual(['board-1']);
-            expect(taskSettings.vacationModeBoards.length).toBe(1);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1a', title: 'Task B1 A', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2a', title: 'Task B2 A', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' },
+                { id: 'task-3a', title: 'Task B3 A', dueDate: past.toISOString(), status: 'pending', boardId: 'board-3' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(2);
+            expect(mockData.cards.find((c: any) => c.title === 'Task B2 A')).toBeDefined();
+            expect(mockData.cards.find((c: any) => c.title === 'Task B3 A')).toBeDefined();
 
             // Add board-2 to vacation mode
+            mockData.cards.length = 0;
             mockConfig['tasks.vacationModeBoards'] = ['board-1', 'board-2'];
-            taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationModeBoards).toEqual(['board-1', 'board-2']);
-            expect(taskSettings.vacationModeBoards.length).toBe(2);
-            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(false);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1b', title: 'Task B1 B', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2b', title: 'Task B2 B', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' },
+                { id: 'task-3b', title: 'Task B3 B', dueDate: past.toISOString(), status: 'pending', boardId: 'board-3' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task B3 B');
 
-            // Remove board-1, add board-3
+            // Remove board-1, add board-3 (now board-2 and board-3 in vacation mode)
+            mockData.cards.length = 0;
             mockConfig['tasks.vacationModeBoards'] = ['board-2', 'board-3'];
-            taskSettings = settingsService.getTaskSettings();
-            expect(taskSettings.vacationModeBoards).toEqual(['board-2', 'board-3']);
-            expect(taskSettings.vacationModeBoards.includes('board-1')).toBe(false);
-            expect(taskSettings.vacationModeBoards.includes('board-2')).toBe(true);
-            expect(taskSettings.vacationModeBoards.includes('board-3')).toBe(true);
+            mockData.tasks.length = 0; mockData.tasks.push(
+                { id: 'task-1c', title: 'Task B1 C', dueDate: past.toISOString(), status: 'pending', boardId: 'board-1' },
+                { id: 'task-2c', title: 'Task B2 C', dueDate: past.toISOString(), status: 'pending', boardId: 'board-2' },
+                { id: 'task-3c', title: 'Task B3 C', dueDate: past.toISOString(), status: 'pending', boardId: 'board-3' });
+            await (scheduler as any).checkTasks();
+            expect(mockData.cards.length).toBe(1);
+            expect(mockData.cards[0].title).toBe('Task B1 C');
             
             scheduler.stop();
         });
     });
 });
+
+
+
+
