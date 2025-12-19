@@ -149,37 +149,9 @@ export class TaskScheduler {
         } else {
           // For boards not in vacation mode, process the task normally
           if (dueDate <= now) {
-            try {
-              const newCard = await createCardFromTask(task, false);
-              
-              if (newCard) {
-                cardsCreated = true;
-
-                if (this.shouldShowNotification(task.id)) {
-                  vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
-                  this.recordNotification(task.id);
-                }
-              } else {
-                logger.error(`Failed to create card for task ${task.id}`);
-              }
-            } catch (error) {
-              logger.error('Failed to create card for task:', error);
-            }
-
-            if (task.recurrence) {
-              // For recurring tasks, calculate the next due date and update the task
-              const nextDueDate = getNextDueDate(task);
-              if (nextDueDate) {
-                prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
-              } else {
-                // If no next due date, log warning and delete the task
-                logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
-                prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
-              }
-            } else {
-              // For non-recurring tasks, log and delete the task after creating the card
-              logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
-              prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+            const wasCardCreated = await this.processTask(task);
+            if (wasCardCreated) {
+              cardsCreated = true;
             }
           } else if (this.isDueToday(dueDate)) {
             dueTodayCount++;
@@ -197,48 +169,23 @@ export class TaskScheduler {
     }
 
     for (const task of tasks) {
-      let dueDate = new Date(task.dueDate);
+      const dueDate = new Date(task.dueDate);
       if (dueDate <= now) {
-        // Task is due - create a card using the reusable function
-        try {
-          const newCard = await createCardFromTask(task, false);
-          
-          if (newCard) {
-            cardsCreated = true;
-
-            if (this.shouldShowNotification(task.id)) {
-              vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
-              this.recordNotification(task.id);
-            }
-          } else {
-            logger.error(`Failed to create card for task ${task.id}`);
-          }
-        } catch (error) {
-          logger.error('Failed to create card for task:', error);
+        // Task is due - process using the reusable function
+        const wasCardCreated = await this.processTask(task);
+        if (wasCardCreated) {
+          cardsCreated = true;
         }
-
+        
+        // For recurring tasks, check if the updated due date is today
         if (task.recurrence) {
-          // For recurring tasks, calculate the next due date and update the task
-          const nextDueDate = getNextDueDate(task);
-          if (nextDueDate) {
-            prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
-            // Update dueDate to reflect the new due date for "due today" count
-            dueDate = nextDueDate;
-          } else {
-            // If no next due date, log warning and delete the task
-            logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
-            prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
-            continue;
+          // Re-read the task's due date after processing (it may have been updated for recurring tasks)
+          const updatedTask: Task | undefined = prepare('SELECT due_date as dueDate FROM tasks WHERE id = ?').get(task.id) as Task | undefined;
+          if (updatedTask && this.isDueToday(new Date(updatedTask.dueDate))) {
+            dueTodayCount++;
           }
-        } else {
-          // For non-recurring tasks, log and delete the task after creating the card
-          logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
-          prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
-          continue;
         }
-      }
-
-      if (this.isDueToday(dueDate)) {
+      } else if (this.isDueToday(dueDate)) {
         dueTodayCount++;
       }
     }
@@ -248,6 +195,49 @@ export class TaskScheduler {
     if (cardsCreated) {
       vscode.commands.executeCommand('chroma.refreshTasks');
       vscode.commands.executeCommand('chroma.refreshKanban');
+    }
+  }
+
+  /**
+   * Process a due task: create card, handle notifications, manage recurrence/deletion
+   * @returns true if a card was created, false otherwise
+   */
+  private async processTask(task: Task): Promise<boolean> {
+    const logger = Logger.getInstance();
+    try {
+      const newCard = await createCardFromTask(task, false);
+      
+      if (newCard) {
+        if (this.shouldShowNotification(task.id)) {
+          vscode.window.showInformationMessage(`Task due: ${task.title} - Card created in To Do`);
+          this.recordNotification(task.id);
+        }
+
+        // Handle recurring vs non-recurring tasks
+        if (task.recurrence) {
+          // For recurring tasks, calculate the next due date and update the task
+          const nextDueDate = getNextDueDate(task);
+          if (nextDueDate) {
+            prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
+          } else {
+            // If no next due date, log warning and delete the task
+            logger.warn(`Recurring task "${task.title}" (ID: ${task.id}) has no next due date - deleting. This may indicate an invalid recurrence pattern.`);
+            prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+          }
+        } else {
+          // For non-recurring tasks, log and delete the task after creating the card
+          logger.debug(`Non-recurring task "${task.title}" (ID: ${task.id}) completed - deleting after card creation.`);
+          prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
+        }
+
+        return true;
+      } else {
+        logger.error(`Failed to create card for task ${task.id}`);
+        return false;
+      }
+    } catch (error) {
+      logger.error('Failed to create card for task:', error);
+      return false;
     }
   }
 
