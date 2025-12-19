@@ -91,22 +91,42 @@ export class TaskScheduler {
     const settings = getSettingsService().getTaskSettings();
     if (settings.vacationMode) {
       // Build a set of board IDs to pause (supports IDs or exact board titles)
-      const boards = getAllBoards();
+      const boards = getAllBoards() || [];
       const entries = settings.vacationModeBoards || [];
       const boardIdsToPause = new Set<string>();
 
       if (entries.length === 0) {
         // Empty list means pause on all boards
         for (const b of boards) {
-          if (b?.id) boardIdsToPause.add(b.id);
+          if (b?.id) {
+            boardIdsToPause.add(b.id);
+          }
         }
       } else {
+        // Build lookup structures for efficient ID/title resolution
+        const boardIdSet = new Set<string>();
+        const titleToId = new Map<string, string>();
+        for (const b of boards) {
+          if (!b?.id) {
+            continue;
+          }
+          boardIdSet.add(b.id);
+          if (b.title) {
+            titleToId.set(b.title, b.id);
+          }
+        }
+
         for (const entry of entries) {
-          for (const b of boards) {
-            if (!b) continue;
-            if (b.id === entry || b.title === entry) {
-              if (b.id) boardIdsToPause.add(b.id);
-            }
+          // First, treat entry as a board ID
+          if (boardIdSet.has(entry)) {
+            boardIdsToPause.add(entry);
+            continue;
+          }
+
+          // Otherwise, treat entry as a board title
+          const idFromTitle = titleToId.get(entry);
+          if (idFromTitle) {
+            boardIdsToPause.add(idFromTitle);
           }
         }
       }
