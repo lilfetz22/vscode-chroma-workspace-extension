@@ -1,0 +1,355 @@
+import { 
+    initTestDatabase, 
+    closeTestDb,
+    createBoard,
+    createColumn,
+    createCard,
+    getCardById,
+    updateCard
+} from '../src/test-database';
+
+describe('Card Completed Date Editing', () => {
+    let db: any;
+    let boardId: string;
+    let doneColumnId: string;
+    let inProgressColumnId: string;
+    let cardId: string;
+
+    beforeAll(async () => {
+        db = await initTestDatabase();
+    });
+
+    afterAll(() => {
+        closeTestDb();
+    });
+
+    beforeEach(() => {
+        // Clean up data before each test
+        db.exec('DELETE FROM cards');
+        db.exec('DELETE FROM columns');
+        db.exec('DELETE FROM boards');
+
+        // Create test board and columns
+        const board = createBoard(db, { title: 'Test Board' });
+        boardId = board.id;
+
+        const inProgressColumn = createColumn(db, { 
+            board_id: boardId, 
+            title: 'In Progress', 
+            position: 1 
+        });
+        inProgressColumnId = inProgressColumn.id;
+
+        const doneColumn = createColumn(db, { 
+            board_id: boardId, 
+            title: 'Done', 
+            position: 2 
+        });
+        doneColumnId = doneColumn.id;
+
+        // Create a test card in the Done column with a completed date
+        const card = createCard(db, {
+            column_id: doneColumnId,
+            title: 'Test Card',
+            content: 'Test content',
+            card_type: 'simple',
+            position: 1,
+            completed_at: new Date('2025-12-18T14:30:00.000Z').toISOString()
+        });
+        cardId = card.id;
+    });
+
+    describe('Database Schema', () => {
+        it('should have completed_at column in cards table', () => {
+            const columns = db.prepare(`PRAGMA table_info(cards)`).all();
+            const columnNames = columns.map((c: any) => c.name);
+            expect(columnNames).toContain('completed_at');
+        });
+
+        it('should allow null values for completed_at', () => {
+            const card = createCard(db, {
+                column_id: inProgressColumnId,
+                title: 'Incomplete Card',
+                card_type: 'simple',
+                position: 1,
+                completed_at: null
+            });
+
+            expect(card.completed_at).toBeNull();
+        });
+    });
+
+    describe('Reading Completed Date', () => {
+        it('should retrieve card with completed_at date', () => {
+            const card = getCardById(db, cardId);
+            
+            expect(card).toBeDefined();
+            expect(card.completed_at).toBeDefined();
+            expect(card.completed_at).toBe('2025-12-18T14:30:00.000Z');
+        });
+
+        it('should parse completed_at as valid ISO date string', () => {
+            const card = getCardById(db, cardId);
+            const date = new Date(card.completed_at);
+            
+            expect(date.getFullYear()).toBe(2025);
+            expect(date.getMonth()).toBe(11); // December (0-indexed)
+            expect(date.getDate()).toBe(18);
+            expect(date.getUTCHours()).toBe(14);
+            expect(date.getUTCMinutes()).toBe(30);
+        });
+    });
+
+    describe('Updating Completed Date', () => {
+        it('should update completed_at to a new date', () => {
+            const newDate = new Date('2025-12-17T09:15:00.000Z').toISOString();
+            
+            updateCard(db, cardId, {
+                completed_at: newDate
+            });
+
+            const updatedCard = getCardById(db, cardId);
+            expect(updatedCard.completed_at).toBe(newDate);
+        });
+
+        it('should update completed_at to yesterday\'s date', () => {
+            // Simulate backdating to yesterday
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            yesterday.setHours(17, 45, 0, 0);
+            const yesterdayISO = yesterday.toISOString();
+            
+            updateCard(db, cardId, {
+                completed_at: yesterdayISO
+            });
+
+            const updatedCard = getCardById(db, cardId);
+            expect(updatedCard.completed_at).toBe(yesterdayISO);
+            
+            const retrievedDate = new Date(updatedCard.completed_at);
+            expect(retrievedDate.getDate()).toBe(yesterday.getDate());
+            expect(retrievedDate.getHours()).toBe(17);
+            expect(retrievedDate.getMinutes()).toBe(45);
+        });
+
+        it('should update only completed_at without affecting other fields', () => {
+            const originalCard = getCardById(db, cardId);
+            const newDate = new Date('2025-12-16T10:00:00.000Z').toISOString();
+            
+            updateCard(db, cardId, {
+                completed_at: newDate
+            });
+
+            const updatedCard = getCardById(db, cardId);
+            expect(updatedCard.title).toBe(originalCard.title);
+            expect(updatedCard.content).toBe(originalCard.content);
+            expect(updatedCard.column_id).toBe(originalCard.column_id);
+            expect(updatedCard.position).toBe(originalCard.position);
+            expect(updatedCard.completed_at).toBe(newDate);
+            expect(updatedCard.completed_at).not.toBe(originalCard.completed_at);
+        });
+
+        it('should clear completed_at by setting to null', () => {
+            updateCard(db, cardId, {
+                completed_at: null
+            });
+
+            const updatedCard = getCardById(db, cardId);
+            expect(updatedCard.completed_at).toBeNull();
+        });
+
+        it('should handle multiple updates to completed_at', () => {
+            const date1 = new Date('2025-12-17T10:00:00.000Z').toISOString();
+            const date2 = new Date('2025-12-16T15:30:00.000Z').toISOString();
+            const date3 = new Date('2025-12-15T08:45:00.000Z').toISOString();
+            
+            updateCard(db, cardId, { completed_at: date1 });
+            expect(getCardById(db, cardId).completed_at).toBe(date1);
+            
+            updateCard(db, cardId, { completed_at: date2 });
+            expect(getCardById(db, cardId).completed_at).toBe(date2);
+            
+            updateCard(db, cardId, { completed_at: date3 });
+            expect(getCardById(db, cardId).completed_at).toBe(date3);
+        });
+    });
+
+    describe('Date Validation Scenarios', () => {
+        it('should handle dates with different timezones', () => {
+            // Create date in UTC
+            const utcDate = new Date('2025-12-18T14:30:00.000Z').toISOString();
+            updateCard(db, cardId, { completed_at: utcDate });
+            
+            const card = getCardById(db, cardId);
+            expect(card.completed_at).toBe(utcDate);
+            expect(card.completed_at).toContain('Z'); // Confirm UTC format
+        });
+
+        it('should store dates with time precision (hours and minutes)', () => {
+            const preciseDate = new Date('2025-12-18T09:42:00.000Z').toISOString();
+            updateCard(db, cardId, { completed_at: preciseDate });
+            
+            const card = getCardById(db, cardId);
+            const storedDate = new Date(card.completed_at);
+            
+            expect(storedDate.getUTCHours()).toBe(9);
+            expect(storedDate.getUTCMinutes()).toBe(42);
+        });
+
+        it('should handle edge case: midnight time', () => {
+            const midnightDate = new Date('2025-12-18T00:00:00.000Z').toISOString();
+            updateCard(db, cardId, { completed_at: midnightDate });
+            
+            const card = getCardById(db, cardId);
+            const storedDate = new Date(card.completed_at);
+            
+            expect(storedDate.getUTCHours()).toBe(0);
+            expect(storedDate.getUTCMinutes()).toBe(0);
+        });
+
+        it('should handle edge case: end of day time', () => {
+            const endOfDayDate = new Date('2025-12-18T23:59:00.000Z').toISOString();
+            updateCard(db, cardId, { completed_at: endOfDayDate });
+            
+            const card = getCardById(db, cardId);
+            const storedDate = new Date(card.completed_at);
+            
+            expect(storedDate.getUTCHours()).toBe(23);
+            expect(storedDate.getUTCMinutes()).toBe(59);
+        });
+    });
+
+    describe('Integration with Card Lifecycle', () => {
+        it('should set completed_at when card moves to completion column', () => {
+            // Create card without completed_at
+            const incompleteCard = createCard(db, {
+                column_id: inProgressColumnId,
+                title: 'New Card',
+                card_type: 'simple',
+                position: 1,
+                completed_at: null
+            });
+
+            expect(incompleteCard.completed_at).toBeNull();
+
+            // Simulate moving to Done column and setting completed_at
+            const completedTime = new Date().toISOString();
+            updateCard(db, incompleteCard.id, {
+                column_id: doneColumnId,
+                completed_at: completedTime
+            });
+
+            const movedCard = getCardById(db, incompleteCard.id);
+            expect(movedCard.column_id).toBe(doneColumnId);
+            expect(movedCard.completed_at).toBe(completedTime);
+        });
+
+        it('should clear completed_at when card moves from completion column', () => {
+            // Card starts in Done column with completed_at set
+            expect(getCardById(db, cardId).completed_at).not.toBeNull();
+
+            // Move back to In Progress and clear completed_at
+            updateCard(db, cardId, {
+                column_id: inProgressColumnId,
+                completed_at: null
+            });
+
+            const movedCard = getCardById(db, cardId);
+            expect(movedCard.column_id).toBe(inProgressColumnId);
+            expect(movedCard.completed_at).toBeNull();
+        });
+
+        it('should maintain completed_at when editing other card properties', () => {
+            const originalCompletedAt = getCardById(db, cardId).completed_at;
+
+            // Update title and content but not completed_at
+            updateCard(db, cardId, {
+                title: 'Updated Title',
+                content: 'Updated content'
+            });
+
+            const updatedCard = getCardById(db, cardId);
+            expect(updatedCard.title).toBe('Updated Title');
+            expect(updatedCard.content).toBe('Updated content');
+            expect(updatedCard.completed_at).toBe(originalCompletedAt);
+        });
+    });
+
+    describe('Error Handling', () => {
+        it('should not throw when updating non-existent card ID', () => {
+            // updateCard in test-database doesn't throw, it just doesn't update anything
+            expect(() => {
+                updateCard(db, 'non-existent-id', {
+                    completed_at: new Date().toISOString()
+                });
+            }).not.toThrow();
+        });
+
+        it('should not throw when updating with empty ID', () => {
+            // updateCard in test-database doesn't throw, it just doesn't update anything
+            expect(() => {
+                updateCard(db, '', {
+                    completed_at: new Date().toISOString()
+                });
+            }).not.toThrow();
+        });
+    });
+
+    describe('Query and Filtering', () => {
+        it('should find completed cards by date range', () => {
+            // Create multiple cards with different completion dates
+            const card1 = createCard(db, {
+                column_id: doneColumnId,
+                title: 'Card 1',
+                card_type: 'simple',
+                position: 2,
+                completed_at: new Date('2025-12-15T10:00:00.000Z').toISOString()
+            });
+
+            const card2 = createCard(db, {
+                column_id: doneColumnId,
+                title: 'Card 2',
+                card_type: 'simple',
+                position: 3,
+                completed_at: new Date('2025-12-17T14:00:00.000Z').toISOString()
+            });
+
+            const card3 = createCard(db, {
+                column_id: doneColumnId,
+                title: 'Card 3',
+                card_type: 'simple',
+                position: 4,
+                completed_at: new Date('2025-12-19T09:00:00.000Z').toISOString()
+            });
+
+            // Query cards completed between Dec 16-18
+            const cards = db.prepare(`
+                SELECT * FROM cards 
+                WHERE completed_at >= ? AND completed_at < ?
+                ORDER BY completed_at
+            `).all('2025-12-16T00:00:00.000Z', '2025-12-19T00:00:00.000Z');
+
+            expect(cards.length).toBe(2);
+            expect(cards[0].title).toBe('Card 2');
+            expect(cards[1].title).toBe('Test Card');
+        });
+
+        it('should exclude cards without completed_at from completion queries', () => {
+            // Create card without completed_at
+            createCard(db, {
+                column_id: doneColumnId,
+                title: 'Incomplete Card',
+                card_type: 'simple',
+                position: 5,
+                completed_at: null
+            });
+
+            const completedCards = db.prepare(`
+                SELECT * FROM cards WHERE completed_at IS NOT NULL
+            `).all();
+
+            expect(completedCards.length).toBe(1);
+            expect(completedCards[0].id).toBe(cardId);
+        });
+    });
+});
