@@ -117,7 +117,7 @@
           },
           "default": [],
           "description": "Boards to pause when Vacation Mode is enabled.",
-          "markdownDescription": "When Vacation Mode is enabled, tasks on these boards will not be auto-converted into cards.\n\n• Accepts either **board IDs** or **exact board names**.\n• If left empty, Vacation Mode applies to **all boards**.\n\nExamples:\n- By name: `Personal Board`\n- By ID: `3b047c5afff060fd953d42cdb40aeef0`\n\nTip: Use the board's displayed name in the Kanban view (exact match)."
+          "markdownDescription": "When Vacation Mode is enabled, tasks on these boards will not be auto-converted into cards.\n\n• Enter the **exact board names** (as shown in the Kanban view).\n• If left empty, Vacation Mode applies to **all boards**.\n\nExample:\n- `Personal Board`"
         },
         "chroma.export.defaultDateRangeMonths": {
           "type": "number",

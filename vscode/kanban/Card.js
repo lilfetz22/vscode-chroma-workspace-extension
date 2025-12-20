@@ -167,9 +167,10 @@ async function editCard(card) {
     const debugLog = getDebugLogger();
     
     // Check if vacation mode applies for this card's board
-    const { getColumnById: _getColumnById } = require('../../out/src/database');
+    const { getColumnById: _getColumnById, getBoardById: _getBoardById } = require('../../out/src/database');
     const boardIdForEdit = card.boardId || _getColumnById(card.columnId)?.board_id;
-    if (getSettingsService().isVacationModeActiveForBoard(boardIdForEdit)) {
+    const boardTitleForEdit = boardIdForEdit ? _getBoardById?.(boardIdForEdit)?.title : undefined;
+    if (getSettingsService().isVacationModeActiveForBoard(boardIdForEdit, boardTitleForEdit)) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to edit this card?',
             { modal: true },
@@ -348,7 +349,9 @@ async function moveCard(card) {
     debugLog.log(`Current column ID: ${card.columnId}`);
     
     // Check if vacation mode applies for this card's board
-    if (getSettingsService().isVacationModeActiveForBoard(card.boardId)) {
+    const { getBoardById: _getBoardById2 } = require('../../out/src/database');
+    const boardTitleForMove = card.boardId ? _getBoardById2?.(card.boardId)?.title : undefined;
+    if (getSettingsService().isVacationModeActiveForBoard(card.boardId, boardTitleForMove)) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to move this card?',
             { modal: true },

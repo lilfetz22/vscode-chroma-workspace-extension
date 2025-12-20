@@ -64,11 +64,19 @@ describe('Vacation mode board targeting for card warnings', () => {
     expect(settings.isVacationModeActiveForBoard(undefined)).toBe(true);
   });
 
-  test('returns true only for boards in list when list has entries', () => {
+  test('returns true only for boards in list when list has entries (by id)', () => {
     mockConfig['tasks.vacationMode'] = true;
     mockConfig['tasks.vacationModeBoards'] = ['board-1'];
     expect(settings.isVacationModeActiveForBoard('board-1')).toBe(true);
     expect(settings.isVacationModeActiveForBoard('board-2')).toBe(false);
     expect(settings.isVacationModeActiveForBoard(undefined)).toBe(false);
+  });
+
+  test('matches by exact board name (case-insensitive)', () => {
+    mockConfig['tasks.vacationMode'] = true;
+    mockConfig['tasks.vacationModeBoards'] = ['Personal Board'];
+    expect(settings.isVacationModeActiveForBoard('board-1', 'Personal Board')).toBe(true);
+    expect(settings.isVacationModeActiveForBoard('board-2', 'personal board')).toBe(true);
+    expect(settings.isVacationModeActiveForBoard('board-3', 'Another Board')).toBe(false);
   });
 });
