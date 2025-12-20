@@ -1,3 +1,16 @@
+# [2.15.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.14.0...v2.15.0) (2025-12-20)
+
+
+### Bug Fixes
+
+* **export:** query completed_at using local time format ([f4aec00](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f4aec00fd3479f86ae46bbfa8aac76a027374123))
+* **kanban:** save edited completed_at in local time format ([215f71e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/215f71eafcd57e4043579c5877e1ac0866e7b0fe))
+
+
+### Features
+
+* **kanban:** add ability to edit completed date for cards ([b87e9b3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b87e9b3521332c7b18cd0cc61e47136d35e8d79c))
+
 # [2.14.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.13.0...v2.14.0) (2025-12-19)
 
 
