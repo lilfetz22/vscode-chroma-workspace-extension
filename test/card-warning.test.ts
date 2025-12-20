@@ -1,5 +1,4 @@
 import { SettingsService } from '../src/logic/SettingsService';
-import * as vscode from 'vscode';
 
 // Mock vscode configuration
 let mockConfig: { [key: string]: any } = {};
