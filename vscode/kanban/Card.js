@@ -535,8 +535,8 @@ async function editCardCompletedDate(card) {
     
     // Combine date and time into ISO string
     const [hours, minutes] = newTimeStr.split(':').map(Number);
-    const newDate = new Date(newDateStr);
-    newDate.setHours(hours, minutes, 0, 0);
+    const [year, month, day] = newDateStr.split('-').map(Number);
+    const newDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
     const newCompletedAt = newDate.toISOString();
     
     debugLog.log(`New completed_at: ${newCompletedAt}`);
