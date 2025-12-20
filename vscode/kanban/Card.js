@@ -533,11 +533,11 @@ async function editCardCompletedDate(card) {
         return;
     }
     
-    // Combine date and time into ISO string
+    // Combine date and time into local ISO string
     const [hours, minutes] = newTimeStr.split(':').map(Number);
     const [year, month, day] = newDateStr.split('-').map(Number);
     const newDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    const newCompletedAt = newDate.toISOString();
+    const newCompletedAt = toLocalISOString(newDate);
     
     debugLog.log(`New completed_at: ${newCompletedAt}`);
     
@@ -547,6 +547,20 @@ async function editCardCompletedDate(card) {
     
     debugLog.log('Card completed date updated successfully');
     vscode.window.showInformationMessage(`Completed date updated to ${newDateStr} ${newTimeStr}`);
+}
+
+/**
+ * Format a date to local ISO string (YYYY-MM-DDTHH:MM:SS)
+ * without timezone conversion - preserves local time
+ */
+function toLocalISOString(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
 /**
