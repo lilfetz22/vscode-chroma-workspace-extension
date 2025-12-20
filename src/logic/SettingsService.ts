@@ -163,15 +163,14 @@ export class SettingsService {
         if (!tasks.vacationMode) {
             return false;
         }
-        const boards = (tasks as any).vacationModeBoards as (string | null)[] | null | undefined;
-        if (boards == null || boards.length === 0) {
+        const boards = tasks.vacationModeBoards;
+        if (!boards || boards.length === 0) {
             return true; // global vacation mode
         }
-        const list = boards.filter((b): b is string => !!b);
         const title = (boardTitle || '').trim().toLowerCase();
         // Match by exact ID or by exact name (case-insensitive)
-        if (boardId && list.includes(boardId)) return true;
-        if (title && list.some(b => b.trim().toLowerCase() === title)) return true;
+        if (boardId && boards.includes(boardId)) return true;
+        if (title && boards.some(b => b.trim().toLowerCase() === title)) return true;
         return false;
     }
 
