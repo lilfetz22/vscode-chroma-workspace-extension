@@ -521,7 +521,7 @@ async function editCardCompletedDate(card) {
         value: currentTimeStr,
         ignoreFocusOut: true,
         validateInput: text => {
-            if (!/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/.test(text)) {
+            if (!/^([01][0-9]|2[0-3]):([0-5][0-9])$/.test(text)) {
                 return 'Invalid time format. Use HH:MM (e.g., 09:30, 14:00, 17:45)';
             }
             return null;
