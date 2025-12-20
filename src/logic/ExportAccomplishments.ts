@@ -183,8 +183,19 @@ export function getCompletedCards(boardId: string, startDate: Date, endDate: Dat
         ORDER BY completed_at DESC
     `;
     
-    const startDateStr = startDate.toISOString();
-    const endDateStr = endDate.toISOString();
+    // Format dates as local time strings without timezone conversion
+    const formatLocalISOString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+    
+    const startDateStr = formatLocalISOString(startDate);
+    const endDateStr = formatLocalISOString(endDate);
     
     const cards = prepare(query).all(completionColumn.id, startDateStr, endDateStr) as CompletedCard[];
 

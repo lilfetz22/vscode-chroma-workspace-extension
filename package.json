@@ -234,6 +234,10 @@
         "title": "Move Card"
       },
       {
+        "command": "chroma.editCardCompletedDate",
+        "title": "Edit Completed Date"
+      },
+      {
         "command": "chroma.addBoard",
         "title": "Add Board"
       },
@@ -382,8 +386,18 @@
           "group": "inline"
         },
         {
+          "command": "chroma.editCard",
+          "when": "view == kanban && viewItem == completedCard",
+          "group": "inline"
+        },
+        {
           "command": "chroma.deleteCard",
           "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.deleteCard",
+          "when": "view == kanban && viewItem == completedCard",
           "group": "inline"
         },
         {
@@ -392,8 +406,23 @@
           "group": "inline"
         },
         {
+          "command": "chroma.moveCard",
+          "when": "view == kanban && viewItem == completedCard",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.editCardCompletedDate",
+          "when": "view == kanban && viewItem == completedCard",
+          "group": "inline"
+        },
+        {
           "command": "chroma.convertCardToTask",
           "when": "view == kanban && viewItem == card",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.convertCardToTask",
+          "when": "view == kanban && viewItem == completedCard",
           "group": "inline"
         },
         {

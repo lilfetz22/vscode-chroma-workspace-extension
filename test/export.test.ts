@@ -112,6 +112,17 @@ describe('Export Accomplishments', () => {
         };
     });
 
+    // Helper function to format dates in local time (used throughout tests)
+    const toLocalISOString = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+    };
+
     describe('calculateDateRange', () => {
         it('should calculate 3 months range correctly', () => {
             const range = calculateDateRange('3months');
@@ -181,10 +192,10 @@ describe('Export Accomplishments', () => {
             lastMonth.setMonth(now.getMonth() - 1);
 
             const cards = [
-                { id: uuidv4(), title: 'Card 1', column_id: doneColumnId, completed_at: yesterday.toISOString() },
-                { id: uuidv4(), title: 'Card 2', column_id: doneColumnId, completed_at: lastWeek.toISOString() },
+                { id: uuidv4(), title: 'Card 1', column_id: doneColumnId, completed_at: toLocalISOString(yesterday) },
+                { id: uuidv4(), title: 'Card 2', column_id: doneColumnId, completed_at: toLocalISOString(lastWeek) },
                 { id: uuidv4(), title: 'Card 3', column_id: doneColumnId, completed_at: null }, // Not completed
-                { id: uuidv4(), title: 'Card 4', column_id: doneColumnId, completed_at: lastMonth.toISOString() }
+                { id: uuidv4(), title: 'Card 4', column_id: doneColumnId, completed_at: toLocalISOString(lastMonth) }
             ];
 
             const stmt = db.prepare('INSERT INTO cards (id, title, column_id, position, card_type, completed_at) VALUES (?, ?, ?, ?, ?, ?)');
@@ -229,8 +240,8 @@ describe('Export Accomplishments', () => {
             oneMonthAgo.setMonth(now.getMonth() - 1);
 
             const cards = [
-                { id: uuidv4(), title: 'Old Card', column_id: doneColumnId, completed_at: twoMonthsAgo.toISOString() },
-                { id: uuidv4(), title: 'Recent Card', column_id: doneColumnId, completed_at: oneMonthAgo.toISOString() }
+                { id: uuidv4(), title: 'Old Card', column_id: doneColumnId, completed_at: toLocalISOString(twoMonthsAgo) },
+                { id: uuidv4(), title: 'Recent Card', column_id: doneColumnId, completed_at: toLocalISOString(oneMonthAgo) }
             ];
 
             const stmt = db.prepare('INSERT INTO cards (id, title, column_id, position, card_type, completed_at) VALUES (?, ?, ?, ?, ?, ?)');
@@ -255,7 +266,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team meeting',
                     recurrence: 'daily',
                     tags: ['standup'],
-                    completed_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                    completed_at: toLocalISOString(new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000)),
                     created_at: now.toISOString()
                 },
                 {
@@ -264,7 +275,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team meeting',
                     recurrence: 'daily',
                     tags: ['standup'],
-                    completed_at: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+                    completed_at: toLocalISOString(new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000)),
                     created_at: now.toISOString()
                 },
                 {
@@ -273,7 +284,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team meeting',
                     recurrence: 'daily',
                     tags: ['standup', 'team'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -299,7 +310,7 @@ describe('Export Accomplishments', () => {
                     content: 'Review progress',
                     recurrence: 'weekly',
                     tags: ['weekly'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -319,7 +330,7 @@ describe('Export Accomplishments', () => {
                     content: 'Complete project',
                     recurrence: null,
                     tags: [],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 },
                 {
@@ -328,7 +339,7 @@ describe('Export Accomplishments', () => {
                     content: 'Another project',
                     recurrence: null,
                     tags: ['solo'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -349,7 +360,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team sync',
                     recurrence: 'daily',
                     tags: ['daily'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 },
                 {
@@ -358,7 +369,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team sync',
                     recurrence: 'daily',
                     tags: ['daily','team'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 },
                 {
@@ -367,7 +378,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team sync',
                     recurrence: 'weekly',
                     tags: ['weekly'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -398,7 +409,7 @@ describe('Export Accomplishments', () => {
                     content: 'Content 1',
                     recurrence: null,
                     tags: ['tag-a', 'tag-b'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -449,7 +460,7 @@ describe('Export Accomplishments', () => {
                     content: 'Content with "quotes"',
                     recurrence: null,
                     tags: ['comma,tag', 'quote"tag'],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -478,7 +489,7 @@ describe('Export Accomplishments', () => {
                     content: null,
                     recurrence: null,
                     tags: [],
-                    completed_at: now.toISOString(),
+                    completed_at: toLocalISOString(now),
                     created_at: now.toISOString()
                 }
             ];
@@ -512,7 +523,7 @@ describe('Export Accomplishments', () => {
                 content: 'Desc',
                 recurrence: null,
                 tags: ['sample'],
-                completed_at: new Date().toISOString(),
+                completed_at: toLocalISOString(new Date()),
                 created_at: new Date().toISOString()
             };
 
@@ -522,6 +533,17 @@ describe('Export Accomplishments', () => {
 
     describe('Integration test: Full export flow', () => {
         it('should handle a realistic export scenario', () => {
+            // Helper function to format dates in local time
+            const toLocalISOString = (date: Date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            };
+
             // Setup board and columns
             const boardId = uuidv4();
             const doneColumnId = uuidv4();
@@ -539,7 +561,7 @@ describe('Export Accomplishments', () => {
                     content: 'Team sync',
                     column_id: doneColumnId,
                     recurrence: 'daily',
-                    completed_at: new Date(now.getTime() - i * 24 * 60 * 60 * 1000).toISOString()
+                    completed_at: toLocalISOString(new Date(now.getTime() - i * 24 * 60 * 60 * 1000))
                 })),
                 // Weekly recurring cards (2 completions)
                 ...Array.from({ length: 2 }, (_, i) => ({
@@ -548,7 +570,7 @@ describe('Export Accomplishments', () => {
                     content: 'Review progress',
                     column_id: doneColumnId,
                     recurrence: 'weekly',
-                    completed_at: new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000).toISOString()
+                    completed_at: toLocalISOString(new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000))
                 })),
                 // One-time cards (3 cards)
                 {
@@ -557,7 +579,7 @@ describe('Export Accomplishments', () => {
                     content: 'Finish the implementation',
                     column_id: doneColumnId,
                     recurrence: null,
-                    completed_at: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString()
+                    completed_at: toLocalISOString(new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000))
                 },
                 {
                     id: uuidv4(),
@@ -565,7 +587,7 @@ describe('Export Accomplishments', () => {
                     content: 'API docs',
                     column_id: doneColumnId,
                     recurrence: null,
-                    completed_at: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString()
+                    completed_at: toLocalISOString(new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000))
                 },
                 {
                     id: uuidv4(),
@@ -573,7 +595,7 @@ describe('Export Accomplishments', () => {
                     content: 'Review PR #123',
                     column_id: doneColumnId,
                     recurrence: null,
-                    completed_at: new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000).toISOString()
+                    completed_at: toLocalISOString(new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000))
                 }
             ];
 
@@ -608,3 +630,4 @@ describe('Export Accomplishments', () => {
         });
     });
 });
+

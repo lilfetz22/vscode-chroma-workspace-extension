@@ -122,7 +122,8 @@ class KanbanProvider {
             
             const { label, description } = splitLongText(fullText);
             const item = new vscode.TreeItem(label, tags.length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
-            item.contextValue = 'card';
+            // Set contextValue to 'completedCard' for cards in completion columns, 'card' otherwise
+            item.contextValue = isCompletionColumn ? 'completedCard' : 'card';
             item.cardId = card.id;
             item.label = label;
             item.columnId = columnId;
