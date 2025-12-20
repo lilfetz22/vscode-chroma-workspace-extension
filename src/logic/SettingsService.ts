@@ -153,6 +153,29 @@ export class SettingsService {
     }
 
     /**
+     * Determine whether vacation mode restrictions apply for a given board.
+     * When vacation mode is off, returns false.
+     * When vacation mode is on and the configured boards list is null or empty, applies to all boards.
+     * When vacation mode is on and the boards list has entries, applies only to those boards.
+     */
+    public isVacationModeActiveForBoard(boardId?: string, boardTitle?: string): boolean {
+        const tasks = this.getTaskSettings();
+        if (!tasks.vacationMode) {
+            return false;
+        }
+        const boards = (tasks as any).vacationModeBoards as (string | null)[] | null | undefined;
+        if (boards == null || boards.length === 0) {
+            return true; // global vacation mode
+        }
+        const list = boards.filter((b): b is string => !!b);
+        const title = (boardTitle || '').trim().toLowerCase();
+        // Match by exact ID or by exact name (case-insensitive)
+        if (boardId && list.includes(boardId)) return true;
+        if (title && list.some(b => b.trim().toLowerCase() === title)) return true;
+        return false;
+    }
+
+    /**
      * Get kanban settings
      */
     public getKanbanSettings() {
