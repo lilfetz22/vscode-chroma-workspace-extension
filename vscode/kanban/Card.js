@@ -174,8 +174,7 @@ async function editCard(card) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to edit this card?',
             { modal: true },
-            'Yes, Edit Card',
-            'Cancel'
+            'Yes, Edit Card'
         );
         if (proceed !== 'Yes, Edit Card') {
             return;
@@ -355,8 +354,7 @@ async function moveCard(card) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to move this card?',
             { modal: true },
-            'Yes, Move Card',
-            'Cancel'
+            'Yes, Move Card'
         );
         if (proceed !== 'Yes, Move Card') {
             debugLog.log('User cancelled move due to vacation mode');
