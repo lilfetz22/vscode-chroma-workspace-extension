@@ -153,6 +153,25 @@ export class SettingsService {
     }
 
     /**
+     * Determine whether vacation mode restrictions apply for a given board.
+     * When vacation mode is off, returns false.
+     * When vacation mode is on and the configured boards list is null or empty, applies to all boards.
+     * When vacation mode is on and the boards list has entries, applies only to those boards.
+     */
+    public isVacationModeActiveForBoard(boardId?: string): boolean {
+        const tasks = this.getTaskSettings();
+        if (!tasks.vacationMode) {
+            return false;
+        }
+        const boards = (tasks as any).vacationModeBoards as string[] | null | undefined;
+        if (boards == null || boards.length === 0) {
+            return true; // global vacation mode
+        }
+        // Only apply to listed boards; undefined boardId is not blocked
+        return !!boardId && boards.includes(boardId);
+    }
+
+    /**
      * Get kanban settings
      */
     public getKanbanSettings() {

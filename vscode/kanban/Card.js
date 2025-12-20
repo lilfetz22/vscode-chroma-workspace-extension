@@ -166,9 +166,10 @@ async function addCard(column) {
 async function editCard(card) {
     const debugLog = getDebugLogger();
     
-    // Check if vacation mode is enabled and warn user
-    const settings = getSettingsService().getTaskSettings();
-    if (settings.vacationMode) {
+    // Check if vacation mode applies for this card's board
+    const { getColumnById: _getColumnById } = require('../../out/src/database');
+    const boardIdForEdit = card.boardId || _getColumnById(card.columnId)?.board_id;
+    if (getSettingsService().isVacationModeActiveForBoard(boardIdForEdit)) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to edit this card?',
             { modal: true },
@@ -346,9 +347,8 @@ async function moveCard(card) {
     debugLog.log(`Current position: ${card.position}`);
     debugLog.log(`Current column ID: ${card.columnId}`);
     
-    // Check if vacation mode is enabled and warn user
-    const settings = getSettingsService().getTaskSettings();
-    if (settings.vacationMode) {
+    // Check if vacation mode applies for this card's board
+    if (getSettingsService().isVacationModeActiveForBoard(card.boardId)) {
         const proceed = await vscode.window.showWarningMessage(
             'Vacation Mode is currently enabled. Scheduled tasks are not being converted to cards. Are you sure you want to move this card?',
             { modal: true },
