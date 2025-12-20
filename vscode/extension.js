@@ -173,6 +173,9 @@ exports.activate = async function activate(context) {
             kanbanProvider.refresh();
         });
     }),
+    vscode.commands.registerCommand('chroma.copyBoardId', (board) => {
+        copyBoardId(board);
+    }),
     vscode.commands.registerCommand('chroma.addCard', (column) => {
       addCard(column).then(() => {
         kanbanProvider.refresh();

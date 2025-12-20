@@ -63,6 +63,7 @@ class KanbanProvider {
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'board';
             item.boardId = board.id;
+            item.tooltip = `ID: ${board.id}`;
             if (description) {
                 item.description = description;
             }

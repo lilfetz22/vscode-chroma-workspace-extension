@@ -49,11 +49,17 @@ async function deleteColumn(column) {
     }
 }
 
+async function copyBoardId(board) {
+    await vscode.env.clipboard.writeText(board.boardId);
+    vscode.window.showInformationMessage(`Board ID copied to clipboard: ${board.boardId}`);
+}
+
 module.exports = {
     addBoard,
     editBoard,
     deleteBoard,
     addColumn,
     editColumn,
-    deleteColumn
+    deleteColumn,
+    copyBoardId
 };
