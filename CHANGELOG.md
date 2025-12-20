@@ -1,3 +1,18 @@
+# [2.16.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.15.0...v2.16.0) (2025-12-20)
+
+
+### Bug Fixes
+
+* **kanban:** import copyBoardId function from Board.js ([85b95d1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/85b95d1b76365d413361da2efb57c9d0ab8abb0e))
+* **kanban:** remove duplicate Cancel buttons from vacation mode warnings\n\nModal dialogs automatically include a Cancel button, so explicit Cancel options created duplicates. ([578e7c7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/578e7c712fb5d34c54d0d1489669b18d2a7030e0))
+* **kanban:** scope vacation-mode warnings to selected boards\n\nAdd SettingsService.isVacationModeActiveForBoard and tests to apply warnings only on boards listed in vacationModeBoards; empty or null list applies globally. ([d8abc9e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d8abc9e766e938334026c5b953ed468eda06fc5c))
+* **settings:** allow board names in Vacation Mode boards list\n\n- Extend isVacationModeActiveForBoard(boardId, boardTitle) to match by exact board name (case-insensitive) or ID\n- Update Card warnings to pass board title for correct scoping\n- Simplify settings description to use board names only ([895b36f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/895b36fc0c86f5d37b458944cc370223b5d633f3))
+
+
+### Features
+
+* **kanban:** add Copy Board ID button and board ID tooltips ([155d1aa](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/155d1aaef28a6a568781f4d631ef1f6615499672))
+
 # [2.15.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.14.0...v2.15.0) (2025-12-20)
 
 
