@@ -71,6 +71,7 @@ describe('convertCardToTask', () => {
         jest.spyOn(database, 'getTagsByCardId').mockReturnValue([]);
         jest.spyOn(database, 'addTagToTask').mockImplementation(() => {});
         jest.spyOn(database, 'saveDatabase').mockImplementation(() => {});
+        jest.spyOn(database, 'deleteCard').mockImplementation(() => {});
         jest.spyOn(database, 'getDb').mockReturnValue({} as any);
 
         await convertCardToTask({ cardId: 'card-1', boardId: 'board-1', label: 'Card Title' } as any);
@@ -81,6 +82,7 @@ describe('convertCardToTask', () => {
         expect(args[2]).toBe('Card body');
         expect(args[5]).toBe('card-1');
         expect(args[6]).toBe('board-1');
+        expect(database.deleteCard).toHaveBeenCalledWith('card-1');
         expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Card converted to task.');
     });
 
@@ -103,10 +105,13 @@ describe('convertCardToTask', () => {
         jest.spyOn(database, 'getTagsByCardId').mockReturnValue([]);
         jest.spyOn(database, 'addTagToTask').mockImplementation(() => {});
         jest.spyOn(database, 'saveDatabase').mockImplementation(() => {});
+        jest.spyOn(database, 'deleteCard').mockImplementation(() => {});
         jest.spyOn(database, 'getDb').mockReturnValue({} as any);
 
         await convertCardToTask({ cardId: 'card-1', boardId: 'board-1', label: 'Card Title' } as any);
 
         expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Failed to convert card to task: boom');
+        // Card should not be deleted when conversion fails
+        expect(database.deleteCard).not.toHaveBeenCalled();
     });
 });

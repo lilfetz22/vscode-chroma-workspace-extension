@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById, getCardById } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById, getCardById, deleteCard } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 import { getSettingsService } from './logic/SettingsService';
@@ -282,6 +282,10 @@ export async function convertCardToTask(card: Card) {
         }
         
         vscode.window.showInformationMessage('Card converted to task.');
+        
+        // Delete the card now that it's been converted to a task
+        deleteCard(cardId);
+        
         saveDatabase();
     } catch (err: any) {
         const message = err?.message ?? String(err);
