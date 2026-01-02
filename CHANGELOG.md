@@ -1,3 +1,12 @@
+## [2.16.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.0...v2.16.1) (2026-01-02)
+
+
+### Bug Fixes
+
+* **tasks:** convert cards to tasks reliably ([06bc9ab](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/06bc9abcf7c3ed98b763f83571ce1d0398e8c3df))
+* **tasks:** delete card after successful conversion to task ([f6ba6f4](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f6ba6f44b920533a2ac2a702a78b3fe7a7eee2e9))
+* **ui:** refresh Kanban view after card-to-task conversion ([2d00b5c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/2d00b5cbcf7707c7874864504390a45f4897219e))
+
 # [2.16.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.15.0...v2.16.0) (2025-12-20)
 
 
