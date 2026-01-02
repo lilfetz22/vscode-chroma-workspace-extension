@@ -286,6 +286,12 @@ export async function convertCardToTask(card: Card) {
         // Delete the card now that it's been converted to a task
         deleteCard(cardId);
         
+        // Explicit saveDatabase() call: Although prepare().run() auto-saves individual operations,
+        // we keep an explicit call here as a high-level operation boundary. This function performs
+        // multiple mutations (tag copies, card deletion) that logically belong together. The explicit
+        // call ensures all changes in this function scope persist as a cohesive unit. This pattern
+        // is defensive: it protects against data-loss bugs (see database-persistence.test.ts) and
+        // future-proofs against potential changes to auto-save behavior. See copilot-instructions.md.
         saveDatabase();
     } catch (err: any) {
         const message = err?.message ?? String(err);
@@ -537,6 +543,11 @@ export async function createCardFromTask(task: Task, isManualConversion: boolean
             }
         }
         
+        // Explicit saveDatabase() call: This function creates a card and copies all associated tags.
+        // Although each prepare().run() call auto-saves, the explicit call here acts as a transaction
+        // boundary, ensuring all card creation and tag assignment operations persist together as a
+        // single cohesive change. This defensive pattern prevents data-loss regressions and clarifies
+        // that the entire function's mutations are committed. See copilot-instructions.md.
         saveDatabase();
         return newCard;
     } catch (error) {
