@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById, getCardById, deleteCard } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 import { getSettingsService } from './logic/SettingsService';
@@ -211,9 +211,20 @@ export async function convertCardToTask(card: Card) {
         return;
     }
 
+    // Fetch the full card so we have canonical title/content/board information (TreeItems omit these)
+    const sourceCard = getCardById(cardId);
+    if (!sourceCard) {
+        vscode.window.showErrorMessage('Card not found in database.');
+        return;
+    }
+
+    const defaultTitle = sourceCard.title || (card as any).title || (card as any).label || '';
+    const description = sourceCard.content ?? (card as any).content ?? null;
+    const boardId = (card as any).boardId || getColumnById(sourceCard.column_id)?.board_id || null;
+
     const title = await vscode.window.showInputBox({
         prompt: 'Enter task title',
-        value: card.title,
+        value: defaultTitle,
     });
 
     if (!title) {
@@ -234,8 +245,8 @@ export async function convertCardToTask(card: Card) {
     try {
         const db = getDb();
         const id = uuidv4();
-        prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id) VALUES (?, ?, ?, ?, ?, ?)')
-          .run(id, title, card.content, dueDate, recurrence.value, cardId);
+        prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id, board_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(id, title, description, dueDate, recurrence.value, cardId, boardId);
         
         // Copy tags from the card to the task
         const cardTagIds = getTagsByCardId(cardId).map(t => t.id);
@@ -271,9 +282,21 @@ export async function convertCardToTask(card: Card) {
         }
         
         vscode.window.showInformationMessage('Card converted to task.');
+        
+        // Delete the card now that it's been converted to a task
+        deleteCard(cardId);
+        
+        // Explicit saveDatabase() call: Although prepare().run() auto-saves individual operations,
+        // we keep an explicit call here as a high-level operation boundary. This function performs
+        // multiple mutations (tag copies, card deletion) that logically belong together. The explicit
+        // call ensures all changes in this function scope persist as a cohesive unit. This pattern
+        // is defensive: it protects against data-loss bugs (see database-persistence.test.ts) and
+        // future-proofs against potential changes to auto-save behavior. See copilot-instructions.md.
         saveDatabase();
     } catch (err: any) {
-        vscode.window.showErrorMessage('Failed to convert card to task: ' + err.message);
+        const message = err?.message ?? String(err);
+        vscode.window.showErrorMessage('Failed to convert card to task: ' + message);
+        Logger.getInstance().error('Error converting card to task:', err);
     }
 }
 
@@ -520,6 +543,11 @@ export async function createCardFromTask(task: Task, isManualConversion: boolean
             }
         }
         
+        // Explicit saveDatabase() call: This function creates a card and copies all associated tags.
+        // Although each prepare().run() call auto-saves, the explicit call here acts as a transaction
+        // boundary, ensuring all card creation and tag assignment operations persist together as a
+        // single cohesive change. This defensive pattern prevents data-loss regressions and clarifies
+        // that the entire function's mutations are committed. See copilot-instructions.md.
         saveDatabase();
         return newCard;
     } catch (error) {

@@ -204,6 +204,7 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.convertCardToTask', (card) => {
       convertCardToTask(card).then(() => {
         taskProvider.refresh();
+        kanbanProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.addTask', () => {
