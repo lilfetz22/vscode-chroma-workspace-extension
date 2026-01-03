@@ -538,7 +538,7 @@
     "publisherId": ""
   },
   "dependencies": {
-    "compromise": "^14.14.0",
+    "compromise": "^14.14.5",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
