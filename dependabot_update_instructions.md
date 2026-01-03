@@ -17,6 +17,8 @@ This prompt uses **Role Prompting**, **Chain-of-Thought reasoning**, and **XML-d
 *   **Test Command:** `npm test`
 *   **Build/Lint Command:** `npm run build`
 *   **GitHub CLI Tool:** You have access to the `gh` CLI.
+*   **GitHub MCP:** You have access to the GitHub Model Context Protocol tools.
+
 
 **Workflow Instructions:**
 
