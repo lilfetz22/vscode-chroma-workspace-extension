@@ -551,7 +551,6 @@
     "@types/mocha": "^10.0.10",
     "@types/sinon": "^17.0.4",
     "@types/sql.js": "^1.4.9",
-    "@types/uuid": "^11.0.0",
     "@types/vscode": "^1.105.0",
     "@vscode/vsce": "^3.7.0",
     "chai": "^6.2.0",
