@@ -7,7 +7,7 @@
   "publisher": "lilfetz22",
   "repository": "https://github.com/lilfetz22/vscode-chroma-workspace-extension",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.107.0"
   },
   "categories": [
     "Programming Languages"
