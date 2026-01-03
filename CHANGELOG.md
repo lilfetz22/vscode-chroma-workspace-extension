@@ -1,3 +1,10 @@
+## [2.16.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.1...v2.16.2) (2026-01-03)
+
+
+### Bug Fixes
+
+* **release:** bump engines.vscode to ^1.107.0 to match @types/vscode ([c0c4b96](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c0c4b96aa9fcfb956839e82b4f1c7bbb8aab31da))
+
 ## [2.16.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.0...v2.16.1) (2026-01-02)
 
 
