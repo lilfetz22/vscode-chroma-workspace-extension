@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, getColumnById, getCardById, deleteCard } from './database';
+import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, reorderCardsOnRemove, getColumnById, getCardById, deleteCard } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 import { getSettingsService } from './logic/SettingsService';
@@ -285,6 +285,9 @@ export async function convertCardToTask(card: Card) {
         
         // Delete the card now that it's been converted to a task
         deleteCard(cardId);
+        
+        // Update positions of remaining cards in the column
+        reorderCardsOnRemove(sourceCard.column_id, sourceCard.position);
         
         // Explicit saveDatabase() call: Although prepare().run() auto-saves individual operations,
         // we keep an explicit call here as a high-level operation boundary. This function performs
