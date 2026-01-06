@@ -31,6 +31,9 @@ function createAutoAcceptQuickPick() {
 
 describe('convertCardToTask', () => {
     beforeEach(() => {
+        // Use resetAllMocks() instead of clearAllMocks() to ensure mock implementations
+        // are reset between tests. This is necessary because mockUiFlow() uses
+        // mockResolvedValueOnce which accumulates return values across tests.
         jest.resetAllMocks();
     });
 
