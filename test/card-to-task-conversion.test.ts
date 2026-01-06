@@ -31,7 +31,6 @@ function createAutoAcceptQuickPick() {
 
 describe('convertCardToTask', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
         jest.resetAllMocks();
     });
 
