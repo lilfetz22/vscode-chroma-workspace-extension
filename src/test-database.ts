@@ -495,6 +495,24 @@ export function reorderCardsOnRemove(db: any, columnId: string, removedPosition:
     stmt.run(columnId, removedPosition);
 }
 
+/**
+ * Refresh and normalize card positions in a column.
+ * Re-sequences all cards in the column to have consecutive positions starting from 1.
+ */
+export function refreshColumnPriority(db: any, columnId: string): void {
+    // Get all cards in the column ordered by their current position
+    const cards = getCardsByColumnId(db, columnId);
+    
+    // Re-assign positions sequentially (1, 2, 3, ...)
+    cards.forEach((card, index) => {
+        const newPosition = index + 1;
+        if (card.position !== newPosition) {
+            const stmt = db.prepare('UPDATE cards SET position = ? WHERE id = ?');
+            stmt.run(newPosition, card.id);
+        }
+    });
+}
+
 // Task-related functions
 export function createTask(db: any, task: any): any {
     const id = task.id || randomBytes(16).toString('hex');

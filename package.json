@@ -262,6 +262,10 @@
         "title": "Delete Column"
       },
       {
+        "command": "chroma.refreshColumn",
+        "title": "Refresh Column"
+      },
+      {
         "command": "chroma.copyBoardId",
         "title": "Copy Board Id"
       },
@@ -381,6 +385,11 @@
         },
         {
           "command": "chroma.deleteColumn",
+          "when": "view == kanban && viewItem == column",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.refreshColumn",
           "when": "view == kanban && viewItem == column",
           "group": "inline"
         },

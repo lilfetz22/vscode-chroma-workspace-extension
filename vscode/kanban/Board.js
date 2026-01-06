@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, updateColumn, deleteColumn: dbDeleteColumn, saveDatabase } = require('../../out/src/database');
+const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, updateColumn, deleteColumn: dbDeleteColumn, refreshColumnPriority, saveDatabase } = require('../../out/src/database');
 
 async function addBoard() {
     const boardName = await vscode.window.showInputBox({ prompt: 'Enter a name for the new board' });
@@ -54,6 +54,16 @@ async function copyBoardId(board) {
     vscode.window.showInformationMessage(`Board ID copied to clipboard: ${board.boardId}`);
 }
 
+async function refreshColumn(column) {
+    try {
+        refreshColumnPriority(column.columnId);
+        saveDatabase();
+        vscode.window.showInformationMessage(`Column "${column.label}" priority ordering refreshed successfully.`);
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to refresh column: ${error.message || error}`);
+    }
+}
+
 module.exports = {
     addBoard,
     editBoard,
@@ -61,5 +71,6 @@ module.exports = {
     addColumn,
     editColumn,
     deleteColumn,
-    copyBoardId
+    copyBoardId,
+    refreshColumn
 };

@@ -1110,3 +1110,29 @@ export function reorderCardsOnRemove(columnId: string, removedPosition: number):
     logger.debug(`Reordered ${result.changes} cards`);
 }
 
+/**
+ * Refresh and normalize card positions in a column.
+ * Re-sequences all cards in the column to have consecutive positions starting from 1.
+ * This is useful for fixing any gaps or inconsistencies in the position sequence.
+ * @param columnId - The ID of the column to refresh
+ */
+export function refreshColumnPriority(columnId: string): void {
+    const logger = getLogger();
+    logger.debug(`Refreshing priority ordering for column ${columnId}`);
+    
+    // Get all cards in the column ordered by their current position
+    const cards = getCardsByColumnId(columnId);
+    
+    // Re-assign positions sequentially (1, 2, 3, ...)
+    cards.forEach((card, index) => {
+        const newPosition = index + 1;
+        if (card.position !== newPosition) {
+            const stmt = prepare('UPDATE cards SET position = ? WHERE id = ?');
+            stmt.run(newPosition, card.id);
+            logger.debug(`Updated card ${card.id} position from ${card.position} to ${newPosition}`);
+        }
+    });
+    
+    logger.debug(`Refreshed ${cards.length} cards in column ${columnId}`);
+}
+
