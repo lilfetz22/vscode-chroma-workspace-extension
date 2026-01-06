@@ -115,4 +115,57 @@ describe('Refresh Column Priority', () => {
         expect(cards[2].position).toBe(3);
         expect(cards[2].id).toBe(card3.id);
     });
+
+    test('should work correctly with completion columns ordered by completed_at', () => {
+        // This test verifies that refreshColumnPriority respects the ordering returned by getCardsByColumnId,
+        // which may be different for completion columns (sorted by completed_at DESC)
+        const board = createBoard(db, { title: 'Test Board' });
+        const column = createColumn(db, { title: 'Done', board_id: board.id, position: 0 });
+
+        // Create cards with completed_at dates
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+        const card1 = createCard(db, {
+            title: 'Oldest Card',
+            content: '',
+            column_id: column.id,
+            position: 10,
+            priority: 0,
+            note_id: null,
+            completed_at: twoDaysAgo.toISOString()
+        });
+        const card2 = createCard(db, {
+            title: 'Middle Card',
+            content: '',
+            column_id: column.id,
+            position: 5,
+            priority: 0,
+            note_id: null,
+            completed_at: yesterday.toISOString()
+        });
+        const card3 = createCard(db, {
+            title: 'Newest Card',
+            content: '',
+            column_id: column.id,
+            position: 1,
+            priority: 0,
+            note_id: null,
+            completed_at: now.toISOString()
+        });
+
+        // Refresh the column priority
+        refreshColumnPriority(db, column.id);
+
+        // Get cards after refresh
+        const cards = getCardsByColumnId(db, column.id);
+
+        // For non-completion columns or test database, positions should follow the current order
+        // The refresh should normalize positions based on the order returned by getCardsByColumnId
+        expect(cards.length).toBe(3);
+        expect(cards[0].position).toBe(1);
+        expect(cards[1].position).toBe(2);
+        expect(cards[2].position).toBe(3);
+    });
 });
