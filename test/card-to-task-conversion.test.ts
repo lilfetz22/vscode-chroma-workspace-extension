@@ -31,7 +31,10 @@ function createAutoAcceptQuickPick() {
 
 describe('convertCardToTask', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        // Use resetAllMocks() instead of clearAllMocks() to ensure mock implementations
+        // are reset between tests. This is necessary because mockUiFlow() uses
+        // mockResolvedValueOnce which accumulates return values across tests.
+        jest.resetAllMocks();
     });
 
     afterEach(() => {
@@ -113,5 +116,40 @@ describe('convertCardToTask', () => {
         expect(vscode.window.showErrorMessage).toHaveBeenCalledWith('Failed to convert card to task: boom');
         // Card should not be deleted when conversion fails
         expect(database.deleteCard).not.toHaveBeenCalled();
+    });
+
+    it('calls reorderCardsOnRemove with correct column_id and position after card deletion', async () => {
+        mockUiFlow();
+
+        const runSpy = jest.fn();
+        const reorderSpy = jest.fn();
+        const deleteCardSpy = jest.fn();
+        
+        jest.spyOn(database, 'prepare').mockImplementation((sql: string) => {
+            if (sql.startsWith('INSERT INTO tasks')) {
+                return { run: runSpy } as any;
+            }
+            throw new Error(`Unexpected SQL: ${sql}`);
+        });
+        jest.spyOn(database, 'getCardById').mockReturnValue({
+            id: 'card-1',
+            column_id: 'col-1',
+            position: 2,
+            title: 'Card Title',
+            content: 'Card body',
+        } as any);
+        jest.spyOn(database, 'getColumnById').mockReturnValue({ id: 'col-1', board_id: 'board-1' } as any);
+        jest.spyOn(database, 'getTagsByCardId').mockReturnValue([]);
+        jest.spyOn(database, 'addTagToTask').mockImplementation(() => {});
+        jest.spyOn(database, 'saveDatabase').mockImplementation(() => {});
+        jest.spyOn(database, 'deleteCard').mockImplementation(deleteCardSpy);
+        jest.spyOn(database, 'reorderCardsOnRemove').mockImplementation(reorderSpy);
+        jest.spyOn(database, 'getDb').mockReturnValue({} as any);
+
+        await convertCardToTask({ cardId: 'card-1', boardId: 'board-1', label: 'Card Title' } as any);
+
+        expect(deleteCardSpy).toHaveBeenCalledWith('card-1');
+        expect(reorderSpy).toHaveBeenCalledWith('col-1', 2);
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Card converted to task.');
     });
 });
