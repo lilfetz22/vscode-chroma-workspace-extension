@@ -1,3 +1,10 @@
+## [2.16.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.2...v2.16.3) (2026-01-06)
+
+
+### Bug Fixes
+
+* **kanban:** update card positions after converting to task ([c485927](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/c485927593c55965065d834be3ffbc9c9b3635fc))
+
 ## [2.16.2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.1...v2.16.2) (2026-01-03)
 
 
