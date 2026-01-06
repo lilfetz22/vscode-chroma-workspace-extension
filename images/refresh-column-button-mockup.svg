@@ -1,0 +1,118 @@
+<!-- Visual representation of the Refresh Column button in the KANBAN view -->
+<svg width="400" height="500" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="500" fill="#1e1e1e"/>
+  
+  <!-- Title -->
+  <text x="10" y="25" fill="#cccccc" font-family="Arial" font-size="16" font-weight="bold">
+    KANBAN VIEW
+  </text>
+  
+  <!-- Board -->
+  <text x="10" y="55" fill="#cccccc" font-family="Arial" font-size="14">
+    ▼ My Board
+  </text>
+  
+  <!-- Column with buttons -->
+  <g id="column-with-buttons">
+    <!-- Column name and expand icon -->
+    <text x="30" y="85" fill="#cccccc" font-family="Arial" font-size="13">
+      ▼ In Progress
+    </text>
+    
+    <!-- Inline buttons container (highlighted area) -->
+    <rect x="140" y="70" width="250" height="25" fill="#2d2d30" stroke="#007acc" stroke-width="2" rx="3"/>
+    
+    <!-- Edit button -->
+    <g id="edit-btn">
+      <circle cx="155" cy="82.5" r="8" fill="#0e639c"/>
+      <text x="150" y="87" fill="white" font-family="Arial" font-size="10">✏️</text>
+      <text x="145" y="105" fill="#888888" font-family="Arial" font-size="8">Edit</text>
+    </g>
+    
+    <!-- Delete button -->
+    <g id="delete-btn">
+      <circle cx="195" cy="82.5" r="8" fill="#a1260d"/>
+      <text x="190" y="87" fill="white" font-family="Arial" font-size="10">🗑️</text>
+      <text x="182" y="105" fill="#888888" font-family="Arial" font-size="8">Delete</text>
+    </g>
+    
+    <!-- NEW: Refresh button (highlighted) -->
+    <g id="refresh-btn">
+      <rect x="225" y="68" width="50" height="30" fill="#264f78" stroke="#ffd700" stroke-width="2" rx="3"/>
+      <circle cx="240" cy="82.5" r="8" fill="#0e7c34"/>
+      <text x="235" y="87" fill="white" font-family="Arial" font-size="10">🔄</text>
+      <text x="227" y="105" fill="#ffd700" font-family="Arial" font-size="8" font-weight="bold">Refresh</text>
+      
+      <!-- "NEW!" badge -->
+      <rect x="268" y="68" width="32" height="14" fill="#dc3545" rx="2"/>
+      <text x="271" y="78" fill="white" font-family="Arial" font-size="9" font-weight="bold">NEW</text>
+    </g>
+    
+    <!-- Add Card button -->
+    <g id="add-card-btn">
+      <circle cx="325" cy="82.5" r="8" fill="#0e639c"/>
+      <text x="320" y="88" fill="white" font-family="Arial" font-size="12" font-weight="bold">+</text>
+      <text x="305" y="105" fill="#888888" font-family="Arial" font-size="8">Add Card</text>
+    </g>
+  </g>
+  
+  <!-- Cards in column -->
+  <g id="cards">
+    <text x="50" y="125" fill="#cccccc" font-family="Arial" font-size="12">
+      1. Implement feature X
+    </text>
+    <text x="50" y="150" fill="#cccccc" font-family="Arial" font-size="12">
+      2. Review PR #123
+    </text>
+    <text x="50" y="175" fill="#cccccc" font-family="Arial" font-size="12">
+      3. Update documentation
+    </text>
+  </g>
+  
+  <!-- Description box -->
+  <rect x="10" y="210" width="380" height="280" fill="#252526" stroke="#3e3e42" stroke-width="1" rx="5"/>
+  
+  <!-- Description title -->
+  <text x="20" y="235" fill="#4ec9b0" font-family="Arial" font-size="14" font-weight="bold">
+    Refresh Column Button
+  </text>
+  
+  <!-- Description content -->
+  <text x="20" y="260" fill="#d4d4d4" font-family="Arial" font-size="11">
+    What it does:
+  </text>
+  <text x="25" y="280" fill="#cccccc" font-family="Arial" font-size="10">
+    • Re-sequences card positions to be consecutive
+  </text>
+  <text x="25" y="300" fill="#cccccc" font-family="Arial" font-size="10">
+    • Fixes gaps in position numbering (e.g., 1,5,10 → 1,2,3)
+  </text>
+  <text x="25" y="320" fill="#cccccc" font-family="Arial" font-size="10">
+    • Maintains existing card order
+  </text>
+  <text x="25" y="340" fill="#cccccc" font-family="Arial" font-size="10">
+    • Helps resolve ordering bugs or inconsistencies
+  </text>
+  
+  <text x="20" y="370" fill="#d4d4d4" font-family="Arial" font-size="11">
+    How to use:
+  </text>
+  <text x="25" y="390" fill="#cccccc" font-family="Arial" font-size="10">
+    1. Navigate to any column in the KANBAN view
+  </text>
+  <text x="25" y="410" fill="#cccccc" font-family="Arial" font-size="10">
+    2. Click the Refresh button (🔄) next to the column
+  </text>
+  <text x="25" y="430" fill="#cccccc" font-family="Arial" font-size="10">
+    3. Success message will confirm the refresh
+  </text>
+  <text x="25" y="450" fill="#cccccc" font-family="Arial" font-size="10">
+    4. Cards will be re-ordered with normalized positions
+  </text>
+  
+  <!-- Footer note -->
+  <text x="20" y="475" fill="#569cd6" font-family="Arial" font-size="9" font-style="italic">
+    The button appears inline with other column actions for easy access.
+  </text>
+</svg>
