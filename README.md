@@ -228,11 +228,13 @@ Customize Kanban board behavior:
 
 ```json
 {
+  "chroma.kanban.taskCreationColumn": "To Do",
   "chroma.kanban.completionColumn": "Done"
 }
 ```
 
-- **`chroma.kanban.completionColumn`**: Name of the column that marks tasks as complete (default: `"Done"`)
+- **`chroma.kanban.taskCreationColumn`**: Name of the column where new tasks are created (default: `"To Do"`).
+- **`chroma.kanban.completionColumn`**: Name of the column that marks tasks as complete (default: `"Done"`).
   - Cards moved to this column are timestamped and sorted by completion date
   - Position selection is skipped for completion columns (cards auto-placed at top)
 
