@@ -1,3 +1,41 @@
+// Mock vscode configuration for SettingsService
+jest.mock('vscode', () => {
+    const mockConfig = {
+        'kanban.taskCreationColumn': 'To Do',
+        'kanban.completionColumn': 'Done',
+        'tasks.enableNotifications': true,
+        'tasks.notificationFrequency': 'once',
+        'tasks.showInStatusBar': true,
+        'tasks.vacationMode': false,
+        'tasks.vacationModeBoards': [],
+        'database.path': '.chroma/chroma.db',
+    };
+
+    return {
+        workspace: {
+            getConfiguration: jest.fn(() => ({
+                get: jest.fn((key: string, defaultValue?: any) => {
+                    return mockConfig[key] !== undefined ? mockConfig[key] : defaultValue;
+                }),
+                update: jest.fn()
+            })),
+            onDidChangeConfiguration: jest.fn(() => ({
+                dispose: jest.fn()
+            }))
+        },
+        window: {
+            createOutputChannel: jest.fn(() => ({
+                append: jest.fn(),
+                appendLine: jest.fn(),
+                clear: jest.fn(),
+                show: jest.fn(),
+                hide: jest.fn(),
+                dispose: jest.fn()
+            }))
+        }
+    };
+});
+
 import { 
     initTestDatabase, 
     closeTestDb,
@@ -583,6 +621,15 @@ describe('Database Functions', () => {
             
             const cards = getCardsByColumnId(db, emptyColumn.id);
             expect(cards).toHaveLength(0);
+        });
+
+        it('should handle database with no boards gracefully', () => {
+            // Database starts empty due to beforeEach cleanup
+            // Should not throw error when there are no boards
+            expect(() => normalizeAllCardPositions(db)).not.toThrow();
+            
+            const boards = getAllBoards(db);
+            expect(boards).toHaveLength(0);
         });
     });
 });

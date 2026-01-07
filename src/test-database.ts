@@ -6,6 +6,7 @@ import { Column } from './models/Column';
 import { Card } from './models/Card';
 import { Tag } from './models/Tag';
 import { randomBytes } from 'crypto';
+import { getSettingsService } from './logic/SettingsService';
 
 let testDb: SqlJsDatabase | undefined;
 
@@ -589,7 +590,7 @@ export function clearTasks(db: any): void {
  * Skips completion columns to avoid interfering with completed_at sorting.
  */
 export function normalizeAllCardPositions(db: any): void {
-    const completionColumnName = 'Done'; // Default completion column name for tests
+    const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
     
     // Get all boards
     const boards = getAllBoards(db);
