@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.3...v2.17.0) (2026-01-07)
+
+
+### Features
+
+* **settings:** expose Kanban column names in Settings UI ([56fe83e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/56fe83eaf3fa626fe2ec6355961edb6f3b7aa1af))
+
 ## [2.16.3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.2...v2.16.3) (2026-01-06)
 
 
