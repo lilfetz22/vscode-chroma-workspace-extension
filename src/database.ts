@@ -1118,7 +1118,6 @@ export function reorderCardsOnRemove(columnId: string, removedPosition: number):
  */
 export function normalizeAllCardPositions(): void {
     const logger = getLogger();
-    const db = getDb();
     
     try {
         logger.info('Starting card position normalization across all boards');
