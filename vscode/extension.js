@@ -44,7 +44,7 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath, normalizeAllCardPositions } = require('../out/src/database');
+const { initDatabase, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath, normalizeAllCardPositions } = require('../out/src/database');
 const { search } = require('../out/src/logic/search');
 const { getSettingsService } = require('../out/src/logic/SettingsService');
 const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
