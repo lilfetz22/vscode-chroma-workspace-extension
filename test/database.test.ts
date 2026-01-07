@@ -1,3 +1,41 @@
+// Mock vscode configuration for SettingsService
+jest.mock('vscode', () => {
+    const mockConfig = {
+        'kanban.taskCreationColumn': 'To Do',
+        'kanban.completionColumn': 'Done',
+        'tasks.enableNotifications': true,
+        'tasks.notificationFrequency': 'once',
+        'tasks.showInStatusBar': true,
+        'tasks.vacationMode': false,
+        'tasks.vacationModeBoards': [],
+        'database.path': '.chroma/chroma.db',
+    };
+
+    return {
+        workspace: {
+            getConfiguration: jest.fn(() => ({
+                get: jest.fn((key: string, defaultValue?: any) => {
+                    return mockConfig[key] !== undefined ? mockConfig[key] : defaultValue;
+                }),
+                update: jest.fn()
+            })),
+            onDidChangeConfiguration: jest.fn(() => ({
+                dispose: jest.fn()
+            }))
+        },
+        window: {
+            createOutputChannel: jest.fn(() => ({
+                append: jest.fn(),
+                appendLine: jest.fn(),
+                clear: jest.fn(),
+                show: jest.fn(),
+                hide: jest.fn(),
+                dispose: jest.fn()
+            }))
+        }
+    };
+});
+
 import { 
     initTestDatabase, 
     closeTestDb,
@@ -17,7 +55,8 @@ import {
     getCardsByColumnId,
     updateCard,
     deleteCard,
-    reorderCardsOnRemove
+    reorderCardsOnRemove,
+    normalizeAllCardPositions
 } from '../src/test-database';
 import { randomBytes } from 'crypto';
 
@@ -450,6 +489,147 @@ describe('Database Functions', () => {
 
             const fetchedNote = getNoteById(db, note.id);
             expect(fetchedNote?.content).toBe(specialContent);
+        });
+    });
+
+    describe('Card Position Normalization', () => {
+        it('should normalize card positions with gaps to consecutive integers', () => {
+            const board = createBoard(db, { title: 'Test Board' });
+            const column = createColumn(db, { title: 'To Do', board_id: board.id, position: 0 });
+            
+            // Create cards with gaps in positions (1, 2, 4, 5)
+            createCard(db, { title: 'Card 1', content: '', column_id: column.id, position: 1, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 2', content: '', column_id: column.id, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 3', content: '', column_id: column.id, position: 4, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 4', content: '', column_id: column.id, position: 5, priority: 0, note_id: null });
+            
+            // Run normalization
+            normalizeAllCardPositions(db);
+            
+            // Verify positions are now 1, 2, 3, 4
+            const cards = getCardsByColumnId(db, column.id);
+            expect(cards).toHaveLength(4);
+            expect(cards[0].position).toBe(1);
+            expect(cards[1].position).toBe(2);
+            expect(cards[2].position).toBe(3);
+            expect(cards[3].position).toBe(4);
+            
+            // Verify order is preserved
+            expect(cards[0].title).toBe('Card 1');
+            expect(cards[1].title).toBe('Card 2');
+            expect(cards[2].title).toBe('Card 3');
+            expect(cards[3].title).toBe('Card 4');
+        });
+
+        it('should normalize positions starting at wrong number', () => {
+            const board = createBoard(db, { title: 'Test Board' });
+            const column = createColumn(db, { title: 'To Do', board_id: board.id, position: 0 });
+            
+            // Create cards starting at position 2 (2, 3, 4)
+            createCard(db, { title: 'Card A', content: '', column_id: column.id, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Card B', content: '', column_id: column.id, position: 3, priority: 0, note_id: null });
+            createCard(db, { title: 'Card C', content: '', column_id: column.id, position: 4, priority: 0, note_id: null });
+            
+            normalizeAllCardPositions(db);
+            
+            const cards = getCardsByColumnId(db, column.id);
+            expect(cards[0].position).toBe(1);
+            expect(cards[1].position).toBe(2);
+            expect(cards[2].position).toBe(3);
+        });
+
+        it('should skip completion columns during normalization', () => {
+            const board = createBoard(db, { title: 'Test Board' });
+            const todoColumn = createColumn(db, { title: 'To Do', board_id: board.id, position: 0 });
+            const doneColumn = createColumn(db, { title: 'Done', board_id: board.id, position: 1 });
+            
+            // Create cards with gaps in both columns
+            createCard(db, { title: 'Todo 1', content: '', column_id: todoColumn.id, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Todo 2', content: '', column_id: todoColumn.id, position: 4, priority: 0, note_id: null });
+            
+            // Completion column cards should be skipped
+            createCard(db, { title: 'Done 1', content: '', column_id: doneColumn.id, position: 5, priority: 0, note_id: null });
+            createCard(db, { title: 'Done 2', content: '', column_id: doneColumn.id, position: 10, priority: 0, note_id: null });
+            
+            normalizeAllCardPositions(db);
+            
+            // To Do column should be normalized
+            const todoCards = getCardsByColumnId(db, todoColumn.id);
+            expect(todoCards[0].position).toBe(1);
+            expect(todoCards[1].position).toBe(2);
+            
+            // Done column should NOT be normalized (positions unchanged)
+            const doneCards = getCardsByColumnId(db, doneColumn.id);
+            expect(doneCards[0].position).toBe(5);
+            expect(doneCards[1].position).toBe(10);
+        });
+
+        it('should handle multiple boards and columns', () => {
+            const board1 = createBoard(db, { title: 'Board 1' });
+            const board2 = createBoard(db, { title: 'Board 2' });
+            
+            const col1 = createColumn(db, { title: 'Col 1', board_id: board1.id, position: 0 });
+            const col2 = createColumn(db, { title: 'Col 2', board_id: board1.id, position: 1 });
+            const col3 = createColumn(db, { title: 'Col 3', board_id: board2.id, position: 0 });
+            
+            // Add cards with gaps in all columns
+            createCard(db, { title: 'B1C1-1', content: '', column_id: col1.id, position: 10, priority: 0, note_id: null });
+            createCard(db, { title: 'B1C1-2', content: '', column_id: col1.id, position: 20, priority: 0, note_id: null });
+            
+            createCard(db, { title: 'B1C2-1', content: '', column_id: col2.id, position: 5, priority: 0, note_id: null });
+            createCard(db, { title: 'B1C2-2', content: '', column_id: col2.id, position: 15, priority: 0, note_id: null });
+            createCard(db, { title: 'B1C2-3', content: '', column_id: col2.id, position: 25, priority: 0, note_id: null });
+            
+            createCard(db, { title: 'B2C3-1', content: '', column_id: col3.id, position: 100, priority: 0, note_id: null });
+            
+            normalizeAllCardPositions(db);
+            
+            // All columns should be normalized independently
+            const col1Cards = getCardsByColumnId(db, col1.id);
+            expect(col1Cards.map(c => c.position)).toEqual([1, 2]);
+            
+            const col2Cards = getCardsByColumnId(db, col2.id);
+            expect(col2Cards.map(c => c.position)).toEqual([1, 2, 3]);
+            
+            const col3Cards = getCardsByColumnId(db, col3.id);
+            expect(col3Cards.map(c => c.position)).toEqual([1]);
+        });
+
+        it('should not modify already normalized positions', () => {
+            const board = createBoard(db, { title: 'Test Board' });
+            const column = createColumn(db, { title: 'To Do', board_id: board.id, position: 0 });
+            
+            // Create cards with proper consecutive positions
+            createCard(db, { title: 'Card 1', content: '', column_id: column.id, position: 1, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 2', content: '', column_id: column.id, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 3', content: '', column_id: column.id, position: 3, priority: 0, note_id: null });
+            
+            normalizeAllCardPositions(db);
+            
+            const cards = getCardsByColumnId(db, column.id);
+            expect(cards[0].position).toBe(1);
+            expect(cards[1].position).toBe(2);
+            expect(cards[2].position).toBe(3);
+        });
+
+        it('should handle empty columns gracefully', () => {
+            const board = createBoard(db, { title: 'Test Board' });
+            const emptyColumn = createColumn(db, { title: 'Empty', board_id: board.id, position: 0 });
+            
+            // Should not throw error on empty column
+            expect(() => normalizeAllCardPositions(db)).not.toThrow();
+            
+            const cards = getCardsByColumnId(db, emptyColumn.id);
+            expect(cards).toHaveLength(0);
+        });
+
+        it('should handle database with no boards gracefully', () => {
+            // Database starts empty due to beforeEach cleanup
+            // Should not throw error when there are no boards
+            expect(() => normalizeAllCardPositions(db)).not.toThrow();
+            
+            const boards = getAllBoards(db);
+            expect(boards).toHaveLength(0);
         });
     });
 });

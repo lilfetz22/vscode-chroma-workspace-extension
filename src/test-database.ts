@@ -6,6 +6,7 @@ import { Column } from './models/Column';
 import { Card } from './models/Card';
 import { Tag } from './models/Tag';
 import { randomBytes } from 'crypto';
+import { getSettingsService } from './logic/SettingsService';
 
 let testDb: SqlJsDatabase | undefined;
 
@@ -581,4 +582,55 @@ export function deleteTask(db: any, id: string): void {
 
 export function clearTasks(db: any): void {
     db.exec('DELETE FROM tasks');
+}
+
+/**
+ * Normalize card positions across all boards and columns for testing.
+ * Re-sequences card positions to consecutive integers (1, 2, 3...) while preserving order.
+ * Skips completion columns to avoid interfering with completed_at sorting.
+ */
+export function normalizeAllCardPositions(db: any): void {
+    const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+    
+    // Get all boards
+    const boards = getAllBoards(db);
+    
+    for (const board of boards) {
+        const columns = getColumnsByBoardId(db, board.id);
+        
+        for (const column of columns) {
+            const isCompletionColumn = column.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+            
+            // Skip completion columns
+            if (isCompletionColumn) {
+                continue;
+            }
+            
+            // Get cards in current order (by position)
+            const cards = getCardsByColumnId(db, column.id);
+            
+            if (cards.length === 0) {
+                continue;
+            }
+            
+            // Check if normalization is needed
+            let needsNormalization = false;
+            for (let i = 0; i < cards.length; i++) {
+                if (cards[i].position !== i + 1) {
+                    needsNormalization = true;
+                    break;
+                }
+            }
+            
+            if (!needsNormalization) {
+                continue;
+            }
+            
+            // Normalize positions to 1, 2, 3...
+            const updateStmt = db.prepare('UPDATE cards SET position = ? WHERE id = ?');
+            for (let i = 0; i < cards.length; i++) {
+                updateStmt.run(i + 1, cards[i].id);
+            }
+        }
+    }
 }

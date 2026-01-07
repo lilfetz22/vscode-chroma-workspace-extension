@@ -23,7 +23,9 @@ Developer workflows & exact commands
 - Development in VS Code: open folder and press F5 (launches Extension Development Host).
 
 - Windows PowerShell: when starting a new terminal session on Windows PowerShell, always run the following to allow running local build/package scripts for the session only:
-  `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
   This sets the execution policy only for the current process and avoids needing a persistent policy change while allowing scripts like `esbuild.js` or `vsce` to run.
 
 Semantic versioning & release workflow

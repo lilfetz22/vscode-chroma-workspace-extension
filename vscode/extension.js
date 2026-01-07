@@ -44,7 +44,7 @@ const posColors = {
 
 const tokenTypes = ['entity_name_type', 'entity_name_function', 'entity_other_attribute_name', 'adverb_language', 'value_type'];
 const tokenModifiers = [];
-const { initDatabase, createTables, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath } = require('../out/src/database');
+const { initDatabase, findOrCreateNoteByPath, updateNote, deleteNote, getNoteByFilePath, getNoteById, getCardById, setDatabasePath, reloadDatabaseIfChanged, hasDatabaseChangedExternally, getDatabaseFilePath, normalizeAllCardPositions } = require('../out/src/database');
 const { search } = require('../out/src/logic/search');
 const { getSettingsService } = require('../out/src/logic/SettingsService');
 const { initDebugLogger, getDebugLogger } = require('../out/src/logic/DebugLogger');
@@ -83,6 +83,11 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Initializing database with workspace root');
       await initDatabase(false, workspaceRoot);
       getDebugLogger().log('Database initialized successfully');
+      
+      // Auto-normalize card positions on startup to fix gaps from deletions/bugs
+      getDebugLogger().log('Running card position normalization');
+      normalizeAllCardPositions();
+      getDebugLogger().log('Card position normalization complete');
     }
   } catch (e) {
     getDebugLogger().log('ERROR: Database initialization failed');

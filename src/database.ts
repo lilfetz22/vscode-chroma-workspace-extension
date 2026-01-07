@@ -1110,3 +1110,83 @@ export function reorderCardsOnRemove(columnId: string, removedPosition: number):
     logger.debug(`Reordered ${result.changes} cards`);
 }
 
+/**
+ * Normalize card positions across all boards and columns.
+ * Re-sequences card positions to consecutive integers (1, 2, 3...) while preserving order.
+ * Skips completion columns to avoid interfering with completed_at sorting.
+ * Runs automatically on extension startup to fix gaps from deletions or bugs.
+ */
+export function normalizeAllCardPositions(): void {
+    const logger = getLogger();
+    
+    try {
+        logger.info('Starting card position normalization across all boards');
+        
+        const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+        const boards = getAllBoards();
+        let totalColumnsNormalized = 0;
+        let totalCardsNormalized = 0;
+        
+        // Process each board and its columns
+        for (const board of boards) {
+            const columns = getColumnsByBoardId(board.id);
+            
+            for (const column of columns) {
+                const isCompletionColumn = column.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+                
+                // Skip completion columns - they use completed_at DESC for sorting
+                if (isCompletionColumn) {
+                    logger.debug(`Skipping completion column "${column.title}" (id: ${column.id})`);
+                    continue;
+                }
+                
+                // Get cards in current order (by position)
+                const cards = getCardsByColumnId(column.id);
+                
+                if (cards.length === 0) {
+                    continue;
+                }
+                
+                // Check if normalization is needed
+                let needsNormalization = false;
+                for (let i = 0; i < cards.length; i++) {
+                    if (cards[i].position !== i + 1) {
+                        needsNormalization = true;
+                        break;
+                    }
+                }
+                
+                if (!needsNormalization) {
+                    continue;
+                }
+                
+                // Normalize positions to 1, 2, 3...
+                // Note: Updates are not wrapped in a transaction. If a failure occurs midway,
+                // some columns may be normalized while others remain unnormalized. This is
+                // acceptable because:
+                // 1. Normalization is idempotent and will be retried on next startup
+                // 2. Partial normalization doesn't break functionality - only some columns
+                //    will have gaps until the next startup
+                // 3. The operation runs on startup before user interaction, minimizing risk
+                const updateStmt = prepare('UPDATE cards SET position = ? WHERE id = ?');
+                for (let i = 0; i < cards.length; i++) {
+                    updateStmt.run(i + 1, cards[i].id);
+                }
+                
+                totalColumnsNormalized++;
+                totalCardsNormalized += cards.length;
+                logger.debug(`Normalized ${cards.length} cards in column "${column.title}" (id: ${column.id})`);
+            }
+        }
+        
+        if (totalColumnsNormalized > 0) {
+            logger.info(`Card position normalization complete: ${totalColumnsNormalized} columns normalized, ${totalCardsNormalized} cards updated`);
+        } else {
+            logger.debug('No card positions required normalization');
+        }
+    } catch (error) {
+        logger.error('Error during card position normalization:', error);
+        // Don't throw - normalization is a best-effort operation on startup
+    }
+}
+
