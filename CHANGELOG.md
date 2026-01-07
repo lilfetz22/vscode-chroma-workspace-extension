@@ -1,3 +1,15 @@
+# [2.18.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.17.0...v2.18.0) (2026-01-07)
+
+
+### Bug Fixes
+
+* **tests:** retrieve completion column from settings in test-database ([1e48d95](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/1e48d9515633fee0f9296e774c5424035843f3fa))
+
+
+### Features
+
+* **kanban:** auto-normalize card positions on startup ([b3b1700](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b3b170011f9017a097a472b4b5ef00c87b67a8a6)), closes [#43](https://github.com/lilfetz22/vscode-chroma-workspace-extension/issues/43) [#44](https://github.com/lilfetz22/vscode-chroma-workspace-extension/issues/44)
+
 # [2.17.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.16.3...v2.17.0) (2026-01-07)
 
 
