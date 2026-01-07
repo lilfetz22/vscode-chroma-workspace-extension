@@ -460,10 +460,10 @@ describe('Database Functions', () => {
             const column = createColumn(db, { title: 'To Do', board_id: board.id, position: 0 });
             
             // Create cards with gaps in positions (1, 2, 4, 5)
-            const card1 = createCard(db, { title: 'Card 1', content: '', column_id: column.id, position: 1, priority: 0, note_id: null });
-            const card2 = createCard(db, { title: 'Card 2', content: '', column_id: column.id, position: 2, priority: 0, note_id: null });
-            const card3 = createCard(db, { title: 'Card 3', content: '', column_id: column.id, position: 4, priority: 0, note_id: null });
-            const card4 = createCard(db, { title: 'Card 4', content: '', column_id: column.id, position: 5, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 1', content: '', column_id: column.id, position: 1, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 2', content: '', column_id: column.id, position: 2, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 3', content: '', column_id: column.id, position: 4, priority: 0, note_id: null });
+            createCard(db, { title: 'Card 4', content: '', column_id: column.id, position: 5, priority: 0, note_id: null });
             
             // Run normalization
             normalizeAllCardPositions(db);
