@@ -1161,6 +1161,13 @@ export function normalizeAllCardPositions(): void {
                 }
                 
                 // Normalize positions to 1, 2, 3...
+                // Note: Updates are not wrapped in a transaction. If a failure occurs midway,
+                // some columns may be normalized while others remain unnormalized. This is
+                // acceptable because:
+                // 1. Normalization is idempotent and will be retried on next startup
+                // 2. Partial normalization doesn't break functionality - only some columns
+                //    will have gaps until the next startup
+                // 3. The operation runs on startup before user interaction, minimizing risk
                 const updateStmt = prepare('UPDATE cards SET position = ? WHERE id = ?');
                 for (let i = 0; i < cards.length; i++) {
                     updateStmt.run(i + 1, cards[i].id);
