@@ -34,6 +34,7 @@ const vscode = {
         showTextDocument: jest.fn(),
         registerTreeDataProvider: jest.fn(),
         createTreeView: jest.fn(),
+        createWebviewPanel: jest.fn(),
         createStatusBarItem: jest.fn(() => ({
             show: jest.fn(),
             text: '',
@@ -69,6 +70,7 @@ const vscode = {
     },
     Uri: {
         file: jest.fn((path) => ({ fsPath: path })),
+        joinPath: jest.fn((base, ...segments) => ({ fsPath: `${base.fsPath || base}/${segments.join('/')}` })),
     },
     TreeItem: class {
         constructor(label, collapsibleState) {
@@ -78,6 +80,11 @@ const vscode = {
     },
     StatusBarAlignment: {
         Left: 1,
+    },
+    ViewColumn: {
+        One: 1,
+        Two: 2,
+        Three: 3,
     },
 };
 
