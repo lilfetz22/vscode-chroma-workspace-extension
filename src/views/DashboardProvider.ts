@@ -396,8 +396,8 @@ export class DashboardProvider {
                 if (task.description) {
                     html += '<div style="font-size: 12px; color: var(--vscode-descriptionForeground);">' + escapeHtml(task.description) + '</div>';
                 }
-                if (task.due_date) {
-                    html += '<div style="font-size: 11px; margin-top: 4px;">Due: ' + formatDate(task.due_date) + '</div>';
+                if (task.dueDate) {
+                    html += '<div style="font-size: 11px; margin-top: 4px;">Due: ' + formatDate(task.dueDate) + '</div>';
                 }
                 html += '</li>';
             });
