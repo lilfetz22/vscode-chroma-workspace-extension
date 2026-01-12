@@ -56,7 +56,7 @@ function getNextCustomWeekly(fromDate: Date, days: number[]): Date {
   return next;
 }
 
-export function getNextDueDate(task: Task): Date | null {
+export function getNextDueDate(task: Task, forceNext: boolean = false): Date | null {
   if (!task.recurrence) {
     return null;
   }
@@ -65,31 +65,47 @@ export function getNextDueDate(task: Task): Date | null {
   const now = new Date();
   let nextDueDate = new Date(task.dueDate);
 
-  while (nextDueDate <= now) {
+  // Helper function to advance the date by one occurrence
+  // Returns false if the recurrence type is invalid
+  const advanceDate = (): boolean => {
     switch (type) {
       case 'daily':
         nextDueDate.setDate(nextDueDate.getDate() + 1);
-        break;
+        return true;
       case 'weekdays':
         nextDueDate = getNextWeekday(nextDueDate);
-        break;
+        return true;
       case 'weekly':
         nextDueDate.setDate(nextDueDate.getDate() + 7);
-        break;
+        return true;
       case 'bi-weekly':
         nextDueDate.setDate(nextDueDate.getDate() + 14);
-        break;
+        return true;
       case 'custom_weekly':
         nextDueDate = getNextCustomWeekly(nextDueDate, days || []);
-        break;
+        return true;
       case 'monthly':
         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-        break;
+        return true;
       case 'yearly':
         nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-        break;
+        return true;
       default:
-        return null;
+        return false;
+    }
+  };
+
+  // If forceNext is true, always advance at least once
+  if (forceNext) {
+    if (!advanceDate()) {
+      return null;
+    }
+  }
+
+  // Continue advancing until we're past now
+  while (nextDueDate <= now) {
+    if (!advanceDate()) {
+      return null;
     }
   }
 
