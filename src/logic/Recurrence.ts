@@ -56,6 +56,13 @@ function getNextCustomWeekly(fromDate: Date, days: number[]): Date {
   return next;
 }
 
+/**
+ * Calculate the next due date for a recurring task.
+ *
+ * @param task - The task with recurrence information.
+ * @param forceNext - If true, always advance to the next occurrence even if the current due date hasn't passed yet.
+ * @returns The next due date, or null if the task has no recurrence or an invalid recurrence type.
+ */
 export function getNextDueDate(task: Task, forceNext: boolean = false): Date | null {
   if (!task.recurrence) {
     return null;
