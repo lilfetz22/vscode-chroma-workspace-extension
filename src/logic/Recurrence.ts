@@ -56,7 +56,14 @@ function getNextCustomWeekly(fromDate: Date, days: number[]): Date {
   return next;
 }
 
-export function getNextDueDate(task: Task): Date | null {
+/**
+ * Calculate the next due date for a recurring task.
+ *
+ * @param task - The task with recurrence information.
+ * @param forceNext - If true, always advance to the next occurrence even if the current due date hasn't passed yet.
+ * @returns The next due date, or null if the task has no recurrence or an invalid recurrence type.
+ */
+export function getNextDueDate(task: Task, forceNext: boolean = false): Date | null {
   if (!task.recurrence) {
     return null;
   }
@@ -65,31 +72,47 @@ export function getNextDueDate(task: Task): Date | null {
   const now = new Date();
   let nextDueDate = new Date(task.dueDate);
 
-  while (nextDueDate <= now) {
+  // Helper function to advance the date by one occurrence
+  // Returns false if the recurrence type is invalid
+  const advanceDate = (): boolean => {
     switch (type) {
       case 'daily':
         nextDueDate.setDate(nextDueDate.getDate() + 1);
-        break;
+        return true;
       case 'weekdays':
         nextDueDate = getNextWeekday(nextDueDate);
-        break;
+        return true;
       case 'weekly':
         nextDueDate.setDate(nextDueDate.getDate() + 7);
-        break;
+        return true;
       case 'bi-weekly':
         nextDueDate.setDate(nextDueDate.getDate() + 14);
-        break;
+        return true;
       case 'custom_weekly':
         nextDueDate = getNextCustomWeekly(nextDueDate, days || []);
-        break;
+        return true;
       case 'monthly':
         nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-        break;
+        return true;
       case 'yearly':
         nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
-        break;
+        return true;
       default:
-        return null;
+        return false;
+    }
+  };
+
+  // If forceNext is true, always advance at least once
+  if (forceNext) {
+    if (!advanceDate()) {
+      return null;
+    }
+  }
+
+  // Continue advancing until we're past now
+  while (nextDueDate <= now) {
+    if (!advanceDate()) {
+      return null;
     }
   }
 
