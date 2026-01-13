@@ -1,3 +1,10 @@
+## [2.18.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.0...v2.18.1) (2026-01-13)
+
+
+### Bug Fixes
+
+* reschedule recurring tasks when converted to card ([05b8242](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/05b82426920bba81cfb8ad77ac93bd0985c14345))
+
 # [2.18.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.17.0...v2.18.0) (2026-01-07)
 
 
