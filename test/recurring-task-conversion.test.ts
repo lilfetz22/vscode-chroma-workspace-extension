@@ -118,6 +118,101 @@ describe('Recurring Task Conversion to Card', () => {
 
             jest.useRealTimers();
         });
+
+        it('should advance to next occurrence for weekdays recurrence with forceNext', () => {
+            // Jan 12, 2026 is a Monday, next weekday should be Tuesday Jan 13
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2026-01-12T09:00:00Z'));
+            
+            const dueDate = new Date('2026-01-12T10:00:00Z');
+            const task: Task = {
+                id: 'test-task-5',
+                title: 'Weekdays Task',
+                dueDate: dueDate,
+                recurrence: 'weekdays',
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const nextDueDate = getNextDueDate(task, true);
+
+            expect(nextDueDate).not.toBeNull();
+            expect(nextDueDate!.toISOString()).toBe('2026-01-13T10:00:00.000Z');
+
+            jest.useRealTimers();
+        });
+
+        it('should advance to next occurrence for bi-weekly recurrence with forceNext', () => {
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2026-01-12T09:00:00Z'));
+            
+            const dueDate = new Date('2026-01-12T10:00:00Z');
+            const task: Task = {
+                id: 'test-task-6',
+                title: 'Bi-weekly Task',
+                dueDate: dueDate,
+                recurrence: 'bi-weekly',
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const nextDueDate = getNextDueDate(task, true);
+
+            expect(nextDueDate).not.toBeNull();
+            expect(nextDueDate!.toISOString()).toBe('2026-01-26T10:00:00.000Z');
+
+            jest.useRealTimers();
+        });
+
+        it('should advance to next occurrence for yearly recurrence with forceNext', () => {
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2026-01-12T09:00:00Z'));
+            
+            const dueDate = new Date('2026-01-12T10:00:00Z');
+            const task: Task = {
+                id: 'test-task-7',
+                title: 'Yearly Task',
+                dueDate: dueDate,
+                recurrence: 'yearly',
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const nextDueDate = getNextDueDate(task, true);
+
+            expect(nextDueDate).not.toBeNull();
+            expect(nextDueDate!.toISOString()).toBe('2027-01-12T10:00:00.000Z');
+
+            jest.useRealTimers();
+        });
+
+        it('should advance to next occurrence for custom_weekly recurrence with forceNext', () => {
+            // Jan 12, 2026 is Monday (day 1), custom weekly pattern is Mon, Wed, Fri (1,3,5)
+            // Next occurrence should be Wednesday Jan 14
+            jest.useFakeTimers();
+            jest.setSystemTime(new Date('2026-01-12T09:00:00Z'));
+            
+            const dueDate = new Date('2026-01-12T10:00:00Z');
+            const task: Task = {
+                id: 'test-task-8',
+                title: 'Custom Weekly Task',
+                dueDate: dueDate,
+                recurrence: 'custom_weekly:1,3,5', // Monday, Wednesday, Friday
+                status: 'pending',
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            };
+
+            const nextDueDate = getNextDueDate(task, true);
+
+            expect(nextDueDate).not.toBeNull();
+            expect(nextDueDate!.toISOString()).toBe('2026-01-14T10:00:00.000Z');
+
+            jest.useRealTimers();
+        });
     });
 
     describe('convertTaskToCard', () => {
