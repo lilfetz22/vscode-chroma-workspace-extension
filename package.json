@@ -338,6 +338,10 @@
       {
         "command": "chroma.editNote",
         "title": "Edit Note"
+      },
+      {
+        "command": "chroma.openDashboard",
+        "title": "Chroma: Open Dashboard"
       }
     ],
     "menus": {

@@ -8,6 +8,7 @@ A comprehensive workspace management extension for Visual Studio Code that combi
 
 - ** Notes with Natural Language Highlighting** - Intelligent syntax highlighting for natural language based on parts of speech
 - ** Notes View** - Centralized panel to browse and create all your `.notesnlh` notes
+- ** Dashboard View** - Open workspace data in the editor area with flexible layout options
 - ** Kanban Boards** - Visual task management with customizable columns and cards
 - ** Task Scheduling** - Schedule tasks with recurrence patterns and time-based automation
 - ** Tag System** - Organize cards and tasks with flexible tagging
@@ -158,6 +159,22 @@ Run without installing (for development/testing):
 3. Open Chroma Workspace panel from the sidebar
 4. Click the Notes view and use the "+" button to create your first note
 5. Set up Kanban boards, scheduled tasks, and tags as needed
+
+###  Opening the Dashboard
+
+For a full-screen workspace view, open the **Chroma Workspace Dashboard**:
+
+- Open Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
+- Run command: `Chroma: Open Dashboard`
+- The dashboard opens in the editor area as a tab
+- Move it to a separate editor group or window by dragging the tab
+
+**Dashboard Features:**
+- **Tabbed Interface**: Switch between Kanban, Tasks, and Tags views
+- **All Boards at Once**: View all your Kanban boards with their columns and cards
+- **Task Overview**: See all scheduled tasks in one place
+- **Tag Management**: Browse all tags with color indicators
+- **Flexible Layout**: Resize, move to split view, or drag to a separate window
 
 ---
 

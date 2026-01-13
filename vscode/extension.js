@@ -18,6 +18,7 @@ const { KanbanProvider } = require('./kanban/KanbanProvider');
 const { TaskProvider } = require('../out/src/views/TaskProvider');
 const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { NotesProvider } = require('../out/src/views/NotesProvider');
+const { DashboardProvider } = require('../out/src/views/DashboardProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
 const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn, copyBoardId } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard, editCardCompletedDate } = require('./kanban/Card');
@@ -416,6 +417,9 @@ exports.activate = async function activate(context) {
           }
         }
       }
+    }),
+    vscode.commands.registerCommand('chroma.openDashboard', () => {
+      DashboardProvider.show(context);
     })
   );
 
