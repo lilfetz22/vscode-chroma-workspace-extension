@@ -50,6 +50,7 @@ const vscode = {
     },
     commands: {
         registerCommand: jest.fn(),
+        executeCommand: jest.fn(),
     },
     workspace: {
         openTextDocument: jest.fn(),

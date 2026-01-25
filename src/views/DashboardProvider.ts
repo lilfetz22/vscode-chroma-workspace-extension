@@ -1,6 +1,27 @@
 import * as vscode from 'vscode';
-import { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getAllTags, getTagsByCardId, getDb, prepare } from '../database';
+import * as path from 'path';
+import * as fs from 'fs';
+import { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getAllTags, getTagsByCardId, prepare } from '../database';
 import { Task } from '../models/Task';
+import { getNotesFolder } from '../utils/notesFolder';
+
+/**
+ * Message types that can be sent from the webview
+ */
+interface WebviewMessage {
+    type: 'getData' | 'openNote' | 'executeCommand';
+    path?: string;
+    command?: string;
+    args?: any;
+}
+
+/**
+ * Represents a note file
+ */
+interface NoteFile {
+    name: string;
+    path: string;
+}
 
 /**
  * Provider for the Dashboard webview panel
@@ -70,7 +91,7 @@ export class DashboardProvider {
     /**
      * Handles messages from the webview
      */
-    private static async handleMessage(message: any): Promise<void> {
+    private static async handleMessage(message: WebviewMessage): Promise<void> {
         switch (message.type) {
             case 'getData':
                 await DashboardProvider.sendData();
@@ -82,8 +103,22 @@ export class DashboardProvider {
                 }
                 break;
             case 'executeCommand':
-                if (message.command) {
+                // Whitelist of allowed commands for security
+                const allowedCommands = [
+                    'chroma.addBoard',
+                    'chroma.addTask',
+                    'chroma.addTag',
+                    'chroma.addNote',
+                    'chroma.refreshKanban',
+                    'chroma.refreshTasks',
+                    'chroma.refreshTags',
+                    'chroma.refreshNotes'
+                ];
+                
+                if (message.command && allowedCommands.includes(message.command)) {
                     await vscode.commands.executeCommand(message.command, message.args);
+                } else if (message.command) {
+                    console.warn(`Dashboard: Attempted to execute non-whitelisted command: ${message.command}`);
                 }
                 break;
         }
@@ -100,9 +135,9 @@ export class DashboardProvider {
         try {
             // Get all workspace data
             const boards = getAllBoards();
-            const db = getDb();
             const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
             const tags = getAllTags();
+            const notes = DashboardProvider.getNotes();
 
             // If there are no boards, we can skip enrichment
             let enrichedBoards: any[] = [];
@@ -180,10 +215,54 @@ export class DashboardProvider {
                 type: 'data',
                 boards: enrichedBoards,
                 tasks: tasks,
-                tags: tags
+                tags: tags,
+                notes: notes
             });
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to load dashboard data: ${error}`);
+        }
+    }
+
+    /**
+     * Get all .notesnlh files from the notes folder
+     */
+    private static getNotes(): NoteFile[] {
+        const notesFolder = getNotesFolder();
+        
+        if (!notesFolder) {
+            return [];
+        }
+
+        // Check if the notes folder exists
+        if (!fs.existsSync(notesFolder)) {
+            return [];
+        }
+
+        try {
+            // Read all files in the notes folder
+            const files = fs.readdirSync(notesFolder);
+            
+            // Filter for .notesnlh files and create NoteFile objects
+            const noteFiles: NoteFile[] = files
+                .filter(file => file.endsWith('.notesnlh'))
+                .map(file => ({
+                    name: file,
+                    path: path.join(notesFolder, file)
+                }));
+
+            // Sort by last modified date (newest first)
+            return noteFiles.sort((a, b) => {
+                try {
+                    const statA = fs.statSync(a.path);
+                    const statB = fs.statSync(b.path);
+                    return statB.mtime.getTime() - statA.mtime.getTime();
+                } catch (error) {
+                    return a.name.localeCompare(b.name);
+                }
+            });
+        } catch (error) {
+            console.error('Error reading notes folder:', error);
+            return [];
         }
     }
 
@@ -285,17 +364,18 @@ export class DashboardProvider {
             font-size: 11px;
             color: white;
         }
-        .task-list, .tag-list {
+        .task-list, .tag-list, .note-list {
             list-style: none;
             padding: 0;
         }
-        .task-item, .tag-item {
+        .task-item, .tag-item, .note-item {
             padding: 8px;
             margin-bottom: 5px;
             background-color: var(--vscode-list-inactiveSelectionBackground);
             border-radius: 3px;
+            cursor: pointer;
         }
-        .task-item:hover, .tag-item:hover {
+        .task-item:hover, .tag-item:hover, .note-item:hover {
             background-color: var(--vscode-list-hoverBackground);
         }
         .empty-state {
@@ -339,6 +419,7 @@ export class DashboardProvider {
     <div class="tab-container">
         <div class="tab active" data-tab="kanban">Kanban</div>
         <div class="tab" data-tab="tasks">Tasks</div>
+        <div class="tab" data-tab="notes">Notes</div>
         <div class="tab" data-tab="tags">Tags</div>
     </div>
     
@@ -392,10 +473,21 @@ export class DashboardProvider {
                 case 'tasks':
                     content.innerHTML = renderTasks();
                     break;
+                case 'notes':
+                    content.innerHTML = renderNotes();
+                    break;
                 case 'tags':
                     content.innerHTML = renderTags();
                     break;
             }
+        }
+
+        function isValidHexColor(color) {
+            return /^#[0-9A-F]{6}$/i.test(color);
+        }
+
+        function sanitizeColor(color) {
+            return isValidHexColor(color) ? color : '#808080';
         }
 
         function renderKanban() {
@@ -430,7 +522,7 @@ export class DashboardProvider {
                                 if (card.tags && card.tags.length > 0) {
                                     html += '<div class="card-tags">';
                                     card.tags.forEach(tag => {
-                                        html += '<span class="tag" style="background-color: ' + tag.color + '">' + escapeHtml(tag.name) + '</span>';
+                                        html += '<span class="tag" style="background-color: ' + sanitizeColor(tag.color) + '">' + escapeHtml(tag.name) + '</span>';
                                     });
                                     html += '</div>';
                                 }
@@ -483,12 +575,34 @@ export class DashboardProvider {
             let html = '<div class="section"><ul class="tag-list">';
             tags.forEach(tag => {
                 html += '<li class="tag-item">';
-                html += '<span class="tag" style="background-color: ' + tag.color + '">' + escapeHtml(tag.name) + '</span>';
+                html += '<span class="tag" style="background-color: ' + sanitizeColor(tag.color) + '">' + escapeHtml(tag.name) + '</span>';
                 html += '</li>';
             });
             html += '</ul></div>';
             
             return html;
+        }
+
+        function renderNotes() {
+            const { notes } = workspaceData;
+            
+            if (!notes || notes.length === 0) {
+                return '<div class="empty-state">No notes found. Create one from the sidebar!</div>';
+            }
+
+            let html = '<div class="section"><ul class="note-list">';
+            notes.forEach(note => {
+                html += '<li class="note-item" onclick="openNote(\'' + note.path.replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'") + '\')">';
+                html += '<div><strong>' + escapeHtml(note.name) + '</strong></div>';
+                html += '</li>';
+            });
+            html += '</ul></div>';
+            
+            return html;
+        }
+
+        function openNote(notePath) {
+            vscode.postMessage({ type: 'openNote', path: notePath });
         }
 
         function formatDate(dateString) {
