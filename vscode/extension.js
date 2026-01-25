@@ -420,6 +420,9 @@ exports.activate = async function activate(context) {
     }),
     vscode.commands.registerCommand('chroma.openDashboard', () => {
       DashboardProvider.show(context);
+      if (typeof DashboardProvider.refresh === 'function') {
+        DashboardProvider.refresh();
+      }
     })
   );
 
