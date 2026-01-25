@@ -187,18 +187,28 @@ export class DashboardProvider {
         }
     }
 
+    private static getNonce(): string {
+        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let nonce = '';
+        for (let i = 0; i < 16; i++) {
+            nonce += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return nonce;
+    }
+
     /**
      * Gets the HTML content for the webview
      */
     private static getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionContext): string {
+        const nonce = DashboardProvider.getNonce();
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src ${webview.cspSource};">
     <title>Chroma Workspace Dashboard</title>
-    <style>
+    <style nonce="${nonce}">
         body {
             padding: 20px;
             color: var(--vscode-foreground);
