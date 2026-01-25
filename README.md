@@ -160,7 +160,7 @@ Run without installing (for development/testing):
 4. Click the Notes view and use the "+" button to create your first note
 5. Set up Kanban boards, scheduled tasks, and tags as needed
 
-###  Opening the Dashboard
+##  Opening the Dashboard
 
 For a full-screen workspace view, open the **Chroma Workspace Dashboard**:
 
