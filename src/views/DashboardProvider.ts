@@ -35,15 +35,18 @@ export class DashboardProvider {
      * Opens or focuses the dashboard panel
      */
     public static show(context: vscode.ExtensionContext): void {
+        console.log('DashboardProvider.show() called');
         const column = vscode.ViewColumn.One;
 
         // If we already have a panel, show it
         if (DashboardProvider.currentPanel) {
+            console.log('Dashboard panel already exists, revealing it');
             DashboardProvider.currentPanel.reveal(column);
             return;
         }
 
         // Create a new panel
+        console.log('Creating new dashboard panel');
         const panel = vscode.window.createWebviewPanel(
             DashboardProvider.viewType,
             'Chroma Workspace Dashboard',
@@ -54,20 +57,26 @@ export class DashboardProvider {
                 localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'media')]
             }
         );
+        console.log('Dashboard panel created successfully');
 
         DashboardProvider.currentPanel = panel;
 
         // Set the webview's initial html content
+        console.log('Setting webview HTML content');
         panel.webview.html = DashboardProvider.getWebviewContent(panel.webview, context);
+        console.log('Webview HTML content set');
 
         // Handle messages from the webview
+        console.log('Setting up message handler');
         panel.webview.onDidReceiveMessage(
             async message => {
+                console.log('Dashboard received message from webview:', message.type);
                 await DashboardProvider.handleMessage(message);
             },
             undefined,
             context.subscriptions
         );
+        console.log('Message handler set up');
 
         // Reset when the panel is closed
         panel.onDidDispose(
@@ -92,17 +101,22 @@ export class DashboardProvider {
      * Handles messages from the webview
      */
     private static async handleMessage(message: WebviewMessage): Promise<void> {
+        console.log('handleMessage called with type:', message.type);
         switch (message.type) {
             case 'getData':
+                console.log('getData message received, calling sendData()');
                 await DashboardProvider.sendData();
+                console.log('sendData() completed');
                 break;
             case 'openNote':
+                console.log('openNote message received for path:', message.path);
                 if (message.path) {
                     const uri = vscode.Uri.file(message.path);
                     await vscode.window.showTextDocument(uri);
                 }
                 break;
             case 'executeCommand':
+                console.log('executeCommand message received for command:', message.command);
                 // Whitelist of allowed commands for security
                 const allowedCommands = [
                     'chroma.addBoard',
@@ -128,16 +142,30 @@ export class DashboardProvider {
      * Sends all workspace data to the webview
      */
     private static async sendData(): Promise<void> {
+        console.log('sendData() called');
         if (!DashboardProvider.currentPanel) {
+            console.error('sendData(): currentPanel is null, cannot send data');
             return;
         }
 
+        console.log('sendData(): currentPanel exists, fetching workspace data');
         try {
             // Get all workspace data
+            console.log('Fetching boards...');
             const boards = getAllBoards();
+            console.log(`Fetched ${boards.length} boards`);
+            
+            console.log('Fetching tasks...');
             const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
+            console.log(`Fetched ${tasks.length} tasks`);
+            
+            console.log('Fetching tags...');
             const tags = getAllTags();
+            console.log(`Fetched ${tags.length} tags`);
+            
+            console.log('Fetching notes...');
             const notes = DashboardProvider.getNotes();
+            console.log(`Fetched ${notes.length} notes`);
 
             // If there are no boards, we can skip enrichment
             let enrichedBoards: any[] = [];
@@ -211,6 +239,12 @@ export class DashboardProvider {
             }
 
             // Send data to webview
+            console.log('Sending data to webview:', {
+                boardsCount: enrichedBoards.length,
+                tasksCount: tasks.length,
+                tagsCount: tags.length,
+                notesCount: notes.length
+            });
             DashboardProvider.currentPanel.webview.postMessage({
                 type: 'data',
                 boards: enrichedBoards,
@@ -218,7 +252,9 @@ export class DashboardProvider {
                 tags: tags,
                 notes: notes
             });
+            console.log('Data sent to webview successfully');
         } catch (error) {
+            console.error('Error in sendData():', error);
             vscode.window.showErrorMessage(`Failed to load dashboard data: ${error}`);
         }
     }
@@ -280,12 +316,14 @@ export class DashboardProvider {
      */
     private static getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionContext): string {
         const nonce = DashboardProvider.getNonce();
-        return `<!DOCTYPE html>
+        console.log('getWebviewContent: nonce generated:', nonce);
+        console.log('getWebviewContent: cspSource:', webview.cspSource);
+        const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}'; script-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'nonce-${nonce}' 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}';">
     <title>Chroma Workspace Dashboard</title>
     <style nonce="${nonce}">
         body {
@@ -427,18 +465,16 @@ export class DashboardProvider {
         <div class="loading">Loading workspace data...</div>
     </div>
 
-    <script>
+    <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
         let currentTab = 'kanban';
         let workspaceData = null;
 
-        // Request data on load
-        window.addEventListener('load', () => {
+        window.addEventListener('load', function() {
             vscode.postMessage({ type: 'getData' });
         });
 
-        // Handle messages from extension
-        window.addEventListener('message', event => {
+        window.addEventListener('message', function(event) {
             const message = event.data;
             switch (message.type) {
                 case 'data':
@@ -451,10 +487,11 @@ export class DashboardProvider {
             }
         });
 
-        // Tab switching
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                });
                 tab.classList.add('active');
                 currentTab = tab.dataset.tab;
                 renderContent();
@@ -500,7 +537,7 @@ export class DashboardProvider {
             let html = '';
             boards.forEach(board => {
                 html += '<div class="board">';
-                html += '<h3>' + escapeHtml(board.name) + '</h3>';
+                html += '<h3>' + escapeHtml(board.title || board.name) + '</h3>';
                 
                 if (!board.columns || board.columns.length === 0) {
                     html += '<div class="empty-state">No columns in this board</div>';
@@ -508,7 +545,7 @@ export class DashboardProvider {
                     html += '<div class="columns">';
                     board.columns.forEach(column => {
                         html += '<div class="column">';
-                        html += '<h4>' + escapeHtml(column.name) + '</h4>';
+                        html += '<h4>' + escapeHtml(column.title || column.name) + '</h4>';
                         
                         if (!column.cards || column.cards.length === 0) {
                             html += '<div class="empty-state">No cards</div>';
@@ -592,13 +629,26 @@ export class DashboardProvider {
 
             let html = '<div class="section"><ul class="note-list">';
             notes.forEach(note => {
-                html += '<li class="note-item" onclick="openNote(\'' + note.path.replace(/\\\\/g, '\\\\\\\\').replace(/'/g, "\\\\'") + '\')">';
+                const safePath = escapeAttribute(note.path);
+                html += '<li class="note-item" data-path="' + safePath + '" onclick="handleNoteClick(this)">';
                 html += '<div><strong>' + escapeHtml(note.name) + '</strong></div>';
                 html += '</li>';
             });
             html += '</ul></div>';
             
             return html;
+        }
+
+        function handleNoteClick(element) {
+            const path = element.getAttribute('data-path');
+            if (path) {
+                openNote(path);
+            }
+        }
+
+        function escapeAttribute(value) {
+            if (!value) return '';
+            return value.replace(/"/g, '&quot;');
         }
 
         function openNote(notePath) {
@@ -618,5 +668,7 @@ export class DashboardProvider {
     </script>
 </body>
 </html>`;
+        console.log('getWebviewContent: HTML generated, length:', html.length);
+        return html;
     }
 }
