@@ -104,19 +104,76 @@ export class DashboardProvider {
             const tasks: Task[] = prepare('SELECT id, title, description, due_date as dueDate, recurrence, status, card_id as cardId, created_at as createdAt, updated_at as updatedAt FROM tasks WHERE status = ? ORDER BY due_date ASC').all('pending') as Task[];
             const tags = getAllTags();
 
-            // Enrich boards with columns and cards
-            const enrichedBoards = boards.map(board => {
-                const columns = getColumnsByBoardId(board.id);
-                const enrichedColumns = columns.map(column => {
-                    const cards = getCardsByColumnId(column.id);
-                    const enrichedCards = cards.map(card => {
-                        const cardTags = getTagsByCardId(card.id);
-                        return { ...card, tags: cardTags };
+            // If there are no boards, we can skip enrichment
+            let enrichedBoards: any[] = [];
+            if (boards.length > 0) {
+                const boardIds = boards.map(board => board.id);
+
+                // Fetch all columns for all boards in a single query
+                const boardPlaceholders = boardIds.map(() => '?').join(',');
+                const allColumns: any[] = prepare(
+                    `SELECT * FROM columns WHERE board_id IN (${boardPlaceholders})`
+                ).all(...boardIds);
+
+                const columnsByBoardId = new Map<any, any[]>();
+                for (const column of allColumns) {
+                    const list = columnsByBoardId.get(column.board_id) ?? [];
+                    list.push(column);
+                    columnsByBoardId.set(column.board_id, list);
+                }
+
+                // Fetch all cards for all columns in a single query
+                const columnIds = allColumns.map(column => column.id);
+                let allCards: any[] = [];
+                const cardsByColumnId = new Map<any, any[]>();
+
+                if (columnIds.length > 0) {
+                    const columnPlaceholders = columnIds.map(() => '?').join(',');
+                    allCards = prepare(
+                        `SELECT * FROM cards WHERE column_id IN (${columnPlaceholders})`
+                    ).all(...columnIds);
+
+                    for (const card of allCards) {
+                        const list = cardsByColumnId.get(card.column_id) ?? [];
+                        list.push(card);
+                        cardsByColumnId.set(card.column_id, list);
+                    }
+                }
+
+                // Fetch all tags per card in a single query
+                const cardIds = allCards.map(card => card.id);
+                const tagsByCardId = new Map<any, any[]>();
+
+                if (cardIds.length > 0) {
+                    const cardPlaceholders = cardIds.map(() => '?').join(',');
+                    const cardTagRows: any[] = prepare(
+                        `SELECT ct.card_id as card_id, t.* 
+                         FROM card_tags ct 
+                         JOIN tags t ON t.id = ct.tag_id 
+                         WHERE ct.card_id IN (${cardPlaceholders})`
+                    ).all(...cardIds);
+
+                    for (const row of cardTagRows) {
+                        const list = tagsByCardId.get(row.card_id) ?? [];
+                        list.push(row);
+                        tagsByCardId.set(row.card_id, list);
+                    }
+                }
+
+                // Rebuild the enriched boards structure using the grouped data
+                enrichedBoards = boards.map(board => {
+                    const columnsForBoard = columnsByBoardId.get(board.id) ?? [];
+                    const enrichedColumns = columnsForBoard.map(column => {
+                        const cardsForColumn = cardsByColumnId.get(column.id) ?? [];
+                        const enrichedCards = cardsForColumn.map(card => {
+                            const cardTags = tagsByCardId.get(card.id) ?? [];
+                            return { ...card, tags: cardTags };
+                        });
+                        return { ...column, cards: enrichedCards };
                     });
-                    return { ...column, cards: enrichedCards };
+                    return { ...board, columns: enrichedColumns };
                 });
-                return { ...board, columns: enrichedColumns };
-            });
+            }
 
             // Send data to webview
             DashboardProvider.currentPanel.webview.postMessage({
