@@ -925,7 +925,7 @@ export function getTagById(id: string): Tag {
 
 export function getAllTags(): Tag[] {
     const db = getDb();
-    return prepare('SELECT * FROM tags ORDER BY name').all() as Tag[];
+    return prepare('SELECT * FROM tags ORDER BY name COLLATE NOCASE').all() as Tag[];
 }
 
 export function updateTag(tag: Partial<Tag>): Tag {
