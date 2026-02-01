@@ -197,7 +197,7 @@ export function getTagById(db: any, id: string): Tag {
 }
 
 export function getAllTags(db: any): Tag[] {
-    const stmt = db.prepare('SELECT * FROM tags ORDER BY name');
+    const stmt = db.prepare('SELECT * FROM tags ORDER BY name COLLATE NOCASE');
     return stmt.all();
 }
 

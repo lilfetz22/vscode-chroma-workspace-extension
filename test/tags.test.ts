@@ -73,6 +73,25 @@ describe('Tagging System', () => {
         expect(tags.length).toBe(2);
     });
 
+    it('should return tags in case-insensitive alphabetical order', () => {
+        // Create tags in non-alphabetical order with mixed case
+        createTag(db, { name: 'Zebra', color: '#ff0000' });
+        createTag(db, { name: 'apple', color: '#00ff00' });
+        createTag(db, { name: 'Banana', color: '#0000ff' });
+        createTag(db, { name: 'cherry', color: '#ffff00' });
+        createTag(db, { name: 'Aardvark', color: '#ff00ff' });
+        
+        const tags = getAllTags(db);
+        expect(tags.length).toBe(5);
+        
+        // Verify case-insensitive alphabetical order
+        expect(tags[0].name).toBe('Aardvark');
+        expect(tags[1].name).toBe('apple');
+        expect(tags[2].name).toBe('Banana');
+        expect(tags[3].name).toBe('cherry');
+        expect(tags[4].name).toBe('Zebra');
+    });
+
     it('should update a tag', () => {
         const tag = createTag(db, { name: 'Test Tag', color: '#ff0000' });
         const updatedTag = updateTag(db, { id: tag.id, name: 'Updated Tag', color: '#0000ff' });
