@@ -1,3 +1,10 @@
+# [2.19.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.1...v2.19.0) (2026-02-01)
+
+
+### Features
+
+* **tags:** implement case-insensitive alphabetical sorting ([59dc777](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/59dc77737d090e800f0bbddf64b4a17380a0d2e5))
+
 ## [2.18.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.0...v2.18.1) (2026-01-13)
 
 
