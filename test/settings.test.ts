@@ -247,48 +247,6 @@ describe('SettingsService', () => {
         });
     });
 
-    describe('resolveDatabasePath', () => {
-        const mockWorkspaceRoot = '/workspace/my-project';
-        
-        test('should use absolute paths as-is', () => {
-            const absolutePath = '/home/user/explicit/db.db';
-            const resolved = SettingsService.resolveDatabasePath(absolutePath, mockWorkspaceRoot);
-            expect(resolved).toBe(absolutePath);
-        });
-
-        test('should resolve simple relative paths to home directory', () => {
-            const relativePath = 'shared.db';
-            const resolved = SettingsService.resolveDatabasePath(relativePath, mockWorkspaceRoot);
-            // Should include home directory
-            expect(resolved).toContain('shared.db');
-            expect(resolved).not.toContain(mockWorkspaceRoot);
-        });
-
-        test('should resolve nested relative paths to home directory', () => {
-            const relativePath = 'Documents/chroma/shared.db';
-            const resolved = SettingsService.resolveDatabasePath(relativePath, mockWorkspaceRoot);
-            // Should be in home directory, not workspace
-            expect(resolved).toContain('Documents');
-            expect(resolved).toContain('shared.db');
-            expect(resolved).not.toContain(mockWorkspaceRoot);
-        });
-
-        test('should work without workspace root', () => {
-            const relativePath = 'data/db.db';
-            const resolved = SettingsService.resolveDatabasePath(relativePath);
-            // Should still resolve to home directory
-            expect(resolved).toContain('data');
-            expect(resolved).toContain('db.db');
-        });
-
-        test('should handle absolute paths on current platform', () => {
-            // Use a Unix-style absolute path which works cross-platform in path.isAbsolute
-            const absolutePath = '/home/user/shared.db';
-            const resolved = SettingsService.resolveDatabasePath(absolutePath, mockWorkspaceRoot);
-            expect(resolved).toBe(absolutePath);
-        });
-    });
-
     describe('validateSettings', () => {
         test('should pass validation with valid settings', () => {
             const result = settingsService.validateSettings();

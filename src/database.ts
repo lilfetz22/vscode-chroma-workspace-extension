@@ -241,8 +241,18 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             if (path.isAbsolute(configuredPath)) {
                 dbPath = configuredPath;
                 getLogger().info('Using absolute database path (shared database)');
+            } else if (configuredPath.startsWith('.')) {
+                // Paths starting with '.' are workspace-local (e.g., '.chroma/chroma.db')
+                if (workspaceRoot) {
+                    dbPath = path.join(workspaceRoot, configuredPath);
+                    getLogger().info('Using workspace-local database path');
+                } else {
+                    // Fallback to __dirname (for testing)
+                    dbPath = path.join(__dirname, '..', configuredPath);
+                    getLogger().warn('No workspaceRoot provided, using fallback path');
+                }
             } else {
-                // For relative paths, try home directory first, then workspace
+                // For simple relative paths (not starting with '.'), try home directory first
                 const homeDir = os.homedir();
                 const homeDbPath = path.join(homeDir, configuredPath);
                 
@@ -251,27 +261,21 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
                     dbPath = homeDbPath;
                     getLogger().info('Using existing database in home directory');
                 } else if (workspaceRoot) {
-                    // Check workspace location
+                    // Check workspace location (for backward compatibility)
                     const workspaceDbPath = path.join(workspaceRoot, configuredPath);
                     if (fs.existsSync(workspaceDbPath)) {
                         // Use existing workspace database
                         dbPath = workspaceDbPath;
                         getLogger().info('Using existing database in workspace');
                     } else {
-                        // Neither exists - prefer home directory for new database
-                        // unless the path starts with '.' (indicating workspace preference)
-                        if (configuredPath.startsWith('.')) {
-                            dbPath = workspaceDbPath;
-                            getLogger().info('Creating new database in workspace (path starts with ".")');
-                        } else {
-                            dbPath = homeDbPath;
-                            getLogger().info('Creating new database in home directory');
-                        }
+                        // Neither exists - use home directory for new database
+                        dbPath = homeDbPath;
+                        getLogger().info('Creating new database in home directory');
                     }
                 } else {
-                    // Fallback to __dirname (for testing)
-                    dbPath = path.join(__dirname, '..', configuredPath);
-                    getLogger().warn('No workspaceRoot provided, using fallback path');
+                    // No workspace root, use home directory
+                    dbPath = homeDbPath;
+                    getLogger().info('Using home directory path (no workspace)');
                 }
             }
             

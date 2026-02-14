@@ -247,42 +247,6 @@ export class SettingsService {
     }
 
     /**
-     * Resolve a database path with support for home directory, absolute, and relative paths.
-     * 
-     * Path resolution rules:
-     * 1. If path is absolute (e.g., 'C:\Users\You\shared.db' or '/home/you/shared.db') → use as-is
-     * 2. If path is just a filename or simple relative path (e.g., 'shared.db', 'data/shared.db')
-     *    → first try in user's home directory
-     * 3. If not found in home directory or workspace root is provided → use workspace-relative path
-     * 
-     * @param dbPath The configured database path
-     * @param workspaceRoot Optional workspace root directory
-     * @returns Resolved absolute path to the database file
-     */
-    public static resolveDatabasePath(dbPath: string, workspaceRoot?: string): string {
-        // If absolute path, use as-is (explicit shared database)
-        if (path.isAbsolute(dbPath)) {
-            return dbPath;
-        }
-
-        // For relative paths, try home directory first
-        const homeDir = os.homedir();
-        const homeDbPath = path.join(homeDir, dbPath);
-        
-        // If we have a workspace root, this is the fallback
-        // We'll prefer home directory if available, otherwise workspace-relative
-        if (workspaceRoot) {
-            const workspaceDbPath = path.join(workspaceRoot, dbPath);
-            // In practice, the caller will need to check existence
-            // For now, we return home path as primary choice for non-workspace paths
-            return homeDbPath;
-        }
-        
-        // No workspace root provided, use home directory
-        return homeDbPath;
-    }
-
-    /**
      * Validate database path
      * Supports relative paths (workspace-local), absolute paths (explicit shared database),
      * and home directory paths (implicit shared database).
