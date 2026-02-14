@@ -1,3 +1,10 @@
+## [2.19.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.19.0...v2.19.1) (2026-02-14)
+
+
+### Bug Fixes
+
+* **package.json:** revert vs code api version ([384b66a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/384b66ad436905c4940007e8457e7212e5cb8d19))
+
 # [2.19.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.1...v2.19.0) (2026-02-01)
 
 
