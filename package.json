@@ -149,7 +149,7 @@
         "chroma.database.path": {
           "type": "string",
           "default": ".chroma/chroma.db",
-          "description": "Path to the SQLite database file. Use a relative path (e.g., '.chroma/chroma.db') for workspace-local storage, or an absolute path (e.g., 'C:\\Users\\You\\shared.db' or '/home/you/shared.db') to share the database across multiple workspaces."
+          "description": "Path to the SQLite database file. Supports three path styles: (1) Relative paths starting with '.' (e.g., '.chroma/chroma.db') for workspace-local storage; (2) Absolute paths (e.g., 'C:\\Users\\You\\shared.db' or '/home/you/shared.db') for explicit shared database location; (3) Simple paths without leading '.' (e.g., 'shared.db' or 'Documents/shared.db') which will use your home directory, allowing easy database sharing across workspaces without hardcoding usernames."
         },
         "chroma.nlh.linkPatterns": {
           "type": "object",

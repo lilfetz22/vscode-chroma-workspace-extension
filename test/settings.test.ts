@@ -222,6 +222,13 @@ describe('SettingsService', () => {
             expect(settingsService.isValidDatabasePath('\\\\network\\share\\file.db')).toBe(true);
         });
 
+        test('should validate home directory paths (implicit shared database)', () => {
+            // Simple paths that will use home directory
+            expect(settingsService.isValidDatabasePath('shared.db')).toBe(true);
+            expect(settingsService.isValidDatabasePath('Documents/shared.db')).toBe(true);
+            expect(settingsService.isValidDatabasePath('data/my-database.db')).toBe(true);
+        });
+
         test('should reject invalid database paths', () => {
             // Path traversal attacks (only applies to relative paths)
             expect(settingsService.isValidDatabasePath('../../../etc/passwd.db')).toBe(false);
@@ -237,6 +244,48 @@ describe('SettingsService', () => {
             // Null byte injection
             expect(settingsService.isValidDatabasePath('evil\0.db')).toBe(false);
             expect(settingsService.isValidDatabasePath('/absolute/evil\0.db')).toBe(false);
+        });
+    });
+
+    describe('resolveDatabasePath', () => {
+        const mockWorkspaceRoot = '/workspace/my-project';
+        
+        test('should use absolute paths as-is', () => {
+            const absolutePath = '/home/user/explicit/db.db';
+            const resolved = SettingsService.resolveDatabasePath(absolutePath, mockWorkspaceRoot);
+            expect(resolved).toBe(absolutePath);
+        });
+
+        test('should resolve simple relative paths to home directory', () => {
+            const relativePath = 'shared.db';
+            const resolved = SettingsService.resolveDatabasePath(relativePath, mockWorkspaceRoot);
+            // Should include home directory
+            expect(resolved).toContain('shared.db');
+            expect(resolved).not.toContain(mockWorkspaceRoot);
+        });
+
+        test('should resolve nested relative paths to home directory', () => {
+            const relativePath = 'Documents/chroma/shared.db';
+            const resolved = SettingsService.resolveDatabasePath(relativePath, mockWorkspaceRoot);
+            // Should be in home directory, not workspace
+            expect(resolved).toContain('Documents');
+            expect(resolved).toContain('shared.db');
+            expect(resolved).not.toContain(mockWorkspaceRoot);
+        });
+
+        test('should work without workspace root', () => {
+            const relativePath = 'data/db.db';
+            const resolved = SettingsService.resolveDatabasePath(relativePath);
+            // Should still resolve to home directory
+            expect(resolved).toContain('data');
+            expect(resolved).toContain('db.db');
+        });
+
+        test('should handle absolute paths on current platform', () => {
+            // Use a Unix-style absolute path which works cross-platform in path.isAbsolute
+            const absolutePath = '/home/user/shared.db';
+            const resolved = SettingsService.resolveDatabasePath(absolutePath, mockWorkspaceRoot);
+            expect(resolved).toBe(absolutePath);
         });
     });
 

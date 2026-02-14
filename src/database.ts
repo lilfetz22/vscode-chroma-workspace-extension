@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import initSqlJs, { Database as SqlJsDatabase } from 'sql.js';
 import { Note } from './models/Note';
 import { Board } from './models/Board';
@@ -9,7 +10,7 @@ import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 import { getDebugLogger } from './logic/DebugLogger';
-import { getSettingsService } from './logic/SettingsService';
+import { getSettingsService, SettingsService } from './logic/SettingsService';
 
 let logger: any;
 
@@ -240,13 +241,38 @@ export async function initDatabase(memory: boolean = false, workspaceRoot?: stri
             if (path.isAbsolute(configuredPath)) {
                 dbPath = configuredPath;
                 getLogger().info('Using absolute database path (shared database)');
-            } else if (workspaceRoot) {
-                // Use provided workspace root (for production)
-                dbPath = path.join(workspaceRoot, configuredPath);
             } else {
-                // Fallback to __dirname (for testing)
-                dbPath = path.join(__dirname, '..', configuredPath);
-                getLogger().warn('No workspaceRoot provided, using fallback path');
+                // For relative paths, try home directory first, then workspace
+                const homeDir = os.homedir();
+                const homeDbPath = path.join(homeDir, configuredPath);
+                
+                if (fs.existsSync(homeDbPath)) {
+                    // Use existing database in home directory
+                    dbPath = homeDbPath;
+                    getLogger().info('Using existing database in home directory');
+                } else if (workspaceRoot) {
+                    // Check workspace location
+                    const workspaceDbPath = path.join(workspaceRoot, configuredPath);
+                    if (fs.existsSync(workspaceDbPath)) {
+                        // Use existing workspace database
+                        dbPath = workspaceDbPath;
+                        getLogger().info('Using existing database in workspace');
+                    } else {
+                        // Neither exists - prefer home directory for new database
+                        // unless the path starts with '.' (indicating workspace preference)
+                        if (configuredPath.startsWith('.')) {
+                            dbPath = workspaceDbPath;
+                            getLogger().info('Creating new database in workspace (path starts with ".")');
+                        } else {
+                            dbPath = homeDbPath;
+                            getLogger().info('Creating new database in home directory');
+                        }
+                    }
+                } else {
+                    // Fallback to __dirname (for testing)
+                    dbPath = path.join(__dirname, '..', configuredPath);
+                    getLogger().warn('No workspaceRoot provided, using fallback path');
+                }
             }
             
             getLogger().info('Database path resolved to:', dbPath);
