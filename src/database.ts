@@ -10,7 +10,7 @@ import { Tag } from './models/Tag';
 import { runMigrations } from './migrations';
 import { randomBytes } from 'crypto';
 import { getDebugLogger } from './logic/DebugLogger';
-import { getSettingsService, SettingsService } from './logic/SettingsService';
+import { getSettingsService } from './logic/SettingsService';
 
 let logger: any;
 
