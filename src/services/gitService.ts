@@ -640,9 +640,34 @@ export class GitService {
     
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(watchPattern);
 
-    this.fileWatcher.onDidChange(() => this.scheduleAutoSync());
-    this.fileWatcher.onDidCreate(() => this.scheduleAutoSync());
-    this.fileWatcher.onDidDelete(() => this.scheduleAutoSync());
+    const shouldIgnoreUri = (uri: vscode.Uri): boolean => {
+      const relativePath = path.relative(watchDir, uri.fsPath);
+      if (!relativePath || relativePath.startsWith('..')) {
+        // Outside of the watched directory; do not ignore based on our rules.
+        return false;
+      }
+      const normalized = relativePath.replace(/\\/g, '/');
+      const ignoredDirs = ['.git', 'node_modules', 'dist', 'out'];
+      return ignoredDirs.some((dir) => {
+        return normalized === dir || normalized.startsWith(dir + '/');
+      });
+    };
+
+    this.fileWatcher.onDidChange((uri) => {
+      if (!shouldIgnoreUri(uri)) {
+        this.scheduleAutoSync();
+      }
+    });
+    this.fileWatcher.onDidCreate((uri) => {
+      if (!shouldIgnoreUri(uri)) {
+        this.scheduleAutoSync();
+      }
+    });
+    this.fileWatcher.onDidDelete((uri) => {
+      if (!shouldIgnoreUri(uri)) {
+        this.scheduleAutoSync();
+      }
+    });
   }
 
   /**
