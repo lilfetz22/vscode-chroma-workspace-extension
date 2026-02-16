@@ -130,19 +130,89 @@ export class GitService {
   }
 
   /**
-   * Perform a git pull with rebase
+   * Stash uncommitted changes
+   */
+  private async gitStash(): Promise<GitSyncResult> {
+    try {
+      await this.executeGitCommand('git stash push -m "Chroma auto-sync stash"');
+      return {
+        success: true,
+        message: 'Stashed uncommitted changes',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Failed to stash changes: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Pop stashed changes
+   */
+  private async gitStashPop(): Promise<GitSyncResult> {
+    try {
+      const { stdout, stderr } = await this.executeGitCommand('git stash pop');
+      
+      // Check for conflicts when popping stash
+      if (stderr.includes('CONFLICT') || stdout.includes('CONFLICT')) {
+        return {
+          success: false,
+          message: 'Conflict occurred when reapplying stashed changes. Please resolve manually.',
+          needsAttention: true,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Reapplied stashed changes',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Failed to reapply stashed changes: ${error.message}`,
+        needsAttention: true,
+      };
+    }
+  }
+
+  /**
+   * Perform a git pull with rebase, handling uncommitted changes
    */
   private async gitPull(): Promise<GitSyncResult> {
+    let didStash = false;
+
     try {
+      // Check if there are uncommitted changes
+      const hasChanges = await this.hasUncommittedChanges();
+      
+      if (hasChanges) {
+        // Stash changes before pulling
+        const stashResult = await this.gitStash();
+        if (!stashResult.success) {
+          return stashResult;
+        }
+        didStash = true;
+      }
+
+      // Now pull with rebase
       const { stdout, stderr } = await this.executeGitCommand('git pull --rebase');
       
       // Check for conflicts
       if (stderr.includes('CONFLICT') || stdout.includes('CONFLICT')) {
         return {
           success: false,
-          message: 'Merge conflict detected. Please resolve conflicts manually in the database directory.',
+          message: 'Merge conflict detected during pull. Please resolve conflicts manually in the repository.',
           needsAttention: true,
         };
+      }
+
+      // If we stashed changes, pop them back
+      if (didStash) {
+        const popResult = await this.gitStashPop();
+        if (!popResult.success) {
+          return popResult;
+        }
       }
 
       return {
@@ -150,14 +220,25 @@ export class GitService {
         message: 'Successfully pulled changes from remote',
       };
     } catch (error: any) {
+      // If we stashed and pull failed, try to pop the stash back
+      if (didStash) {
+        try {
+          await this.gitStashPop();
+        } catch (popError) {
+          // Ignore pop errors, the original error is more important
+        }
+      }
+
       // Handle case where remote doesn't exist yet
       if (error.message.includes('no tracking information') || 
-          error.message.includes('refusing to merge unrelated histories')) {
+          error.message.includes('refusing to merge unrelated histories') ||
+          error.message.includes('no upstream branch')) {
         return {
           success: true,
           message: 'No remote tracking branch configured (this is normal for first-time setup)',
         };
       }
+      
       return {
         success: false,
         message: `Failed to pull changes: ${error.message}`,
