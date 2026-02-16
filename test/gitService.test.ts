@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 
-// Mock child_process module
-jest.mock('child_process', () => ({
-    execFile: jest.fn(),
+// Mock util.promisify to return our mock function
+const mockExecFilePromise = jest.fn();
+jest.mock('util', () => ({
+    promisify: jest.fn(() => mockExecFilePromise),
 }));
 
 // Import after mocking
 import { GitService } from '../src/services/gitService';
-import * as childProcess from 'child_process';
 
 jest.mock('fs');
 jest.mock('path');
@@ -23,9 +23,6 @@ jest.mock('../src/logic/DebugLogger', () => ({
 const fs = require('fs');
 const path = require('path');
 
-// Get the mocked execFile
-const mockExecFile = childProcess.execFile as jest.MockedFunction<any>;
-
 describe('GitService', () => {
     let gitService: GitService;
     let mockConfig: { [key: string]: any } = {};
@@ -33,8 +30,8 @@ describe('GitService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
 
-        // Configure mockExecFile to return promises
-        mockExecFile.mockResolvedValue({ stdout: '', stderr: '' });
+        // Configure mockExecFilePromise to return resolved promises
+        mockExecFilePromise.mockResolvedValue({ stdout: '', stderr: '' });
 
         // Mock configuration
         mockConfig = {
@@ -117,11 +114,11 @@ describe('GitService', () => {
 
             await (gitService as any).isGitInstalled();
 
-            // Verify execFile was called
-            expect(mockExecFile).toHaveBeenCalled();
+            // Verify execFilePromise was called
+            expect(mockExecFilePromise).toHaveBeenCalled();
             
             // Verify arguments are passed as an array
-            const firstCall = mockExecFile.mock.calls[0];
+            const firstCall = mockExecFilePromise.mock.calls[0];
             expect(firstCall[0]).toBe('git');
             expect(Array.isArray(firstCall[1])).toBe(true);
         });
@@ -130,12 +127,12 @@ describe('GitService', () => {
     describe('Stash Improvements', () => {
         it('should include --include-untracked flag when stashing', async () => {
             fs.existsSync.mockImplementation((p: string) => p === '/test/.git');
-            mockExecFile.mockResolvedValue({ stdout: '', stderr: '' });
+            mockExecFilePromise.mockResolvedValue({ stdout: '', stderr: '' });
 
             await (gitService as any).gitStash();
 
             // Find the stash call
-            const stashCall = mockExecFile.mock.calls.find((call: any) => 
+            const stashCall = mockExecFilePromise.mock.calls.find((call: any) => 
                 call[1] && call[1][0] === 'stash'
             );
 
@@ -148,12 +145,12 @@ describe('GitService', () => {
         it('should stage only database directory, not entire repository', async () => {
             fs.existsSync.mockImplementation((p: string) => p === '/test/.git');
             path.relative.mockReturnValue('.chroma');
-            mockExecFile.mockResolvedValue({ stdout: '', stderr: '' });
+            mockExecFilePromise.mockResolvedValue({ stdout: '', stderr: '' });
 
             await (gitService as any).gitAdd();
 
             // Find the add call
-            const addCall = mockExecFile.mock.calls.find((call: any) => 
+            const addCall = mockExecFilePromise.mock.calls.find((call: any) => 
                 call[1] && call[1][0] === 'add'
             );
 
@@ -165,7 +162,7 @@ describe('GitService', () => {
     describe('Structured Commit Return', () => {
         it('should return hadChanges flag (not rely on string matching)', async () => {
             fs.existsSync.mockImplementation((p: string) => p === '/test/.git');
-            mockExecFile
+            mockExecFilePromise
                 .mockResolvedValueOnce({ stdout: 'M file.txt', stderr: '' })
                 .mockResolvedValueOnce({ stdout: '', stderr: '' });
 
@@ -178,7 +175,7 @@ describe('GitService', () => {
 
         it('should return hadChanges=false when no changes', async () => {
             fs.existsSync.mockImplementation((p: string) => p === '/test/.git');
-            mockExecFile.mockResolvedValueOnce({ stdout: '', stderr: '' });
+            mockExecFilePromise.mockResolvedValueOnce({ stdout: '', stderr: '' });
 
             const result = await (gitService as any).gitCommit();
 
