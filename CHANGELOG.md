@@ -1,3 +1,10 @@
+# [2.20.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.19.1...v2.20.0) (2026-02-16)
+
+
+### Features
+
+* **launch:** add launch configuration for running the extension ([681667c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/681667cccb195f062ffd3ce03c12ff4296ed604c))
+
 ## [2.19.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.19.0...v2.19.1) (2026-02-14)
 
 
