@@ -359,7 +359,7 @@ export class GitService {
   /**
    * Commit changes with a timestamped message
    */
-  private async gitCommit(): Promise<GitSyncResult & { hadChanges?: boolean }> {
+  private async gitCommit(): Promise<GitSyncResult & { hadChanges: boolean }> {
     try {
       // Check if there are changes to commit
       const hasChanges = await this.hasUncommittedChanges();
