@@ -870,13 +870,20 @@ exports.activate = async function activate(context) {
   const dbPath = getDatabaseFilePath();
   if (dbPath) {
     gitService = new GitService(dbPath);
-    
-    // Perform startup pull if Git sync is enabled
-    await gitService.startupPull();
-    
-    // Start watching for changes if auto-push is enabled
-    await gitService.startWatching();
-    
+
+    // Perform startup sync in the background so activation is not blocked
+    (async () => {
+      try {
+        // Perform startup pull if Git sync is enabled
+        await gitService.startupPull();
+
+        // Start watching for changes if auto-push is enabled
+        await gitService.startWatching();
+      } catch (error) {
+        console.error('[Chroma] Git startup sync failed:', error);
+        vscode.window.showErrorMessage('Chroma: Git startup sync failed. See logs for details.');
+      }
+    })();
     // Register disposal
     context.subscriptions.push({
       dispose: () => {
