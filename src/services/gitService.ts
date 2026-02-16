@@ -626,13 +626,13 @@ export class GitService {
    * Start watching for file changes to trigger auto-sync
    */
   async startWatching(): Promise<void> {
-    if (!this.isGitSyncEnabled()) {
-      return;
-    }
-
-    // Stop existing watcher if any
+    // Always stop any existing watcher/timeout before reconfiguring
     this.stopWatching();
 
+    // Do not start watching if Git sync or auto-push is disabled
+    if (!this.isGitSyncEnabled() || !this.isAutoPushEnabled()) {
+      return;
+    }
     // Watch the Git repository root if found, otherwise watch database directory
     const gitRoot = await this.getGitRepositoryRoot();
     const watchDir = gitRoot || this.getDatabaseDirectory();
