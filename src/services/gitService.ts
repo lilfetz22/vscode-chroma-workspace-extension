@@ -1,0 +1,437 @@
+import * as vscode from 'vscode';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import * as path from 'path';
+import * as fs from 'fs';
+
+const execPromise = promisify(exec);
+
+export interface GitSyncResult {
+  success: boolean;
+  message: string;
+  needsAttention?: boolean;
+}
+
+export class GitService {
+  private syncInProgress = false;
+  private autoSyncTimeout: NodeJS.Timeout | null = null;
+  private lastSyncTime = 0;
+  private fileWatcher: vscode.FileSystemWatcher | null = null;
+  private readonly DEBOUNCE_DELAY = 10000; // 10 seconds
+  private readonly MIN_SYNC_INTERVAL = 5000; // Minimum 5 seconds between syncs
+
+  constructor(private databasePath: string) {}
+
+  /**
+   * Check if Git sync is enabled in settings
+   */
+  private isGitSyncEnabled(): boolean {
+    const config = vscode.workspace.getConfiguration('chroma.sync');
+    return config.get<boolean>('enableGitSync', false);
+  }
+
+  /**
+   * Check if auto-push on changes is enabled
+   */
+  private isAutoPushEnabled(): boolean {
+    const config = vscode.workspace.getConfiguration('chroma.sync');
+    return config.get<boolean>('autoPushOnChanges', true);
+  }
+
+  /**
+   * Get the directory containing the database
+   */
+  private getDatabaseDirectory(): string {
+    return path.dirname(this.databasePath);
+  }
+
+  /**
+   * Check if the database directory is a Git repository
+   */
+  private async isGitRepository(): Promise<boolean> {
+    try {
+      const dbDir = this.getDatabaseDirectory();
+      const gitDir = path.join(dbDir, '.git');
+      return fs.existsSync(gitDir);
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Execute a Git command in the database directory
+   */
+  private async executeGitCommand(command: string): Promise<{ stdout: string; stderr: string }> {
+    const dbDir = this.getDatabaseDirectory();
+    try {
+      return await execPromise(command, {
+        cwd: dbDir,
+        timeout: 30000, // 30 second timeout
+      });
+    } catch (error: any) {
+      throw new Error(`Git command failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if Git is installed
+   */
+  private async isGitInstalled(): Promise<boolean> {
+    try {
+      await execPromise('git --version');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if there are uncommitted changes
+   */
+  private async hasUncommittedChanges(): Promise<boolean> {
+    try {
+      const { stdout } = await this.executeGitCommand('git status --porcelain');
+      return stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Perform a git pull with rebase
+   */
+  private async gitPull(): Promise<GitSyncResult> {
+    try {
+      const { stdout, stderr } = await this.executeGitCommand('git pull --rebase');
+      
+      // Check for conflicts
+      if (stderr.includes('CONFLICT') || stdout.includes('CONFLICT')) {
+        return {
+          success: false,
+          message: 'Merge conflict detected. Please resolve conflicts manually in the database directory.',
+          needsAttention: true,
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Successfully pulled changes from remote',
+      };
+    } catch (error: any) {
+      // Handle case where remote doesn't exist yet
+      if (error.message.includes('no tracking information') || 
+          error.message.includes('refusing to merge unrelated histories')) {
+        return {
+          success: true,
+          message: 'No remote tracking branch configured (this is normal for first-time setup)',
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to pull changes: ${error.message}`,
+        needsAttention: true,
+      };
+    }
+  }
+
+  /**
+   * Stage all changes in the database directory
+   */
+  private async gitAdd(): Promise<GitSyncResult> {
+    try {
+      await this.executeGitCommand('git add .');
+      return {
+        success: true,
+        message: 'Staged changes',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Failed to stage changes: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Commit changes with a timestamped message
+   */
+  private async gitCommit(): Promise<GitSyncResult> {
+    try {
+      // Check if there are changes to commit
+      const hasChanges = await this.hasUncommittedChanges();
+      if (!hasChanges) {
+        return {
+          success: true,
+          message: 'No changes to commit',
+        };
+      }
+
+      const timestamp = new Date().toISOString();
+      const commitMessage = `Chroma Workspace Auto-sync: ${timestamp}`;
+      await this.executeGitCommand(`git commit -m "${commitMessage}"`);
+      
+      return {
+        success: true,
+        message: 'Committed changes',
+      };
+    } catch (error: any) {
+      // If there's nothing to commit, that's not an error
+      if (error.message.includes('nothing to commit')) {
+        return {
+          success: true,
+          message: 'No changes to commit',
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to commit changes: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Push changes to remote
+   */
+  private async gitPush(): Promise<GitSyncResult> {
+    try {
+      const { stdout, stderr } = await this.executeGitCommand('git push');
+      return {
+        success: true,
+        message: 'Successfully pushed changes to remote',
+      };
+    } catch (error: any) {
+      // Handle case where remote doesn't exist
+      if (error.message.includes('No configured push destination') || 
+          error.message.includes('no upstream branch')) {
+        return {
+          success: false,
+          message: 'No remote repository configured. Please set up a remote with: git remote add origin <url>',
+          needsAttention: true,
+        };
+      }
+      return {
+        success: false,
+        message: `Failed to push changes: ${error.message}`,
+        needsAttention: true,
+      };
+    }
+  }
+
+  /**
+   * Perform the full sync operation (pull, add, commit, push)
+   */
+  async sync(): Promise<GitSyncResult> {
+    // Check if sync is already in progress
+    if (this.syncInProgress) {
+      return {
+        success: false,
+        message: 'Sync already in progress',
+      };
+    }
+
+    // Check if enough time has passed since last sync
+    const now = Date.now();
+    if (now - this.lastSyncTime < this.MIN_SYNC_INTERVAL) {
+      return {
+        success: false,
+        message: 'Sync rate limited. Please wait a few seconds.',
+      };
+    }
+
+    // Check if Git sync is enabled
+    if (!this.isGitSyncEnabled()) {
+      return {
+        success: false,
+        message: 'Git sync is not enabled. Enable it in settings: chroma.sync.enableGitSync',
+      };
+    }
+
+    this.syncInProgress = true;
+    this.lastSyncTime = now;
+
+    try {
+      // Pre-flight checks
+      const gitInstalled = await this.isGitInstalled();
+      if (!gitInstalled) {
+        return {
+          success: false,
+          message: 'Git is not installed. Please install Git to use sync functionality.',
+          needsAttention: true,
+        };
+      }
+
+      const isRepo = await this.isGitRepository();
+      if (!isRepo) {
+        return {
+          success: false,
+          message: `The database directory (${this.getDatabaseDirectory()}) is not a Git repository. Please initialize it with 'git init' and configure a remote.`,
+          needsAttention: true,
+        };
+      }
+
+      // Step 1: Pull changes
+      const pullResult = await this.gitPull();
+      if (!pullResult.success) {
+        return pullResult;
+      }
+
+      // Step 2: Add changes
+      const addResult = await this.gitAdd();
+      if (!addResult.success) {
+        return addResult;
+      }
+
+      // Step 3: Commit changes
+      const commitResult = await this.gitCommit();
+      if (!commitResult.success) {
+        return commitResult;
+      }
+
+      // Step 4: Push changes (only if there were changes to commit)
+      if (commitResult.message !== 'No changes to commit') {
+        const pushResult = await this.gitPush();
+        if (!pushResult.success) {
+          return pushResult;
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Sync completed successfully',
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Sync failed: ${error.message}`,
+        needsAttention: true,
+      };
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Perform sync with VS Code progress notification
+   */
+  async syncWithProgress(): Promise<void> {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Chroma Workspace Sync',
+        cancellable: false,
+      },
+      async (progress: vscode.Progress<{ message?: string; increment?: number }>) => {
+        progress.report({ message: 'Syncing with Git repository...' });
+        
+        const result = await this.sync();
+        
+        if (result.success) {
+          vscode.window.showInformationMessage(`Chroma Sync: ${result.message}`);
+        } else {
+          if (result.needsAttention) {
+            vscode.window.showErrorMessage(`Chroma Sync: ${result.message}`);
+          } else {
+            vscode.window.showWarningMessage(`Chroma Sync: ${result.message}`);
+          }
+        }
+      }
+    );
+  }
+
+  /**
+   * Perform a startup pull (pull only, no push)
+   */
+  async startupPull(): Promise<void> {
+    if (!this.isGitSyncEnabled()) {
+      return;
+    }
+
+    try {
+      const gitInstalled = await this.isGitInstalled();
+      if (!gitInstalled) {
+        return; // Silently skip if Git not installed
+      }
+
+      const isRepo = await this.isGitRepository();
+      if (!isRepo) {
+        return; // Silently skip if not a Git repo
+      }
+
+      const pullResult = await this.gitPull();
+      if (pullResult.success) {
+        console.log('Startup pull completed successfully');
+      } else if (pullResult.needsAttention) {
+        vscode.window.showWarningMessage(`Chroma Sync: ${pullResult.message}`);
+      }
+    } catch (error: any) {
+      console.error('Startup pull failed:', error);
+    }
+  }
+
+  /**
+   * Schedule an automatic sync after file changes
+   */
+  private scheduleAutoSync(): void {
+    // Clear existing timeout
+    if (this.autoSyncTimeout) {
+      clearTimeout(this.autoSyncTimeout);
+    }
+
+    // Don't schedule if auto-push is disabled
+    if (!this.isAutoPushEnabled()) {
+      return;
+    }
+
+    // Schedule new sync after debounce delay
+    this.autoSyncTimeout = setTimeout(() => {
+      this.sync().then((result) => {
+        if (!result.success && result.needsAttention) {
+          vscode.window.showErrorMessage(`Chroma Auto-sync: ${result.message}`);
+        }
+      });
+    }, this.DEBOUNCE_DELAY);
+  }
+
+  /**
+   * Start watching for file changes to trigger auto-sync
+   */
+  startWatching(): void {
+    if (!this.isGitSyncEnabled()) {
+      return;
+    }
+
+    // Stop existing watcher if any
+    this.stopWatching();
+
+    const dbDir = this.getDatabaseDirectory();
+    const watchPattern = new vscode.RelativePattern(dbDir, '**/*');
+    
+    this.fileWatcher = vscode.workspace.createFileSystemWatcher(watchPattern);
+
+    this.fileWatcher.onDidChange(() => this.scheduleAutoSync());
+    this.fileWatcher.onDidCreate(() => this.scheduleAutoSync());
+    this.fileWatcher.onDidDelete(() => this.scheduleAutoSync());
+  }
+
+  /**
+   * Stop watching for file changes
+   */
+  stopWatching(): void {
+    if (this.fileWatcher) {
+      this.fileWatcher.dispose();
+      this.fileWatcher = null;
+    }
+
+    if (this.autoSyncTimeout) {
+      clearTimeout(this.autoSyncTimeout);
+      this.autoSyncTimeout = null;
+    }
+  }
+
+  /**
+   * Dispose of resources
+   */
+  dispose(): void {
+    this.stopWatching();
+  }
+}

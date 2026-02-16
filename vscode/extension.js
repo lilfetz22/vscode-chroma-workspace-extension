@@ -26,8 +26,10 @@ const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
 const { addNote, editNote } = require('./Note');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
+const { GitService } = require('../out/src/services/gitService');
 
 let kanbanProvider;
+let gitService;
 let kanbanTreeView;
 let taskProvider;
 let tagsProvider;
@@ -415,6 +417,13 @@ exports.activate = async function activate(context) {
             }
           }
         }
+      }
+    }),
+    vscode.commands.registerCommand('chroma.syncWithGit', async () => {
+      if (gitService) {
+        await gitService.syncWithProgress();
+      } else {
+        vscode.window.showErrorMessage('Chroma Sync: Git service is not initialized');
       }
     })
   );
@@ -856,4 +865,37 @@ exports.activate = async function activate(context) {
       taskScheduler.stop();
     }
   });
+
+  // Initialize Git sync service
+  const dbPath = getDatabaseFilePath();
+  if (dbPath) {
+    gitService = new GitService(dbPath);
+    
+    // Perform startup pull if Git sync is enabled
+    await gitService.startupPull();
+    
+    // Start watching for changes if auto-push is enabled
+    gitService.startWatching();
+    
+    // Register disposal
+    context.subscriptions.push({
+      dispose: () => {
+        if (gitService) {
+          gitService.dispose();
+        }
+      }
+    });
+
+    // Re-initialize watcher when settings change
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration('chroma.sync')) {
+          if (gitService) {
+            gitService.stopWatching();
+            gitService.startWatching();
+          }
+        }
+      })
+    );
+  }
 };

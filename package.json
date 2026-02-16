@@ -200,6 +200,18 @@
             "Sort by last modified date (newest first)",
             "Sort alphabetically by filename (A-Z)"
           ]
+        },
+        "chroma.sync.enableGitSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Git-based synchronization for Chroma Workspace data. When enabled, you can sync your database and notes with a Git repository. Requires the database directory to be initialized as a Git repository with a configured remote.",
+          "order": 100
+        },
+        "chroma.sync.autoPushOnChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically push changes to Git when files are modified (requires enableGitSync to be enabled). Changes are debounced with a 10-second delay.",
+          "order": 101
         }
       }
     },
@@ -338,6 +350,11 @@
       {
         "command": "chroma.editNote",
         "title": "Edit Note"
+      },
+      {
+        "command": "chroma.syncWithGit",
+        "title": "Sync with Git",
+        "icon": "$(sync)"
       }
     ],
     "menus": {
@@ -360,6 +377,11 @@
         {
           "command": "chroma.addNote",
           "when": "view == notes",
+          "group": "navigation"
+        },
+        {
+          "command": "chroma.syncWithGit",
+          "when": "config.chroma.sync.enableGitSync",
           "group": "navigation"
         }
       ],
@@ -559,6 +581,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
+    "@types/node": "^22.0.0",
     "@types/sinon": "^21.0.0",
     "@types/sql.js": "^1.4.9",
     "@types/vscode": "^1.107.0",
