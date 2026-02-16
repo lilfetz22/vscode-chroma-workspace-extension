@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getDebugLogger } from '../logic/DebugLogger';
 
-const execPromise = promisify(exec);
+const execFilePromise = promisify(execFile);
 
 export interface GitSyncResult {
   success: boolean;
@@ -20,7 +20,7 @@ export class GitService {
   private fileWatcher: vscode.FileSystemWatcher | null = null;
   private readonly DEBOUNCE_DELAY = 10000; // 10 seconds
   private readonly MIN_SYNC_INTERVAL = 5000; // Minimum 5 seconds between syncs
-  private gitRepositoryRoot: string | null = null;
+  private gitRepositoryRoot: string | null | undefined = undefined;
 
   constructor(private databasePath: string) {}
 
@@ -74,7 +74,7 @@ export class GitService {
    * Get the Git repository root (caches the result)
    */
   private async getGitRepositoryRoot(): Promise<string | null> {
-    if (this.gitRepositoryRoot === null) {
+    if (this.gitRepositoryRoot === undefined) {
       this.gitRepositoryRoot = await this.findGitRepository();
     }
     return this.gitRepositoryRoot;
@@ -91,16 +91,17 @@ export class GitService {
   /**
    * Execute a Git command in the Git repository root
    */
-  private async executeGitCommand(command: string): Promise<{ stdout: string; stderr: string }> {
+  private async executeGitCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
     const gitRoot = await this.getGitRepositoryRoot();
     if (!gitRoot) {
       getDebugLogger().log('Git Sync: No Git repository root found');
       throw new Error('Git repository not found');
     }
     try {
-      getDebugLogger().log(`Git Sync: Executing command: ${command}`);
+      const commandStr = `git ${args.join(' ')}`;
+      getDebugLogger().log(`Git Sync: Executing command: ${commandStr}`);
       getDebugLogger().log(`Git Sync: Working directory: ${gitRoot}`);
-      const result = await execPromise(command, {
+      const result = await execFilePromise('git', args, {
         cwd: gitRoot,
         timeout: 30000, // 30 second timeout
       });
@@ -112,7 +113,8 @@ export class GitService {
       }
       return result;
     } catch (error: any) {
-      getDebugLogger().log(`Git Sync: Command failed: ${command}`);
+      const commandStr = `git ${args.join(' ')}`;
+      getDebugLogger().log(`Git Sync: Command failed: ${commandStr}`);
       getDebugLogger().log(`Git Sync: Error: ${error.message}`);
       if (error.stderr) {
         getDebugLogger().log(`Git Sync: Error stderr: ${error.stderr}`);
@@ -129,7 +131,7 @@ export class GitService {
    */
   private async isGitInstalled(): Promise<boolean> {
     try {
-      await execPromise('git --version');
+      await execFilePromise('git', ['--version']);
       return true;
     } catch {
       return false;
@@ -141,7 +143,7 @@ export class GitService {
    */
   private async hasUncommittedChanges(): Promise<boolean> {
     try {
-      const { stdout } = await this.executeGitCommand('git status --porcelain');
+      const { stdout } = await this.executeGitCommand(['status', '--porcelain']);
       return stdout.trim().length > 0;
     } catch {
       return false;
@@ -153,7 +155,7 @@ export class GitService {
    */
   private async gitStash(): Promise<GitSyncResult> {
     try {
-      await this.executeGitCommand('git stash push -m "Chroma auto-sync stash"');
+      await this.executeGitCommand(['stash', 'push', '--include-untracked', '-m', 'Chroma auto-sync stash']);
       return {
         success: true,
         message: 'Stashed uncommitted changes',
@@ -171,7 +173,7 @@ export class GitService {
    */
   private async gitStashPop(): Promise<GitSyncResult> {
     try {
-      const { stdout, stderr } = await this.executeGitCommand('git stash pop');
+      const { stdout, stderr } = await this.executeGitCommand(['stash', 'pop']);
       
       // Check for conflicts when popping stash
       if (stderr.includes('CONFLICT') || stdout.includes('CONFLICT')) {
@@ -224,14 +226,14 @@ export class GitService {
       
       try {
         // First, try to fetch from origin
-        await this.executeGitCommand('git fetch origin');
+        await this.executeGitCommand(['fetch', 'origin']);
       } catch (fetchError: any) {
         getDebugLogger().log('Git Sync: Fetch failed, trying simple fetch');
-        await this.executeGitCommand('git fetch');
+        await this.executeGitCommand(['fetch']);
       }
 
       // Get current branch name
-      const { stdout: branchOutput } = await this.executeGitCommand('git branch --show-current');
+      const { stdout: branchOutput } = await this.executeGitCommand(['branch', '--show-current']);
       const currentBranch = branchOutput.trim();
       getDebugLogger().log(`Git Sync: Current branch: ${currentBranch}`);
 
@@ -245,13 +247,13 @@ export class GitService {
 
       // Try to get the upstream branch
       try {
-        const { stdout: upstreamOutput } = await this.executeGitCommand(`git rev-parse --abbrev-ref ${currentBranch}@{upstream}`);
+        const { stdout: upstreamOutput } = await this.executeGitCommand(['rev-parse', '--abbrev-ref', `${currentBranch}@{upstream}`]);
         const upstream = upstreamOutput.trim();
         getDebugLogger().log(`Git Sync: Upstream branch: ${upstream}`);
 
         // Now rebase onto the upstream
         getDebugLogger().log(`Git Sync: Rebasing onto ${upstream}`);
-        const { stdout, stderr } = await this.executeGitCommand(`git rebase ${upstream}`);
+        const { stdout, stderr } = await this.executeGitCommand(['rebase', upstream]);
         
         // Check for conflicts
         if (stderr.includes('CONFLICT') || stdout.includes('CONFLICT')) {
@@ -328,7 +330,20 @@ export class GitService {
    */
   private async gitAdd(): Promise<GitSyncResult> {
     try {
-      await this.executeGitCommand('git add .');
+      // Get the relative path from git root to the database directory
+      const gitRoot = await this.getGitRepositoryRoot();
+      if (!gitRoot) {
+        return {
+          success: false,
+          message: 'Git repository not found',
+        };
+      }
+      
+      const dbDir = this.getDatabaseDirectory();
+      const relativePath = path.relative(gitRoot, dbDir);
+      
+      // Stage only the database directory, not the entire repository
+      await this.executeGitCommand(['add', relativePath]);
       return {
         success: true,
         message: 'Staged changes',
@@ -344,7 +359,7 @@ export class GitService {
   /**
    * Commit changes with a timestamped message
    */
-  private async gitCommit(): Promise<GitSyncResult> {
+  private async gitCommit(): Promise<GitSyncResult & { hadChanges: boolean }> {
     try {
       // Check if there are changes to commit
       const hasChanges = await this.hasUncommittedChanges();
@@ -352,16 +367,18 @@ export class GitService {
         return {
           success: true,
           message: 'No changes to commit',
+          hadChanges: false,
         };
       }
 
       const timestamp = new Date().toISOString();
       const commitMessage = `Chroma Workspace Auto-sync: ${timestamp}`;
-      await this.executeGitCommand(`git commit -m "${commitMessage}"`);
+      await this.executeGitCommand(['commit', '-m', commitMessage]);
       
       return {
         success: true,
         message: 'Committed changes',
+        hadChanges: true,
       };
     } catch (error: any) {
       // If there's nothing to commit, that's not an error
@@ -369,11 +386,13 @@ export class GitService {
         return {
           success: true,
           message: 'No changes to commit',
+          hadChanges: false,
         };
       }
       return {
         success: false,
         message: `Failed to commit changes: ${error.message}`,
+        hadChanges: false,
       };
     }
   }
@@ -383,7 +402,7 @@ export class GitService {
    */
   private async gitPush(): Promise<GitSyncResult> {
     try {
-      const { stdout, stderr } = await this.executeGitCommand('git push');
+      const { stdout, stderr } = await this.executeGitCommand(['push']);
       return {
         success: true,
         message: 'Successfully pushed changes to remote',
@@ -496,7 +515,7 @@ export class GitService {
       getDebugLogger().log(`Git Sync: Commit completed - ${commitResult.message}`);
 
       // Step 4: Push changes (only if there were changes to commit)
-      if (commitResult.message !== 'No changes to commit') {
+      if (commitResult.hadChanges) {
         getDebugLogger().log('Git Sync: Step 4 - Pushing changes');
         const pushResult = await this.gitPush();
         if (!pushResult.success) {
@@ -585,7 +604,6 @@ export class GitService {
       const pullResult = await this.gitPull();
       if (pullResult.success) {
         getDebugLogger().log('Git Sync: Startup pull completed successfully');
-        console.log('Startup pull completed successfully');
       } else if (pullResult.needsAttention) {
         getDebugLogger().log(`Git Sync: Startup pull needs attention: ${pullResult.message}`);
         vscode.window.showWarningMessage(`Chroma Sync: ${pullResult.message}`);
@@ -594,7 +612,6 @@ export class GitService {
       }
     } catch (error: any) {
       getDebugLogger().log(`Git Sync: Startup pull failed: ${error.message}`);
-      console.error('Startup pull failed:', error);
     }
   }
 
@@ -653,17 +670,17 @@ export class GitService {
       });
     };
 
-    this.fileWatcher.onDidChange((uri) => {
+    this.fileWatcher.onDidChange((uri: vscode.Uri) => {
       if (!shouldIgnoreUri(uri)) {
         this.scheduleAutoSync();
       }
     });
-    this.fileWatcher.onDidCreate((uri) => {
+    this.fileWatcher.onDidCreate((uri: vscode.Uri) => {
       if (!shouldIgnoreUri(uri)) {
         this.scheduleAutoSync();
       }
     });
-    this.fileWatcher.onDidDelete((uri) => {
+    this.fileWatcher.onDidDelete((uri: vscode.Uri) => {
       if (!shouldIgnoreUri(uri)) {
         this.scheduleAutoSync();
       }
