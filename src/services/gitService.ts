@@ -19,6 +19,7 @@ export class GitService {
   private fileWatcher: vscode.FileSystemWatcher | null = null;
   private readonly DEBOUNCE_DELAY = 10000; // 10 seconds
   private readonly MIN_SYNC_INTERVAL = 5000; // Minimum 5 seconds between syncs
+  private gitRepositoryRoot: string | null = null;
 
   constructor(private databasePath: string) {}
 
@@ -46,26 +47,57 @@ export class GitService {
   }
 
   /**
-   * Check if the database directory is a Git repository
+   * Find the Git repository root by traversing up from the database directory
    */
-  private async isGitRepository(): Promise<boolean> {
-    try {
-      const dbDir = this.getDatabaseDirectory();
-      const gitDir = path.join(dbDir, '.git');
-      return fs.existsSync(gitDir);
-    } catch (error) {
-      return false;
+  private async findGitRepository(): Promise<string | null> {
+    let currentDir = this.getDatabaseDirectory();
+    const root = path.parse(currentDir).root;
+
+    // Traverse up the directory tree looking for .git
+    while (currentDir !== root) {
+      const gitDir = path.join(currentDir, '.git');
+      if (fs.existsSync(gitDir)) {
+        return currentDir;
+      }
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) {
+        break; // Reached the root without finding .git
+      }
+      currentDir = parentDir;
     }
+
+    return null;
   }
 
   /**
-   * Execute a Git command in the database directory
+   * Get the Git repository root (caches the result)
+   */
+  private async getGitRepositoryRoot(): Promise<string | null> {
+    if (this.gitRepositoryRoot === null) {
+      this.gitRepositoryRoot = await this.findGitRepository();
+    }
+    return this.gitRepositoryRoot;
+  }
+
+  /**
+   * Check if we can find a Git repository
+   */
+  private async isGitRepository(): Promise<boolean> {
+    const gitRoot = await this.getGitRepositoryRoot();
+    return gitRoot !== null;
+  }
+
+  /**
+   * Execute a Git command in the Git repository root
    */
   private async executeGitCommand(command: string): Promise<{ stdout: string; stderr: string }> {
-    const dbDir = this.getDatabaseDirectory();
+    const gitRoot = await this.getGitRepositoryRoot();
+    if (!gitRoot) {
+      throw new Error('Git repository not found');
+    }
     try {
       return await execPromise(command, {
-        cwd: dbDir,
+        cwd: gitRoot,
         timeout: 30000, // 30 second timeout
       });
     } catch (error: any) {
@@ -260,11 +292,11 @@ export class GitService {
         };
       }
 
-      const isRepo = await this.isGitRepository();
-      if (!isRepo) {
+      const gitRoot = await this.getGitRepositoryRoot();
+      if (!gitRoot) {
         return {
           success: false,
-          message: `The database directory (${this.getDatabaseDirectory()}) is not a Git repository. Please initialize it with 'git init' and configure a remote.`,
+          message: `No Git repository found for the database at ${this.getDatabaseDirectory()}. Please initialize a Git repository in this directory or a parent directory with 'git init' and configure a remote.`,
           needsAttention: true,
         };
       }
@@ -395,7 +427,7 @@ export class GitService {
   /**
    * Start watching for file changes to trigger auto-sync
    */
-  startWatching(): void {
+  async startWatching(): Promise<void> {
     if (!this.isGitSyncEnabled()) {
       return;
     }
@@ -403,8 +435,10 @@ export class GitService {
     // Stop existing watcher if any
     this.stopWatching();
 
-    const dbDir = this.getDatabaseDirectory();
-    const watchPattern = new vscode.RelativePattern(dbDir, '**/*');
+    // Watch the Git repository root if found, otherwise watch database directory
+    const gitRoot = await this.getGitRepositoryRoot();
+    const watchDir = gitRoot || this.getDatabaseDirectory();
+    const watchPattern = new vscode.RelativePattern(watchDir, '**/*');
     
     this.fileWatcher = vscode.workspace.createFileSystemWatcher(watchPattern);
 

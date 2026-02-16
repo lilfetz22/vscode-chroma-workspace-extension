@@ -875,7 +875,7 @@ exports.activate = async function activate(context) {
     await gitService.startupPull();
     
     // Start watching for changes if auto-push is enabled
-    gitService.startWatching();
+    await gitService.startWatching();
     
     // Register disposal
     context.subscriptions.push({
@@ -888,11 +888,11 @@ exports.activate = async function activate(context) {
 
     // Re-initialize watcher when settings change
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
+      vscode.workspace.onDidChangeConfiguration(async (event) => {
         if (event.affectsConfiguration('chroma.sync')) {
           if (gitService) {
             gitService.stopWatching();
-            gitService.startWatching();
+            await gitService.startWatching();
           }
         }
       })
