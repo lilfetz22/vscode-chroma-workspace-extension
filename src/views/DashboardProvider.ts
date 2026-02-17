@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { getAllBoards, getColumnsByBoardId, getCardsByColumnId, getAllTags, getTagsByCardId, prepare } from '../database';
 import { Task } from '../models/Task';
 import { getNotesFolder } from '../utils/notesFolder';
+import { getSettingsService } from '../logic/SettingsService';
 
 /**
  * Message types that can be sent from the webview
@@ -102,39 +103,60 @@ export class DashboardProvider {
      */
     private static async handleMessage(message: WebviewMessage): Promise<void> {
         console.log('handleMessage called with type:', message.type);
-        switch (message.type) {
-            case 'getData':
-                console.log('getData message received, calling sendData()');
-                await DashboardProvider.sendData();
-                console.log('sendData() completed');
-                break;
-            case 'openNote':
-                console.log('openNote message received for path:', message.path);
-                if (message.path) {
-                    const uri = vscode.Uri.file(message.path);
-                    await vscode.window.showTextDocument(uri);
-                }
-                break;
-            case 'executeCommand':
-                console.log('executeCommand message received for command:', message.command);
-                // Whitelist of allowed commands for security
-                const allowedCommands = [
-                    'chroma.addBoard',
-                    'chroma.addTask',
-                    'chroma.addTag',
-                    'chroma.addNote',
-                    'chroma.refreshKanban',
-                    'chroma.refreshTasks',
-                    'chroma.refreshTags',
-                    'chroma.refreshNotes'
-                ];
-                
-                if (message.command && allowedCommands.includes(message.command)) {
-                    await vscode.commands.executeCommand(message.command, message.args);
-                } else if (message.command) {
-                    console.warn(`Dashboard: Attempted to execute non-whitelisted command: ${message.command}`);
-                }
-                break;
+        try {
+            switch (message.type) {
+                case 'getData':
+                    console.log('getData message received, calling sendData()');
+                    await DashboardProvider.sendData();
+                    console.log('sendData() completed');
+                    break;
+                case 'openNote':
+                    console.log('openNote message received for path:', message.path);
+                    if (message.path) {
+                        const uri = vscode.Uri.file(message.path);
+                        await vscode.window.showTextDocument(uri);
+                    }
+                    break;
+                case 'executeCommand':
+                    console.log('executeCommand message received for command:', message.command);
+                    // Whitelist of allowed commands for security
+                    const allowedCommands = [
+                        'chroma.addBoard',
+                        'chroma.addTask',
+                        'chroma.addTag',
+                        'chroma.addNote',
+                        'chroma.refreshKanban',
+                        'chroma.refreshTasks',
+                        'chroma.refreshTags',
+                        'chroma.refreshNotes',
+                        'chroma.addColumn',
+                        'chroma.editColumn',
+                        'chroma.deleteColumn',
+                        'chroma.hideColumn',
+                        'chroma.showColumn',
+                        'chroma.addCard',
+                        'chroma.editCard',
+                        'chroma.deleteCard',
+                        'chroma.moveCard',
+                        'chroma.convertCardToTask',
+                        'chroma.editCardCompletedDate',
+                        'chroma.convertTaskToCard',
+                        'chroma.editTask',
+                        'chroma.deleteTask'
+                    ];
+                    
+                    if (message.command && allowedCommands.includes(message.command)) {
+                        await vscode.commands.executeCommand(message.command, message.args);
+                        // Refresh the dashboard after command execution
+                        DashboardProvider.refresh();
+                    } else if (message.command) {
+                        console.warn(`Dashboard: Attempted to execute non-whitelisted command: ${message.command}`);
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('Error in handleMessage():', error);
+            vscode.window.showErrorMessage(`Dashboard error: ${error}`);
         }
     }
 
@@ -150,6 +172,9 @@ export class DashboardProvider {
 
         console.log('sendData(): currentPanel exists, fetching workspace data');
         try {
+            // Get settings
+            const completionColumn = getSettingsService().getKanbanSettings().completionColumn;
+            
             // Get all workspace data
             console.log('Fetching boards...');
             const boards = getAllBoards();
@@ -169,14 +194,27 @@ export class DashboardProvider {
 
             // If there are no boards, we can skip enrichment
             let enrichedBoards: any[] = [];
+            let hiddenColumnsByBoard: Map<string, any[]> = new Map();
             if (boards.length > 0) {
                 const boardIds = boards.map(board => board.id);
 
-                // Fetch all columns for all boards in a single query
+                // Fetch all columns for all boards in a single query (excluding hidden columns)
                 const boardPlaceholders = boardIds.map(() => '?').join(',');
                 const allColumns: any[] = prepare(
-                    `SELECT * FROM columns WHERE board_id IN (${boardPlaceholders})`
+                    `SELECT * FROM columns WHERE board_id IN (${boardPlaceholders}) AND (hidden = 0 OR hidden IS NULL)`
                 ).all(...boardIds);
+
+                // Also fetch hidden columns separately
+                const hiddenColumns: any[] = prepare(
+                    `SELECT * FROM columns WHERE board_id IN (${boardPlaceholders}) AND hidden = 1`
+                ).all(...boardIds);
+
+                // Group hidden columns by board ID
+                for (const column of hiddenColumns) {
+                    const list = hiddenColumnsByBoard.get(column.board_id) ?? [];
+                    list.push(column);
+                    hiddenColumnsByBoard.set(column.board_id, list);
+                }
 
                 const columnsByBoardId = new Map<any, any[]>();
                 for (const column of allColumns) {
@@ -245,12 +283,23 @@ export class DashboardProvider {
                 tagsCount: tags.length,
                 notesCount: notes.length
             });
+            
+            // Convert hiddenColumnsByBoard Map to object for JSON serialization
+            const hiddenColumnsObj: {[key: string]: any[]} = {};
+            hiddenColumnsByBoard.forEach((columns, boardId) => {
+                hiddenColumnsObj[boardId] = columns;
+            });
+            
             DashboardProvider.currentPanel.webview.postMessage({
                 type: 'data',
                 boards: enrichedBoards,
                 tasks: tasks,
                 tags: tags,
-                notes: notes
+                notes: notes,
+                hiddenColumns: hiddenColumnsObj,
+                settings: {
+                    completionColumn: completionColumn
+                }
             });
             console.log('Data sent to webview successfully');
         } catch (error) {
@@ -341,13 +390,12 @@ export class DashboardProvider {
         .section {
             margin-bottom: 30px;
             padding: 15px;
-            background-color: var(--vscode-editor-inactiveSelectionBackground);
+            border: 1px solid var(--vscode-panel-border);
             border-radius: 5px;
         }
         .board {
             margin-bottom: 20px;
             padding: 10px;
-            background-color: var(--vscode-input-background);
             border: 1px solid var(--vscode-panel-border);
             border-radius: 5px;
         }
@@ -364,19 +412,53 @@ export class DashboardProvider {
             border: 1px solid var(--vscode-panel-border);
             border-radius: 3px;
         }
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
         .column h4 {
-            margin: 0 0 10px 0;
+            margin: 0;
             color: var(--vscode-foreground);
             font-size: 14px;
             font-weight: bold;
+            flex-grow: 1;
+        }
+        .column-actions {
+            display: flex;
+            gap: 4px;
+        }
+        .btn {
+            padding: 4px 8px;
+            border: 1px solid var(--vscode-button-border);
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            cursor: pointer;
+            border-radius: 2px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+        .btn:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+        .btn-sm {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+        .btn-danger {
+            background-color: var(--vscode-errorForeground);
+            color: white;
+        }
+        .btn-danger:hover {
+            opacity: 0.9;
         }
         .card {
             padding: 8px;
             margin-bottom: 8px;
-            background-color: var(--vscode-list-inactiveSelectionBackground);
+            border: 1px solid var(--vscode-panel-border);
             border-left: 3px solid var(--vscode-textLink-foreground);
             border-radius: 3px;
-            cursor: pointer;
         }
         .card:hover {
             background-color: var(--vscode-list-hoverBackground);
@@ -389,6 +471,12 @@ export class DashboardProvider {
             font-size: 12px;
             color: var(--vscode-descriptionForeground);
             margin-bottom: 4px;
+        }
+        .card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 8px;
         }
         .card-tags {
             display: flex;
@@ -409,12 +497,20 @@ export class DashboardProvider {
         .task-item, .tag-item, .note-item {
             padding: 8px;
             margin-bottom: 5px;
-            background-color: var(--vscode-list-inactiveSelectionBackground);
+            border: 1px solid var(--vscode-panel-border);
             border-radius: 3px;
             cursor: pointer;
         }
         .task-item:hover, .tag-item:hover, .note-item:hover {
             background-color: var(--vscode-list-hoverBackground);
+        }
+        .note-name {
+            color: var(--vscode-textLink-foreground);
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .note-name:hover {
+            text-decoration: underline;
         }
         .empty-state {
             color: var(--vscode-descriptionForeground);
@@ -450,6 +546,36 @@ export class DashboardProvider {
         .tab-content.active {
             display: block;
         }
+        .hidden-columns-section {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: var(--vscode-editorWidget-background);
+            border: 1px dashed var(--vscode-panel-border);
+            border-radius: 3px;
+        }
+        .hidden-columns-section h4 {
+            margin: 0 0 10px 0;
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+        }
+        .hidden-columns-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .hidden-column-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 8px;
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 3px;
+        }
+        .hidden-column-name {
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+        }
     </style>
 </head>
 <body>
@@ -470,20 +596,28 @@ export class DashboardProvider {
         let currentTab = 'kanban';
         let workspaceData = null;
 
+        console.log('[Webview] Script loaded');
+
         window.addEventListener('load', function() {
+            console.log('[Webview] Load event fired, requesting data...');
             vscode.postMessage({ type: 'getData' });
         });
 
         window.addEventListener('message', function(event) {
             const message = event.data;
+            console.log('[Webview] Received message:', message.type);
             switch (message.type) {
                 case 'data':
+                    console.log('[Webview] Received data, boards:', message.boards?.length, 'tasks:', message.tasks?.length);
                     workspaceData = message;
                     renderContent();
                     break;
                 case 'refresh':
+                    console.log('[Webview] Refresh requested');
                     vscode.postMessage({ type: 'getData' });
                     break;
+                default:
+                    console.log('[Webview] Unknown message type:', message.type);
             }
         });
 
@@ -498,6 +632,43 @@ export class DashboardProvider {
             });
         });
 
+        function attachKanbanHandlers() {
+            // Column action buttons
+            document.querySelectorAll('.column-action-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const command = btn.getAttribute('data-command');
+                    const columnId = btn.getAttribute('data-column-id');
+                    const boardId = btn.getAttribute('data-board-id');
+                    const label = btn.getAttribute('data-label');
+                    executeColumnCommand(command, columnId, boardId, label);
+                });
+            });
+            
+            // Card action buttons
+            document.querySelectorAll('.card-action-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const command = btn.getAttribute('data-command');
+                    const cardId = btn.getAttribute('data-card-id');
+                    const columnId = btn.getAttribute('data-column-id');
+                    const boardId = btn.getAttribute('data-board-id');
+                    const label = btn.getAttribute('data-label');
+                    executeCardCommand(command, cardId, columnId, boardId, label);
+                });
+            });
+        }
+
+        function attachTaskHandlers() {
+            // Task action buttons
+            document.querySelectorAll('.task-action-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    const command = btn.getAttribute('data-command');
+                    const taskId = btn.getAttribute('data-task-id');
+                    const label = btn.getAttribute('data-label');
+                    executeTaskCommand(command, taskId, label);
+                });
+            });
+        }
+
         function renderContent() {
             if (!workspaceData) return;
 
@@ -506,17 +677,32 @@ export class DashboardProvider {
             switch (currentTab) {
                 case 'kanban':
                     content.innerHTML = renderKanban();
+                    attachKanbanHandlers();
                     break;
                 case 'tasks':
                     content.innerHTML = renderTasks();
+                    attachTaskHandlers();
                     break;
                 case 'notes':
                     content.innerHTML = renderNotes();
+                    attachNoteClickHandlers();
                     break;
                 case 'tags':
                     content.innerHTML = renderTags();
                     break;
             }
+        }
+
+        function attachNoteClickHandlers() {
+            const noteItems = document.querySelectorAll('.note-item');
+            noteItems.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    const path = item.getAttribute('data-path');
+                    if (path) {
+                        openNote(path);
+                    }
+                });
+            });
         }
 
         function isValidHexColor(color) {
@@ -528,7 +714,8 @@ export class DashboardProvider {
         }
 
         function renderKanban() {
-            const { boards } = workspaceData;
+            const { boards, settings } = workspaceData;
+            const completionColumnName = (settings && settings.completionColumn) ? settings.completionColumn.toLowerCase().trim() : 'done';
             
             if (!boards || boards.length === 0) {
                 return '<div class="empty-state">No Kanban boards found. Create one from the sidebar!</div>';
@@ -544,17 +731,26 @@ export class DashboardProvider {
                 } else {
                     html += '<div class="columns">';
                     board.columns.forEach(column => {
-                        html += '<div class="column">';
+                        html += '<div class="column" data-column-id="' + column.id + '" data-board-id="' + board.id + '">';
+                        html += '<div class="column-header">';
                         html += '<h4>' + escapeHtml(column.title || column.name) + '</h4>';
+                        html += '<div class="column-actions">';
+                        html += '<button class="btn btn-sm column-action-btn" data-command="chroma.hideColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '" title="Hide column">👁️‍🗨️ Hide</button>';
+                        html += '<button class="btn btn-sm column-action-btn" data-command="chroma.addCard" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '">Add Card</button>';
+                        html += '<button class="btn btn-sm column-action-btn" data-command="chroma.editColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '">Edit</button>';
+                        html += '<button class="btn btn-sm btn-danger column-action-btn" data-command="chroma.deleteColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '">Delete</button>';
+                        html += '</div></div>';
                         
                         if (!column.cards || column.cards.length === 0) {
                             html += '<div class="empty-state">No cards</div>';
                         } else {
+                            const isCompletionColumn = (column.title || column.name).toLowerCase().trim() === completionColumnName;
+                            
                             column.cards.forEach(card => {
-                                html += '<div class="card">';
+                                html += '<div class="card" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '">';
                                 html += '<div class="card-title">' + escapeHtml(card.title) + '</div>';
-                                if (card.description) {
-                                    html += '<div class="card-description">' + escapeHtml(card.description) + '</div>';
+                                if (card.content) {
+                                    html += '<div class="card-description">' + escapeHtml(card.content) + '</div>';
                                 }
                                 if (card.tags && card.tags.length > 0) {
                                     html += '<div class="card-tags">';
@@ -563,12 +759,42 @@ export class DashboardProvider {
                                     });
                                     html += '</div>';
                                 }
+                                
+                                // Card actions
+                                html += '<div class="card-actions">';
+                                html += '<button class="btn btn-sm card-action-btn" data-command="chroma.convertCardToTask" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(card.title) + '">Convert to Task</button>';
+                                html += '<button class="btn btn-sm card-action-btn" data-command="chroma.editCard" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(card.title) + '">Edit</button>';
+                                html += '<button class="btn btn-sm card-action-btn" data-command="chroma.moveCard" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(card.title) + '">Move</button>';
+                                
+                                // Add "Edit Completed Date" button only for completion columns
+                                if (isCompletionColumn) {
+                                    html += '<button class="btn btn-sm card-action-btn" data-command="chroma.editCardCompletedDate" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(card.title) + '">Edit Completed Date</button>';
+                                }
+                                
+                                html += '<button class="btn btn-sm btn-danger card-action-btn" data-command="chroma.deleteCard" data-card-id="' + card.id + '" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(card.title) + '">Delete</button>';
+                                html += '</div>';
                                 html += '</div>';
                             });
                         }
                         
                         html += '</div>';
                     });
+                    html += '</div>';
+                }
+                
+                // Show hidden columns section if there are any
+                const hiddenCols = workspaceData.hiddenColumns && workspaceData.hiddenColumns[board.id];
+                if (hiddenCols && hiddenCols.length > 0) {
+                    html += '<div class="hidden-columns-section">';
+                    html += '<h4>Hidden Columns</h4>';
+                    html += '<div class="hidden-columns-list">';
+                    hiddenCols.forEach(column => {
+                        html += '<div class="hidden-column-item">';
+                        html += '<span class="hidden-column-name">' + escapeHtml(column.title || column.name) + '</span>';
+                        html += '<button class="btn btn-sm" data-command="chroma.showColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '" title="Show column">👁️ Show</button>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
                     html += '</div>';
                 }
                 
@@ -595,6 +821,14 @@ export class DashboardProvider {
                 if (task.dueDate) {
                     html += '<div style="font-size: 11px; margin-top: 4px;">Due: ' + formatDate(task.dueDate) + '</div>';
                 }
+                
+                // Task actions
+                html += '<div class="card-actions">';
+                html += '<button class="btn btn-sm task-action-btn" data-command="chroma.convertTaskToCard" data-task-id="' + task.id + '" data-label="' + escapeAttribute(task.title) + '">Convert to Card</button>';
+                html += '<button class="btn btn-sm task-action-btn" data-command="chroma.editTask" data-task-id="' + task.id + '" data-label="' + escapeAttribute(task.title) + '">Edit</button>';
+                html += '<button class="btn btn-sm btn-danger task-action-btn" data-command="chroma.deleteTask" data-task-id="' + task.id + '" data-label="' + escapeAttribute(task.title) + '">Delete</button>';
+                html += '</div>';
+                
                 html += '</li>';
             });
             html += '</ul></div>';
@@ -630,25 +864,13 @@ export class DashboardProvider {
             let html = '<div class="section"><ul class="note-list">';
             notes.forEach(note => {
                 const safePath = escapeAttribute(note.path);
-                html += '<li class="note-item" data-path="' + safePath + '" onclick="handleNoteClick(this)">';
-                html += '<div><strong>' + escapeHtml(note.name) + '</strong></div>';
+                html += '<li class="note-item" data-path="' + safePath + '">';
+                html += '<div><strong class="note-name">' + escapeHtml(note.name) + '</strong></div>';
                 html += '</li>';
             });
             html += '</ul></div>';
             
             return html;
-        }
-
-        function handleNoteClick(element) {
-            const path = element.getAttribute('data-path');
-            if (path) {
-                openNote(path);
-            }
-        }
-
-        function escapeAttribute(value) {
-            if (!value) return '';
-            return value.replace(/"/g, '&quot;');
         }
 
         function openNote(notePath) {
@@ -664,6 +886,38 @@ export class DashboardProvider {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function escapeAttribute(value) {
+            if (!value) return '';
+            return String(value).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        function executeColumnCommand(command, columnId, boardId, columnTitle) {
+            const args = {
+                columnId: columnId,
+                boardId: boardId,
+                label: columnTitle
+            };
+            vscode.postMessage({ type: 'executeCommand', command: command, args: args });
+        }
+
+        function executeCardCommand(command, cardId, columnId, boardId, cardTitle) {
+            const args = {
+                cardId: cardId,
+                columnId: columnId,
+                boardId: boardId,
+                label: cardTitle
+            };
+            vscode.postMessage({ type: 'executeCommand', command: command, args: args });
+        }
+
+        function executeTaskCommand(command, taskId, taskTitle) {
+            const args = {
+                id: taskId,
+                title: taskTitle
+            };
+            vscode.postMessage({ type: 'executeCommand', command: command, args: args });
         }
     </script>
 </body>
