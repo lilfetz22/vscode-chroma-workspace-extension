@@ -1,3 +1,49 @@
+# [2.21.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.20.0...v2.21.0) (2026-02-16)
+
+
+### Bug Fixes
+
+* early exit from function ([20e691f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/20e691f5145b16f5dcee5c7412522f37c7bcf0ea))
+* **src/services/gitService.ts:** hadChanges not optional return type ([615ec9f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/615ec9fa76b800509f6594984358fc04d2408eed))
+* **sync:** auto-stash uncommitted changes during pull ([94e6d1f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/94e6d1f6446063dde901ab41f6ca18edefb30827))
+* **sync:** traverse parent directories to find Git repository root ([d8a3e3e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d8a3e3e88aa89049de4a4fffb080708dae9c219a))
+
+
+### Features
+
+* **config:** update SQLite database path description to clarify machine-specific setting ([da30e81](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/da30e815cff87708cbca7046754b52d2159e3306))
+* **extension.js:** faster startup for extension ([bbf5f26](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/bbf5f26d814d558f8cf727f856594a8ceaf6c35c))
+* **sync:** add comprehensive logging and fix rebase onto multiple branches error ([49fb7f3](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/49fb7f3672a89a06e4b9ca04a7295c29ee475ae9))
+* **sync:** implement optional Git-based synchronization system ([887b7e7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/887b7e7697152f53ef206d9a6ca98503029cd94e))
+
+# [2.20.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.19.1...v2.20.0) (2026-02-16)
+
+
+### Features
+
+* **launch:** add launch configuration for running the extension ([681667c](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/681667cccb195f062ffd3ce03c12ff4296ed604c))
+
+## [2.19.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.19.0...v2.19.1) (2026-02-14)
+
+
+### Bug Fixes
+
+* **package.json:** revert vs code api version ([384b66a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/384b66ad436905c4940007e8457e7212e5cb8d19))
+
+# [2.19.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.1...v2.19.0) (2026-02-01)
+
+
+### Features
+
+* **tags:** implement case-insensitive alphabetical sorting ([59dc777](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/59dc77737d090e800f0bbddf64b4a17380a0d2e5))
+
+## [2.18.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.18.0...v2.18.1) (2026-01-13)
+
+
+### Bug Fixes
+
+* reschedule recurring tasks when converted to card ([05b8242](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/05b82426920bba81cfb8ad77ac93bd0985c14345))
+
 # [2.18.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.17.0...v2.18.0) (2026-01-07)
 
 

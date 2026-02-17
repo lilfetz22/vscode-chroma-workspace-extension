@@ -608,7 +608,7 @@ export async function convertTaskToCard(task: Task) {
         
         // For recurring tasks, calculate the next due date and update the task
         if (task.recurrence) {
-            const nextDueDate = getNextDueDate(task);
+            const nextDueDate = getNextDueDate(task, true);
             if (nextDueDate) {
                 prepare('UPDATE tasks SET due_date = ? WHERE id = ?').run(nextDueDate.toISOString(), task.id);
                 logger.info(`Recurring task "${task.title}" (ID: ${task.id}) converted to card. Next occurrence scheduled for ${nextDueDate.toISOString()}`);

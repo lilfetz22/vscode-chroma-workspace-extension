@@ -3,7 +3,7 @@
   "displayName": "Chroma Workspace",
   "description": "Comprehensive workspace management with Natural Language Highlighting, Kanban boards, task scheduling, and productivity analytics - all data stored locally",
   "icon": "images/chroma_extension_icon.png",
-  "version": "2.18.0",
+  "version": "2.21.0",
   "publisher": "lilfetz22",
   "repository": "https://github.com/lilfetz22/vscode-chroma-workspace-extension",
   "engines": {
@@ -149,7 +149,8 @@
         "chroma.database.path": {
           "type": "string",
           "default": ".chroma/chroma.db",
-          "description": "Path to the SQLite database file. Use a relative path (e.g., '.chroma/chroma.db') for workspace-local storage, or an absolute path (e.g., 'C:\\Users\\You\\shared.db' or '/home/you/shared.db') to share the database across multiple workspaces."
+          "scope": "machine-overridable",
+          "description": "Path to the SQLite database file. Use a relative path (e.g., '.chroma/chroma.db') for workspace-local storage, or an absolute path (e.g., 'C:\\Users\\You\\shared.db' or '/home/you/shared.db') to share the database across multiple workspaces. This setting is machine-specific and won't sync between devices."
         },
         "chroma.nlh.linkPatterns": {
           "type": "object",
@@ -200,6 +201,18 @@
             "Sort by last modified date (newest first)",
             "Sort alphabetically by filename (A-Z)"
           ]
+        },
+        "chroma.sync.enableGitSync": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Git-based synchronization for Chroma Workspace data. When enabled, you can sync your database and notes with a Git repository. Requires the database directory to be initialized as a Git repository with a configured remote.",
+          "order": 100
+        },
+        "chroma.sync.autoPushOnChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically push changes to Git when files are modified (requires enableGitSync to be enabled). Changes are debounced with a 10-second delay.",
+          "order": 101
         }
       }
     },
@@ -382,6 +395,12 @@
         "command": "chroma.openDashboard",
         "title": "Open Dashboard",
         "category": "Chroma"
+      },
+      {
+        "command": "chroma.syncWithGit",
+        "title": "Sync with Git",
+        "category": "Chroma",
+        "icon": "$(sync)"
       }
     ],
     "menus": {
@@ -404,6 +423,11 @@
         {
           "command": "chroma.addNote",
           "when": "view == notes",
+          "group": "navigation"
+        },
+        {
+          "command": "chroma.syncWithGit",
+          "when": "config.chroma.sync.enableGitSync",
           "group": "navigation"
         }
       ],
@@ -606,26 +630,27 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.2",
+    "@electron/rebuild": "^4.0.3",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
-    "@semantic-release/github": "^12.0.2",
+    "@semantic-release/github": "^12.0.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
+    "@types/node": "^22.0.0",
     "@types/sinon": "^21.0.0",
     "@types/sql.js": "^1.4.9",
     "@types/vscode": "^1.107.0",
     "@vscode/vsce": "^3.7.1",
     "chai": "^6.2.2",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.27.3",
     "jest": "^30.2.0",
     "jest-environment-jsdom": "^30.2.0",
     "mocha": "^11.7.4",
-    "semantic-release": "^25.0.2",
-    "semantic-release-vsce": "^6.0.20",
+    "semantic-release": "^25.0.3",
+    "semantic-release-vsce": "^6.0.24",
     "sinon": "^21.0.1",
-    "sql.js": "^1.13.0",
+    "sql.js": "^1.14.0",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
