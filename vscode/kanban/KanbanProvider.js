@@ -72,15 +72,10 @@ class KanbanProvider {
     }
 
     getColumns(boardId) {
-        const columns = getColumnsByBoardId(boardId, true); // Include hidden columns
+        const columns = getColumnsByBoardId(boardId, true); // Include hidden columns - they're only hidden in WebView, not TreeView
         return columns.map(column => {
-            const isHidden = column.hidden === 1;
-            const titleWithPrefix = isHidden ? `[Hidden] ${column.title}` : column.title;
-            const { label, description } = splitLongText(titleWithPrefix);
-            const collapsibleState = isHidden
-                ? vscode.TreeItemCollapsibleState.None
-                : vscode.TreeItemCollapsibleState.Collapsed;
-            const item = new vscode.TreeItem(label, collapsibleState);
+            const { label, description } = splitLongText(column.title);
+            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
             item.contextValue = 'column';
             item.columnId = column.id;
             item.boardId = boardId;
