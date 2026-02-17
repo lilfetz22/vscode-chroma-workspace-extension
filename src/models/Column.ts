@@ -3,5 +3,6 @@ export interface Column {
     board_id: string;
     title: string;
     position: number;
+    hidden?: number;
     created_at?: string;
 }
