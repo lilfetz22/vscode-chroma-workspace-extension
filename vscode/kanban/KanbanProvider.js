@@ -72,7 +72,7 @@ class KanbanProvider {
     }
 
     getColumns(boardId) {
-        const columns = getColumnsByBoardId(boardId);
+        const columns = getColumnsByBoardId(boardId, true); // Include hidden columns - they're only hidden in WebView, not TreeView
         return columns.map(column => {
             const { label, description } = splitLongText(column.title);
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);

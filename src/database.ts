@@ -777,8 +777,9 @@ const rowToColumn = (row: any): Column => {
 export function createColumn(column: Partial<Column>): Column {
     const db = getDb();
     const id = randomBytes(16).toString('hex');
-    const stmt = prepare('INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)');
-    stmt.run(id, column.title, column.board_id, column.position);
+    const hidden = column.hidden ?? 0;
+    const stmt = prepare('INSERT INTO columns (id, title, board_id, position, hidden) VALUES (?, ?, ?, ?, ?)');
+    stmt.run(id, column.title, column.board_id, column.position, hidden);
     return getColumnById(id);
 }
 
@@ -788,9 +789,12 @@ export function getColumnById(id: string): Column {
     return rowToColumn(row);
 }
 
-export function getColumnsByBoardId(boardId: string): Column[] {
+export function getColumnsByBoardId(boardId: string, includeHidden: boolean = false): Column[] {
     const db = getDb();
-    const rows = prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position').all(boardId);
+    const query = includeHidden 
+        ? 'SELECT * FROM columns WHERE board_id = ? ORDER BY position'
+        : 'SELECT * FROM columns WHERE board_id = ? AND (hidden = 0 OR hidden IS NULL) ORDER BY position';
+    const rows = prepare(query).all(boardId);
     return rows.map(rowToColumn);
 }
 
@@ -808,6 +812,10 @@ export function updateColumn(column: Partial<Column>): Column {
     if (column.position !== undefined) {
         fields.push("position = ?");
         values.push(column.position);
+    }
+    if (column.hidden !== undefined) {
+        fields.push("hidden = ?");
+        values.push(column.hidden);
     }
     if (fields.length === 0) {
         // Nothing to update

@@ -18,8 +18,9 @@ const { KanbanProvider } = require('./kanban/KanbanProvider');
 const { TaskProvider } = require('../out/src/views/TaskProvider');
 const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { NotesProvider } = require('../out/src/views/NotesProvider');
+const { DashboardProvider } = require('../out/src/views/DashboardProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
-const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn, copyBoardId } = require('./kanban/Board');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn, copyBoardId, toggleColumnVisibility } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard, editCardCompletedDate } = require('./kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask, convertTaskToCard } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
@@ -27,6 +28,17 @@ const { addNote, editNote } = require('./Note');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 const { GitService } = require('../out/src/services/gitService');
+
+// Explicit helpers to avoid ambiguous toggle behavior between hide/show commands.
+function hideColumn(column) {
+  // Intended to ensure the column ends up hidden.
+  return toggleColumnVisibility(column, true);
+}
+
+function showColumn(column) {
+  // Intended to ensure the column ends up visible.
+  return toggleColumnVisibility(column, false);
+}
 
 let kanbanProvider;
 let gitService;
@@ -153,31 +165,49 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.addBoard', () => {
         addBoard().then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.editBoard', (board) => {
         editBoard(board).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.deleteBoard', (board) => {
         deleteBoard(board).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.addColumn', (board) => {
         addColumn(board).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.editColumn', (column) => {
         editColumn(column).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.deleteColumn', (column) => {
         deleteColumn(column).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.hideColumn', (column) => {
+        hideColumn(column).then(() => {
+            kanbanProvider.refresh();
+            DashboardProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.showColumn', (column) => {
+        showColumn(column).then(() => {
+            kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.copyBoardId', (board) => {
@@ -186,85 +216,101 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.addCard', (column) => {
       addCard(column).then(() => {
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.editCard', (card) => {
       editCard(card).then(() => {
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.deleteCard', (card) => {
         deleteCard(card).then(() => {
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.moveCard', (card) => {
       moveCard(card).then(() => {
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.editCardCompletedDate', (card) => {
       editCardCompletedDate(card).then(() => {
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.convertCardToTask', (card) => {
       convertCardToTask(card).then(() => {
         taskProvider.refresh();
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.addTask', () => {
       addTask().then(() => {
         taskProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.editTask', (task) => {
       editTask(task).then(() => {
         taskProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.convertTaskToCard', (task) => {
       convertTaskToCard(task).then(() => {
         taskProvider.refresh();
         kanbanProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.completeTask', (task) => {
       completeTask(task).then(() => {
         taskProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.deleteTask', (task) => {
       deleteTask(task).then(() => {
         taskProvider.refresh();
+        DashboardProvider.refresh();
       });
     }),
     vscode.commands.registerCommand('chroma.addTag', () => {
         addTag().then(() => {
             tagsProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.addNote', () => {
         addNote().then(() => {
             notesProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.editNote', (noteFile) => {
         editNote(noteFile).then(() => {
             notesProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.editTag', (tag) => {
         editTag(tag).then(() => {
             tagsProvider.refresh();
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.deleteTag', (tag) => {
         deleteTag(tag).then(() => {
             tagsProvider.refresh();
             kanbanProvider.refresh();
+            DashboardProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.exportAccomplishments', async () => {
@@ -321,6 +367,8 @@ exports.activate = async function activate(context) {
           kanbanProvider.refresh();
           taskProvider.refresh();
           tagsProvider.refresh();
+          notesProvider.refresh();
+          DashboardProvider.refresh();
         } else {
           vscode.window.showErrorMessage(`Import failed: ${result.message}`);
           if (result.errors) {
@@ -417,6 +465,12 @@ exports.activate = async function activate(context) {
             }
           }
         }
+      }
+    }),
+    vscode.commands.registerCommand('chroma.openDashboard', () => {
+      DashboardProvider.show(context);
+      if (typeof DashboardProvider.refresh === 'function') {
+        DashboardProvider.refresh();
       }
     }),
     vscode.commands.registerCommand('chroma.syncWithGit', async () => {

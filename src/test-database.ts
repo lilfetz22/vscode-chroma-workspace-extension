@@ -106,6 +106,7 @@ function createTestTables(db: any): void {
             board_id TEXT NOT NULL,
             title TEXT NOT NULL,
             position INTEGER NOT NULL,
+            hidden INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE
         );
@@ -351,20 +352,25 @@ export function getAllBoards(db: any): Board[] {
 // Column-related functions
 export function createColumn(db: any, column: Partial<Column>): Column {
     const id = column.id || randomBytes(16).toString('hex');
+    const hidden = column.hidden ?? 0;
     const stmt = db.prepare(
-        'INSERT INTO columns (id, title, board_id, position) VALUES (?, ?, ?, ?)'
+        'INSERT INTO columns (id, title, board_id, position, hidden) VALUES (?, ?, ?, ?, ?)'
     );
-    stmt.run(id, column.title, column.board_id, column.position);
+    stmt.run(id, column.title, column.board_id, column.position, hidden);
     return {
         id,
         title: column.title!,
         board_id: column.board_id!,
-        position: column.position!
+        position: column.position!,
+        hidden
     };
 }
 
-export function getColumnsByBoardId(db: any, boardId: string): Column[] {
-    const stmt = db.prepare('SELECT * FROM columns WHERE board_id = ? ORDER BY position');
+export function getColumnsByBoardId(db: any, boardId: string, includeHidden: boolean = false): Column[] {
+    const query = includeHidden 
+        ? 'SELECT * FROM columns WHERE board_id = ? ORDER BY position'
+        : 'SELECT * FROM columns WHERE board_id = ? AND (hidden = 0 OR hidden IS NULL) ORDER BY position';
+    const stmt = db.prepare(query);
         const rows = stmt.all(boardId) as any[];
         // Fallback mapping if legacy schema (name/order_index) still present in an existing test DB
         return rows.map(r => ({
@@ -372,6 +378,7 @@ export function getColumnsByBoardId(db: any, boardId: string): Column[] {
             board_id: r.board_id,
             title: r.title !== undefined ? r.title : r.name,
             position: r.position !== undefined ? r.position : r.order_index,
+            hidden: r.hidden,
             created_at: r.created_at
         })) as Column[];
 }
