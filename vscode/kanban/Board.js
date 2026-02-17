@@ -78,13 +78,15 @@ async function copyBoardId(board) {
     vscode.window.showInformationMessage(`Board ID copied to clipboard: ${board.boardId}`);
 }
 
-async function toggleColumnVisibility(column) {
+async function toggleColumnVisibility(column, desiredHiddenState) {
     if (!column || !column.columnId) {
         vscode.window.showErrorMessage('No column selected');
         return;
     }
     const columnData = getColumnById(column.columnId);
-    const newHiddenState = columnData.hidden ? 0 : 1;
+    const currentHiddenState = columnData && columnData.hidden ? 1 : 0;
+    const hasExplicitState = desiredHiddenState === 0 || desiredHiddenState === 1;
+    const newHiddenState = hasExplicitState ? desiredHiddenState : (currentHiddenState ? 0 : 1);
     updateColumn({ id: column.columnId, hidden: newHiddenState });
     saveDatabase();
 }
