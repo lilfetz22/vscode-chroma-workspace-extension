@@ -460,6 +460,17 @@ const migrations: Migration[] = [
             
             console.log('Sequential position assignment complete');
         }
+    },
+    {
+        version: 13,
+        name: 'add_hidden_column_to_columns',
+        up: (db) => {
+            console.log('Adding hidden column to columns table');
+            db.exec(`
+                ALTER TABLE columns ADD COLUMN hidden INTEGER DEFAULT 0;
+            `);
+            console.log('Hidden column added successfully');
+        }
     }
 ];
 
