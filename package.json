@@ -434,6 +434,16 @@
           "group": "inline"
         },
         {
+          "command": "chroma.hideColumn",
+          "when": "view == kanban && viewItem == column",
+          "group": "inline"
+        },
+        {
+          "command": "chroma.showColumn",
+          "when": "view == kanban && viewItem == hiddenColumn",
+          "group": "inline"
+        },
+        {
           "command": "chroma.deleteColumn",
           "when": "view == kanban && viewItem == column",
           "group": "inline"
