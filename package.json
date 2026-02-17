@@ -225,123 +225,163 @@
     "commands": [
       {
         "command": "chroma.cycleTaskForward",
-        "title": "Task Complete (cycle)"
+        "title": "Task Complete (cycle)",
+        "category": "Chroma"
       },
       {
         "command": "chroma.cycleTaskBackward",
-        "title": "Task Complete (cycle backward)"
+        "title": "Task Complete (cycle backward)",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addCard",
-        "title": "Add Card"
+        "title": "Add Card",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editCard",
-        "title": "Edit Card"
+        "title": "Edit Card",
+        "category": "Chroma"
       },
       {
         "command": "chroma.moveCard",
-        "title": "Move Card"
+        "title": "Move Card",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editCardCompletedDate",
-        "title": "Edit Completed Date"
+        "title": "Edit Completed Date",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addBoard",
-        "title": "Add Board"
+        "title": "Add Board",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editBoard",
-        "title": "Edit Board"
+        "title": "Edit Board",
+        "category": "Chroma"
       },
       {
         "command": "chroma.deleteBoard",
-        "title": "Delete Board"
+        "title": "Delete Board",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addColumn",
-        "title": "Add Column"
+        "title": "Add Column",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editColumn",
-        "title": "Edit Column"
+        "title": "Edit Column",
+        "category": "Chroma"
       },
       {
         "command": "chroma.deleteColumn",
-        "title": "Delete Column"
+        "title": "Delete Column",
+        "category": "Chroma"
+      },
+      {
+        "command": "chroma.hideColumn",
+        "title": "Hide Column",
+        "category": "Chroma"
+      },
+      {
+        "command": "chroma.showColumn",
+        "title": "Show Column",
+        "category": "Chroma"
       },
       {
         "command": "chroma.copyBoardId",
-        "title": "Copy Board Id"
+        "title": "Copy Board Id",
+        "category": "Chroma"
       },
       {
         "command": "chroma.deleteCard",
-        "title": "Delete Card"
+        "title": "Delete Card",
+        "category": "Chroma"
       },
       {
         "command": "chroma.convertCardToTask",
-        "title": "Convert Card to Task"
+        "title": "Convert Card to Task",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addTask",
-        "title": "Add Task"
+        "title": "Add Task",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editTask",
-        "title": "Edit Task"
+        "title": "Edit Task",
+        "category": "Chroma"
       },
       {
         "command": "chroma.convertTaskToCard",
-        "title": "Convert to Card"
+        "title": "Convert to Card",
+        "category": "Chroma"
       },
       {
         "command": "chroma.completeTask",
-        "title": "Complete Task"
+        "title": "Complete Task",
+        "category": "Chroma"
       },
       {
         "command": "chroma.deleteTask",
-        "title": "Delete Task"
+        "title": "Delete Task",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addTag",
-        "title": "Add Tag"
+        "title": "Add Tag",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editTag",
-        "title": "Edit Tag"
+        "title": "Edit Tag",
+        "category": "Chroma"
       },
       {
         "command": "chroma.deleteTag",
-        "title": "Delete Tag"
+        "title": "Delete Tag",
+        "category": "Chroma"
       },
       {
         "command": "chroma.exportAccomplishments",
-        "title": "Export Accomplishments"
+        "title": "Export Accomplishments",
+        "category": "Chroma"
       },
       {
         "command": "chroma.importData",
-        "title": "Chroma: Import Data from JSON"
+        "title": "Import Data from JSON",
+        "category": "Chroma"
       },
       {
         "command": "chroma.exportData",
-        "title": "Chroma: Export Data to JSON"
+        "title": "Export Data to JSON",
+        "category": "Chroma"
       },
       {
         "command": "chroma.search",
-        "title": "Search"
+        "title": "Search",
+        "category": "Chroma"
       },
       {
         "command": "chroma.addNote",
-        "title": "Add Note"
+        "title": "Add Note",
+        "category": "Chroma"
       },
       {
         "command": "chroma.editNote",
-        "title": "Edit Note"
+        "title": "Edit Note",
+        "category": "Chroma"
       },
       {
         "command": "chroma.openDashboard",
-        "title": "Chroma: Open Dashboard"
+        "title": "Open Dashboard",
+        "category": "Chroma"
       }
     ],
     "menus": {
