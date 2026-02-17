@@ -81,7 +81,7 @@ class KanbanProvider {
                 ? vscode.TreeItemCollapsibleState.None
                 : vscode.TreeItemCollapsibleState.Collapsed;
             const item = new vscode.TreeItem(label, collapsibleState);
-            item.contextValue = isHidden ? 'hiddenColumn' : 'column';
+            item.contextValue = 'column';
             item.columnId = column.id;
             item.boardId = boardId;
             if (description) {
