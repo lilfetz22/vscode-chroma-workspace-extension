@@ -77,7 +77,10 @@ class KanbanProvider {
             const isHidden = column.hidden === 1;
             const titleWithPrefix = isHidden ? `[Hidden] ${column.title}` : column.title;
             const { label, description } = splitLongText(titleWithPrefix);
-            const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
+            const collapsibleState = isHidden
+                ? vscode.TreeItemCollapsibleState.None
+                : vscode.TreeItemCollapsibleState.Collapsed;
+            const item = new vscode.TreeItem(label, collapsibleState);
             item.contextValue = isHidden ? 'hiddenColumn' : 'column';
             item.columnId = column.id;
             item.boardId = boardId;
