@@ -20,7 +20,7 @@ const { TagsProvider } = require('../out/src/views/TagsProvider');
 const { NotesProvider } = require('../out/src/views/NotesProvider');
 const { DashboardProvider } = require('../out/src/views/DashboardProvider');
 const { TaskScheduler } = require('../out/src/logic/TaskScheduler');
-const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn, copyBoardId } = require('./kanban/Board');
+const { addBoard, editBoard, deleteBoard, addColumn, editColumn, deleteColumn, copyBoardId, toggleColumnVisibility } = require('./kanban/Board');
 const { addCard, editCard, moveCard, deleteCard, editCardCompletedDate } = require('./kanban/Card');
 const { convertCardToTask, addTask, editTask, completeTask, deleteTask, convertTaskToCard } = require('../out/src/Task');
 const { addTag, editTag, deleteTag, assignTag, removeTag } = require('./Tag');
@@ -176,6 +176,16 @@ exports.activate = async function activate(context) {
     }),
     vscode.commands.registerCommand('chroma.deleteColumn', (column) => {
         deleteColumn(column).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.hideColumn', (column) => {
+        toggleColumnVisibility(column).then(() => {
+            kanbanProvider.refresh();
+        });
+    }),
+    vscode.commands.registerCommand('chroma.showColumn', (column) => {
+        toggleColumnVisibility(column).then(() => {
             kanbanProvider.refresh();
         });
     }),
