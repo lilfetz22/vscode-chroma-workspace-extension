@@ -28,6 +28,17 @@ const { addNote, editNote } = require('./Note');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 
+// Explicit helpers to avoid ambiguous toggle behavior between hide/show commands.
+function hideColumn(column) {
+  // Intended to ensure the column ends up hidden.
+  return toggleColumnVisibility(column, true);
+}
+
+function showColumn(column) {
+  // Intended to ensure the column ends up visible.
+  return toggleColumnVisibility(column, false);
+}
+
 let kanbanProvider;
 let kanbanTreeView;
 let taskProvider;
@@ -179,17 +190,6 @@ exports.activate = async function activate(context) {
             kanbanProvider.refresh();
         });
     }),
-    // Explicit helpers to avoid ambiguous toggle behavior between hide/show commands.
-    function hideColumn(column) {
-        // Intended to ensure the column ends up hidden.
-        return toggleColumnVisibility(column, true);
-    }
-
-    function showColumn(column) {
-        // Intended to ensure the column ends up visible.
-        return toggleColumnVisibility(column, false);
-    }
-
     vscode.commands.registerCommand('chroma.hideColumn', (column) => {
         hideColumn(column).then(() => {
             kanbanProvider.refresh();
