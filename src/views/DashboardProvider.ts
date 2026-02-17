@@ -791,7 +791,7 @@ export class DashboardProvider {
                     hiddenCols.forEach(column => {
                         html += '<div class="hidden-column-item">';
                         html += '<span class="hidden-column-name">' + escapeHtml(column.title || column.name) + '</span>';
-                        html += '<button class="btn btn-sm" data-command="chroma.showColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '" title="Show column">👁️ Show</button>';
+                        html += '<button class="btn btn-sm column-action-btn" data-command="chroma.showColumn" data-column-id="' + column.id + '" data-board-id="' + board.id + '" data-label="' + escapeAttribute(column.title) + '" title="Show column">👁️ Show</button>';
                         html += '</div>';
                     });
                     html += '</div>';
