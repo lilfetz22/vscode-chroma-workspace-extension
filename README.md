@@ -170,7 +170,7 @@ For a full-screen workspace view, open the **Chroma Workspace Dashboard**:
 - Move it to a separate editor group or window by dragging the tab
 
 **Dashboard Features:**
-- **Tabbed Interface**: Switch between Kanban, Tasks, and Tags views
+- **Tabbed Interface**: Switch between Notes, Kanban, Tasks, and Tags views
 - **All Boards at Once**: View all your Kanban boards with their columns and cards
 - **Task Overview**: See all scheduled tasks in one place
 - **Tag Management**: Browse all tags with color indicators
