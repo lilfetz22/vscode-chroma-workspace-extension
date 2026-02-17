@@ -179,13 +179,24 @@ exports.activate = async function activate(context) {
             kanbanProvider.refresh();
         });
     }),
+    // Explicit helpers to avoid ambiguous toggle behavior between hide/show commands.
+    function hideColumn(column) {
+        // Intended to ensure the column ends up hidden.
+        return toggleColumnVisibility(column, true);
+    }
+
+    function showColumn(column) {
+        // Intended to ensure the column ends up visible.
+        return toggleColumnVisibility(column, false);
+    }
+
     vscode.commands.registerCommand('chroma.hideColumn', (column) => {
-        toggleColumnVisibility(column).then(() => {
+        hideColumn(column).then(() => {
             kanbanProvider.refresh();
         });
     }),
     vscode.commands.registerCommand('chroma.showColumn', (column) => {
-        toggleColumnVisibility(column).then(() => {
+        showColumn(column).then(() => {
             kanbanProvider.refresh();
         });
     }),
