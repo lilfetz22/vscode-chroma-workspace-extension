@@ -362,7 +362,7 @@ async function moveCard(card) {
         }
     }
 
-    const columns = getColumnsByBoardId(card.boardId);
+    const columns = getColumnsByBoardId(card.boardId, true); // Include hidden columns so they can be moved to
     const columnNames = columns.map(column => column.title);
     const selectedColumnName = await vscode.window.showQuickPick(columnNames, { placeHolder: 'Select a column to move the card to' });
     
