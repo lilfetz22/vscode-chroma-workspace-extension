@@ -72,11 +72,13 @@ class KanbanProvider {
     }
 
     getColumns(boardId) {
-        const columns = getColumnsByBoardId(boardId);
+        const columns = getColumnsByBoardId(boardId, true); // Include hidden columns
         return columns.map(column => {
-            const { label, description } = splitLongText(column.title);
+            const isHidden = column.hidden === 1;
+            const titleWithPrefix = isHidden ? `[Hidden] ${column.title}` : column.title;
+            const { label, description } = splitLongText(titleWithPrefix);
             const item = new vscode.TreeItem(label, vscode.TreeItemCollapsibleState.Collapsed);
-            item.contextValue = 'column';
+            item.contextValue = isHidden ? 'hiddenColumn' : 'column';
             item.columnId = column.id;
             item.boardId = boardId;
             if (description) {
