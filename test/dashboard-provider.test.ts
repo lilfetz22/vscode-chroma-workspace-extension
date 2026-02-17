@@ -156,6 +156,12 @@ describe('DashboardProvider', () => {
         });
 
         it('should handle getData message and send enriched data', async () => {
+            // Mock the SettingsService module for this test
+            const SettingsService = require('../src/logic/SettingsService');
+            const mockGetSettingsService = jest.spyOn(SettingsService, 'getSettingsService').mockReturnValue({
+                getKanbanSettings: () => ({ completionColumn: 'Done' })
+            });
+            
             const mockBoards = [
                 { id: 'board1', name: 'Test Board' }
             ];
@@ -221,9 +227,15 @@ describe('DashboardProvider', () => {
                                 })
                             ])
                         })
-                    ])
+                    ]),
+                    settings: expect.objectContaining({
+                        completionColumn: expect.any(String)
+                    })
                 })
             );
+            
+            // Restore the mock
+            mockGetSettingsService.mockRestore();
         });
 
         it('should handle openNote message and open the note file', async () => {
