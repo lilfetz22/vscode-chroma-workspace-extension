@@ -1,3 +1,34 @@
+# [2.22.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.21.0...v2.22.0) (2026-02-17)
+
+
+### Bug Fixes
+
+* **columns:** enforce deterministic behavior for hide and show commands ([7eae536](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/7eae536dad3167929713b0799b359044816eda82))
+* **dashboard:** correct property access for task due dates ([2d4c53a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/2d4c53a2fbce3d87833a73c2e9b7d289a14b6f8f))
+* **DashboardProvider:** add the missing column-action-btn class ([7cf5f83](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/7cf5f83c3884d04fdcd588f0602cc43282d77a34))
+* **kanban/card:** include hidden columns when moving a card ([6809c0b](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/6809c0b9327e28a400a807f332347b069332c6af))
+* **kanban:** disable expansion for hidden columns in tree view ([95fddf5](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/95fddf5043394406664a4f040df39160e288be78))
+* **kanban:** restore context menus for hidden columns ([772be27](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/772be27355acada0e655f6f15e3fbe4f366fd9cf))
+* nested loop in DashboardProvider.ts ([f864c0b](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f864c0b546c9cad9394ffcc1733c81116de604d1))
+* **src/views/DashboardProvider:** remove unsafe-inline ([6f92b59](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/6f92b59d704157738e8b07f1d2d7cf0d3b35139a))
+
+
+### Features
+
+* **activation:** refresh Dashboard & notes view after data changes ([f35c21f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f35c21ffbbdcb3132d939528fdd884fb3bd4230c))
+* **dashboard:** add column-visibility, action buttons and settings-aware UI ([bea14d1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/bea14d1df056d3d056e00b5c3775a1edaa480d2f))
+* **dashboard:** add logging, tighten CSP & harden note handling ([d7c355f](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d7c355f72a68682f3cbdcc0c61970cbe4382ccd5))
+* **dashboard:** add Notes tab and enhance security ([284bea4](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/284bea462914693b36b988084d7be4afb745b8c6))
+* **dashboard:** add webview-based dashboard command ([706256a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/706256aaaab41a40f2014c25ad0138a3ccbc1472))
+* **database:** support `hidden` flag for columns and use case-insensitive tag ordering ([80a9eea](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/80a9eea8e64bf6a46cbcbaea6e2f65614d7409c6))
+* **kanban-provider:** surface hidden columns in tree view ([8f084f5](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/8f084f5f5b13492f725398e02c3c447243659989))
+* **kanban:** add `toggleColumnVisibility` and strengthen input validation in Board UI ([ba4c2e7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/ba4c2e7e138312fef2059a02fb32b0eaf2ec17e4))
+* **kanban:** add commands to hide and show columns in kanban view ([d1c8073](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/d1c80731a3d0c2b766f9c29f55524402e2d9622f))
+* **launch:** add launch configuration for running the extension ([fb4cdcc](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/fb4cdcc2e8ab6a94dfa647852b0f478acef326a4))
+* **migrations:** add v13 migration to add `hidden` column to `columns` ([77208c1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/77208c1a86b184e1f15a6ada259abee65854d136))
+* **models:** add optional `hidden` property to `Column` model ([1040e4a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/1040e4a78b7e838065194cdded6572c47673260a))
+* **vscode:** register hide/show column commands and expose toggleColumnVisibility ([e06844a](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/e06844aaba93c65740e1285404e9ff59622f9fc8))
+
 # [2.21.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.20.0...v2.21.0) (2026-02-16)
 
 
