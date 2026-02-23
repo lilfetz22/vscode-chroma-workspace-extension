@@ -912,30 +912,44 @@ exports.activate = async function activate(context) {
     )
   );
 
-  const taskScheduler = TaskScheduler.getInstance();
-  taskScheduler.start();
-  context.subscriptions.push({
-    dispose: () => {
-      taskScheduler.stop();
-    }
-  });
+  // Helper that starts the task scheduler and registers its disposal.
+  // Called after the startup git pull so that scheduled-task→card conversions
+  // operate on the latest pulled database, preventing duplicate cards when the
+  // same workspace is opened on multiple machines.
+  const startTaskScheduler = () => {
+    const taskScheduler = TaskScheduler.getInstance();
+    taskScheduler.start();
+    context.subscriptions.push({
+      dispose: () => {
+        taskScheduler.stop();
+      }
+    });
+  };
 
   // Initialize Git sync service
   const dbPath = getDatabaseFilePath();
   if (dbPath) {
     gitService = new GitService(dbPath);
 
-    // Perform startup sync in the background so activation is not blocked
+    // Perform startup pull first (background), THEN start the task scheduler so
+    // that any scheduled-task conversions see the up-to-date database state.
     (async () => {
       try {
         // Perform startup pull if Git sync is enabled
         await gitService.startupPull();
+      } catch (error) {
+        console.error('[Chroma] Git startup pull failed:', error);
+        vscode.window.showErrorMessage('Chroma: Git startup sync failed. See logs for details.');
+      } finally {
+        // Always start the task scheduler regardless of whether the pull succeeded.
+        startTaskScheduler();
+      }
 
-        // Start watching for changes if auto-push is enabled
+      // Start watching for changes if auto-push is enabled (non-blocking)
+      try {
         await gitService.startWatching();
       } catch (error) {
-        console.error('[Chroma] Git startup sync failed:', error);
-        vscode.window.showErrorMessage('Chroma: Git startup sync failed. See logs for details.');
+        console.error('[Chroma] Git watch start failed:', error);
       }
     })();
     // Register disposal
@@ -958,5 +972,6 @@ exports.activate = async function activate(context) {
         }
       })
     );
-  }
-};
+  } else {
+    // No database path resolved — no git service, start the task scheduler immediately.
+    startTaskScheduler();

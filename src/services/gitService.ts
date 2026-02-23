@@ -151,9 +151,47 @@ export class GitService {
   }
 
   /**
+   * Detect whether the repository is mid-merge, mid-rebase, or mid-cherry-pick.
+   * In any of these states, `git stash push` will fail with a fatal error.
+   */
+  private async isRepositoryInMidOperation(): Promise<{ inProgress: boolean; description: string }> {
+    const gitRoot = await this.getGitRepositoryRoot();
+    if (!gitRoot) {
+      return { inProgress: false, description: '' };
+    }
+
+    const indicators: Array<{ file: string; label: string }> = [
+      { file: 'MERGE_HEAD',       label: 'a merge' },
+      { file: 'CHERRY_PICK_HEAD', label: 'a cherry-pick' },
+      { file: 'REVERT_HEAD',      label: 'a revert' },
+      { file: 'rebase-merge',     label: 'a rebase' },
+      { file: 'rebase-apply',     label: 'a rebase (apply)' },
+    ];
+
+    for (const indicator of indicators) {
+      if (fs.existsSync(path.join(gitRoot, '.git', indicator.file))) {
+        getDebugLogger().log(`Git Sync: Repository is mid-operation (${indicator.label})`);
+        return { inProgress: true, description: indicator.label };
+      }
+    }
+
+    return { inProgress: false, description: '' };
+  }
+
+  /**
    * Stash uncommitted changes
    */
   private async gitStash(): Promise<GitSyncResult> {
+    // Guard: stash will always fail if the repo is mid-merge/rebase/cherry-pick
+    const midOp = await this.isRepositoryInMidOperation();
+    if (midOp.inProgress) {
+      return {
+        success: false,
+        message: `Cannot stash changes: repository is in the middle of ${midOp.description}. Please complete or abort the operation manually, then sync again.`,
+        needsAttention: true,
+      };
+    }
+
     try {
       await this.executeGitCommand(['stash', 'push', '--include-untracked', '-m', 'Chroma auto-sync stash']);
       return {
