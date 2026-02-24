@@ -1,3 +1,15 @@
+# [2.23.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.22.0...v2.23.0) (2026-02-24)
+
+
+### Bug Fixes
+
+* add missing closing brace in activate function ([db9fe15](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/db9fe153969dc07fd4c073258f9fbd884c1597bb))
+
+
+### Features
+
+* **git:** add repository state check for mid-merge/rebase/cherry-pick during stash ([ece92cc](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/ece92cc6ef0482ac55d5f0d306534ad8a6b780a4))
+
 # [2.22.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.21.0...v2.22.0) (2026-02-17)
 
 
