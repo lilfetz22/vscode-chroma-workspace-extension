@@ -974,4 +974,5 @@ exports.activate = async function activate(context) {
     );
   } else {
     // No database path resolved — no git service, start the task scheduler immediately.
-    startTaskScheduler();
+    startTaskScheduler();  }
+};
