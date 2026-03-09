@@ -648,9 +648,9 @@
     "jest-environment-jsdom": "^30.2.0",
     "mocha": "^11.7.4",
     "semantic-release": "^25.0.3",
-    "semantic-release-vsce": "^6.0.24",
-    "sinon": "^21.0.1",
-    "sql.js": "^1.14.0",
+    "semantic-release-vsce": "^6.1.0",
+    "sinon": "^21.0.2",
+    "sql.js": "^1.14.1",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
