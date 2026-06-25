@@ -1,12 +1,18 @@
 const vscode = require('vscode');
 const { createBoard, updateBoard, deleteBoard: dbDeleteBoard, createColumn, updateColumn, deleteColumn: dbDeleteColumn, getColumnById, saveDatabase } = require('../../out/src/database');
 
-async function addBoard() {
-    const boardName = await vscode.window.showInputBox({ prompt: 'Enter a name for the new board' });
-    if (boardName) {
-        createBoard({ title: boardName });
-        saveDatabase();
+async function addBoard(arg) {
+    const isApi = arg && arg.__api === true;
+    let title;
+    if (isApi) {
+        title = arg.title;
+    } else {
+        title = await vscode.window.showInputBox({ prompt: 'Enter a name for the new board' });
     }
+    if (!title) return;
+    const board = createBoard({ title });
+    saveDatabase();
+    return board;
 }
 
 async function editBoard(board) {

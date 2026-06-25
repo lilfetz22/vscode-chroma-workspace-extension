@@ -303,7 +303,44 @@ export async function convertCardToTask(card: Card) {
     }
 }
 
-export async function addTask() {
+export async function addTask(arg?: any) {
+    // API path
+    if (arg && arg.__api === true) {
+        const title = arg.title;
+        const description = arg.description !== undefined ? arg.description : null;
+        const dueDate = arg.dueDate;
+        const recurrence = arg.recurrence !== undefined ? arg.recurrence : null;
+
+        let boardId: string | null = null;
+        if (arg.boardId !== undefined) {
+            boardId = arg.boardId;
+        } else {
+            const boards = getAllBoards();
+            if (boards.length === 1) {
+                boardId = boards[0].id;
+            }
+            // If 0 or multiple boards, default to null
+        }
+
+        const id = uuidv4();
+        prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(id, title, description, dueDate, recurrence, boardId);
+
+        if (arg.tagIds && arg.tagIds.length > 0) {
+            for (const tagId of arg.tagIds) {
+                try {
+                    addTagToTask(id, tagId);
+                } catch (err: any) {
+                    console.error(`Failed to add tag ${tagId} to task ${id}:`, err);
+                }
+            }
+        }
+
+        saveDatabase();
+        return { id, title, description, dueDate, recurrence, boardId };
+    }
+
+    // Non-API path (original behavior)
     const title = await vscode.window.showInputBox({
         prompt: 'Enter task title',
     });
@@ -330,22 +367,22 @@ export async function addTask() {
     // Check if there are multiple boards and prompt for board selection
     let boardId: string | null = null;
     const boards = getAllBoards();
-    
+
     if (boards.length > 1) {
         const boardItems = boards.map(board => ({
             label: board.title,
             description: board.id,
             boardId: board.id
         }));
-        
+
         const selectedBoard = await vscode.window.showQuickPick(boardItems, {
             placeHolder: 'Select which board this task should be sent to'
         });
-        
+
         if (!selectedBoard) {
             return; // User cancelled board selection
         }
-        
+
         boardId = selectedBoard.boardId;
     } else if (boards.length === 1) {
         // Only one board exists, use it automatically
@@ -358,7 +395,7 @@ export async function addTask() {
         const id = uuidv4();
         prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
             .run(id, title, description || null, dueDate, recurrence.value, boardId);
-        
+
         // Prompt for tags
         const tagIds = await selectOrCreateTags();
         if (tagIds && tagIds.length > 0) {
@@ -370,7 +407,7 @@ export async function addTask() {
                 }
             }
         }
-        
+
         vscode.window.showInformationMessage('Task added.');
         saveDatabase();
     } catch (err: any) {
@@ -559,7 +596,17 @@ export async function createCardFromTask(task: Task, isManualConversion: boolean
     }
 }
 
-export async function completeTask(task: Task) {
+export async function completeTask(arg?: any) {
+    // API path
+    if (arg && arg.__api === true) {
+        const taskId = arg.taskId;
+        prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', taskId);
+        saveDatabase();
+        return { completed: true, id: taskId };
+    }
+
+    // Non-API path (original behavior)
+    const task = arg;
     if (!task) {
         vscode.window.showErrorMessage('No task selected.');
         return;
@@ -575,7 +622,17 @@ export async function completeTask(task: Task) {
     }
 }
 
-export async function deleteTask(task: Task) {
+export async function deleteTask(arg?: any) {
+    // API path
+    if (arg && arg.__api === true) {
+        const taskId = arg.taskId;
+        prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+        saveDatabase();
+        return { deleted: true, id: taskId };
+    }
+
+    // Non-API path (original behavior)
+    const task = arg;
     if (!task) {
         vscode.window.showErrorMessage('No task selected.');
         return;
