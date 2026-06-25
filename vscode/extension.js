@@ -28,6 +28,7 @@ const { addNote, editNote } = require('./Note');
 const { exportAccomplishments } = require('../out/src/logic/ExportAccomplishments');
 const { importFromJson, exportToJson } = require('../out/src/logic/Migration');
 const { GitService } = require('../out/src/services/gitService');
+const { startApiServer } = require('./server/apiServer');
 
 // Explicit helpers to avoid ambiguous toggle behavior between hide/show commands.
 function hideColumn(column) {
@@ -162,11 +163,11 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.refreshNotes', () => {
       notesProvider.refresh();
     }),
-    vscode.commands.registerCommand('chroma.addBoard', () => {
-        addBoard().then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+    vscode.commands.registerCommand('chroma.addBoard', async (arg) => {
+        const result = await addBoard(arg);
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+        return result;
     }),
     vscode.commands.registerCommand('chroma.editBoard', (board) => {
         editBoard(board).then(() => {
@@ -213,29 +214,29 @@ exports.activate = async function activate(context) {
     vscode.commands.registerCommand('chroma.copyBoardId', (board) => {
         copyBoardId(board);
     }),
-    vscode.commands.registerCommand('chroma.addCard', (column) => {
-      addCard(column).then(() => {
+    vscode.commands.registerCommand('chroma.addCard', async (arg) => {
+      const result = await addCard(arg);
+      kanbanProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
+    }),
+    vscode.commands.registerCommand('chroma.editCard', async (arg) => {
+      const result = await editCard(arg);
+      kanbanProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
+    }),
+    vscode.commands.registerCommand('chroma.deleteCard', async (arg) => {
+        const result = await deleteCard(arg);
         kanbanProvider.refresh();
         DashboardProvider.refresh();
-      });
+        return result;
     }),
-    vscode.commands.registerCommand('chroma.editCard', (card) => {
-      editCard(card).then(() => {
-        kanbanProvider.refresh();
-        DashboardProvider.refresh();
-      });
-    }),
-    vscode.commands.registerCommand('chroma.deleteCard', (card) => {
-        deleteCard(card).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
-    }),
-    vscode.commands.registerCommand('chroma.moveCard', (card) => {
-      moveCard(card).then(() => {
-        kanbanProvider.refresh();
-        DashboardProvider.refresh();
-      });
+    vscode.commands.registerCommand('chroma.moveCard', async (arg) => {
+      const result = await moveCard(arg);
+      kanbanProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.editCardCompletedDate', (card) => {
       editCardCompletedDate(card).then(() => {
@@ -250,11 +251,11 @@ exports.activate = async function activate(context) {
         DashboardProvider.refresh();
       });
     }),
-    vscode.commands.registerCommand('chroma.addTask', () => {
-      addTask().then(() => {
-        taskProvider.refresh();
-        DashboardProvider.refresh();
-      });
+    vscode.commands.registerCommand('chroma.addTask', async (arg) => {
+      const result = await addTask(arg);
+      taskProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.editTask', (task) => {
       editTask(task).then(() => {
@@ -269,17 +270,17 @@ exports.activate = async function activate(context) {
         DashboardProvider.refresh();
       });
     }),
-    vscode.commands.registerCommand('chroma.completeTask', (task) => {
-      completeTask(task).then(() => {
-        taskProvider.refresh();
-        DashboardProvider.refresh();
-      });
+    vscode.commands.registerCommand('chroma.completeTask', async (arg) => {
+      const result = await completeTask(arg);
+      taskProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
-    vscode.commands.registerCommand('chroma.deleteTask', (task) => {
-      deleteTask(task).then(() => {
-        taskProvider.refresh();
-        DashboardProvider.refresh();
-      });
+    vscode.commands.registerCommand('chroma.deleteTask', async (arg) => {
+      const result = await deleteTask(arg);
+      taskProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.addTag', () => {
         addTag().then(() => {
@@ -481,6 +482,22 @@ exports.activate = async function activate(context) {
       }
     })
   );
+
+  // Start localhost HTTP API server so external tools (Claude Code, Copilot)
+  // can drive the extension's commands instead of editing chroma.db directly.
+  if (workspaceRoot) {
+    try {
+      const pkgVersion = require('../package.json').version;
+      const apiServer = await startApiServer({
+        workspaceRoot,
+        version: pkgVersion,
+        debugLog: (msg) => getDebugLogger().log(msg),
+      });
+      context.subscriptions.push({ dispose: () => apiServer.stop() });
+    } catch (e) {
+      getDebugLogger().log('ERROR: Failed to start API server:', e?.message || String(e));
+    }
+  }
 
   // Note: Database initialization is already handled earlier in the activate function (lines 68-82)
   // This duplicate initialization block has been removed to prevent conflicts
