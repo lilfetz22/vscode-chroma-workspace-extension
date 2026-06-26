@@ -98,11 +98,15 @@ exports.activate = async function activate(context) {
       getDebugLogger().log('Initializing database with workspace root');
       await initDatabase(false, workspaceRoot);
       getDebugLogger().log('Database initialized successfully');
-      
+
       // Auto-normalize card positions on startup to fix gaps from deletions/bugs
       getDebugLogger().log('Running card position normalization');
       normalizeAllCardPositions();
       getDebugLogger().log('Card position normalization complete');
+    } else {
+      getDebugLogger().log('No workspace folder open — skipping database init and provider registration');
+      vscode.window.showWarningMessage('Chroma: No workspace folder open. Open a folder to use Chroma Workspace.');
+      return;
     }
   } catch (e) {
     getDebugLogger().log('ERROR: Database initialization failed');
