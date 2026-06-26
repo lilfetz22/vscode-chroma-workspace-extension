@@ -13,11 +13,7 @@ function discoveryPath(workspaceRoot) {
 
 function writeDiscoveryFile(workspaceRoot, info) {
   const dir = path.join(workspaceRoot, '.chroma');
-  try {
-    fs.mkdirSync(dir, { recursive: true });
-  } catch (e) {
-    if (e.code !== 'EEXIST') throw e;
-  }
+  fs.mkdirSync(dir, { recursive: true });
   const filePath = discoveryPath(workspaceRoot);
   const payload = JSON.stringify({
     port: info.port,
