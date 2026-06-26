@@ -131,7 +131,9 @@ function makeRouter({ token, version, debugLog }) {
       }
 
       try {
-        const result = await vscode.commands.executeCommand(commandId, { __api: true, ...body });
+        const cmdArg = Object.assign({}, body);
+        cmdArg.__api = true;
+        const result = await vscode.commands.executeCommand(commandId, cmdArg);
         sendJson(res, 200, { ok: true, data: result ?? null });
       } catch (e) {
         debugLog?.(`api: command ${commandId} failed: ${e?.message || String(e)}`);
