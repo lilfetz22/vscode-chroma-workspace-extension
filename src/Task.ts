@@ -600,7 +600,10 @@ export async function completeTask(arg?: any) {
     // API path
     if (arg && arg.__api === true) {
         const taskId = arg.taskId;
-        prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', taskId);
+        const info = prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', taskId);
+        if (info.changes === 0) {
+            throw new Error(`task not found: ${taskId}`);
+        }
         saveDatabase();
         return { completed: true, id: taskId };
     }
@@ -626,7 +629,10 @@ export async function deleteTask(arg?: any) {
     // API path
     if (arg && arg.__api === true) {
         const taskId = arg.taskId;
-        prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+        const info = prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+        if (info.changes === 0) {
+            throw new Error(`task not found: ${taskId}`);
+        }
         saveDatabase();
         return { deleted: true, id: taskId };
     }
