@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard, removeTagFromCard, getTagsByCardId, getCardsByColumnId, reorderCardsOnInsert, reorderCardsOnRemove, getCardById, saveDatabase } = require('../../out/src/database');
+const { createCard, updateCard, deleteCard: dbDeleteCard, getColumnsByBoardId, addTagToCard, removeTagFromCard, getTagsByCardId, getCardsByColumnId, reorderCardsOnInsert, reorderCardsOnRemove, getCardById, getColumnById, saveDatabase } = require('../../out/src/database');
 const { selectOrCreateTags } = require('../../out/vscode/Tag');
 const { getDebugLogger } = require('../../out/src/logic/DebugLogger');
 const { getSettingsService } = require('../../out/src/logic/SettingsService');
@@ -98,23 +98,61 @@ async function promptForCardPosition(columnId, columnTitle, excludeCardId, curre
     }
 }
 
-async function addCard(column) {
+async function addCard(arg) {
     const debugLog = getDebugLogger();
+
+    // API path
+    if (arg && arg.__api === true) {
+        const columnId = arg.columnId;
+        const cardTitle = arg.title;
+        const content = arg.content || '';
+
+        const col = getColumnById(columnId);
+        const columnTitle = col ? col.title : '';
+        const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+        const isCompletionColumn = columnTitle.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+
+        let position;
+        if (isCompletionColumn) {
+            position = 1;
+        } else {
+            position = arg.position !== undefined ? arg.position : 1;
+            reorderCardsOnInsert(columnId, position);
+        }
+
+        const newCard = createCard({ title: cardTitle, content, column_id: columnId, position, card_type: 'simple', priority: 0 });
+        if (!newCard || !newCard.id) {
+            throw new Error('Failed to create card - no ID returned');
+        }
+
+        const tagIds = arg.tagIds;
+        if (tagIds && tagIds.length > 0) {
+            for (const tagId of tagIds) {
+                addTagToCard(newCard.id, tagId);
+            }
+        }
+
+        saveDatabase();
+        return newCard;
+    }
+
+    // Non-API path (original behavior)
+    const column = arg;
     const cardTitle = await vscode.window.showInputBox({ prompt: 'Enter a title for the new card' });
     if (!cardTitle) {
         return;
     }
     const content = await vscode.window.showInputBox({ prompt: 'Optional: Enter content/context for this card' });
-    
+
     debugLog.log('=== Creating new card ===');
     debugLog.log('Column ID:', column.columnId);
     debugLog.log('Card title:', cardTitle);
     debugLog.log('Column title:', column.label);
-    
+
     // Determine if this is a completion column
     const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
     const isCompletionColumn = column.label.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
-    
+
     let position;
     if (isCompletionColumn) {
         // Completion columns: auto-assign to top (position 1)
@@ -124,28 +162,28 @@ async function addCard(column) {
         // Non-completion columns: prompt user for position
         position = await promptForCardPosition(column.columnId, column.label);
         debugLog.log('User selected position:', position);
-        
+
         // Reorder existing cards to make space for the new card
         reorderCardsOnInsert(column.columnId, position);
     }
-    
+
     const newCard = createCard({ title: cardTitle, content: content || '', column_id: column.columnId, position: position, card_type: 'simple', priority: 0 });
     debugLog.log('createCard returned:', newCard);
-    
+
     // Verify card was created and has an ID
     if (!newCard || !newCard.id) {
         debugLog.log('ERROR: No card or ID returned from createCard');
         vscode.window.showErrorMessage('Failed to create card - no ID returned');
         return;
     }
-    
+
     debugLog.log('Card created successfully with ID:', newCard.id);
-    
+
     // Prompt for tags
     const tagIds = await selectOrCreateTags();
     if (tagIds && tagIds.length > 0) {
         debugLog.log('Selected tag IDs:', tagIds);
-        
+
         for (const tagId of tagIds) {
             try {
                 debugLog.log(`Adding tag ${tagId} to card ${newCard.id}`);
@@ -157,15 +195,54 @@ async function addCard(column) {
             }
         }
     }
-    
+
     // Save database after all operations
     saveDatabase();
     debugLog.log('Database saved after card creation');
 }
 
-async function editCard(card) {
+async function editCard(arg) {
     const debugLog = getDebugLogger();
-    
+
+    // API path
+    if (arg && arg.__api === true) {
+        const cardId = arg.cardId;
+        let current;
+        try {
+            current = getCardById(cardId);
+        } catch (e) {
+            throw new Error('Card not found: ' + cardId);
+        }
+        if (!current) {
+            throw new Error('Card not found: ' + cardId);
+        }
+
+        const updateData = { id: cardId };
+        if (arg.title !== undefined) updateData.title = arg.title;
+        if (arg.content !== undefined) updateData.content = arg.content;
+
+        updateCard(updateData);
+
+        if (arg.tagIds !== undefined) {
+            const existingTags = getTagsByCardId(cardId);
+            const existingTagIds = existingTags.map(t => t.id);
+            const toAdd = arg.tagIds.filter(id => !existingTagIds.includes(id));
+            const toRemove = existingTagIds.filter(id => !arg.tagIds.includes(id));
+            for (const tagId of toAdd) {
+                addTagToCard(cardId, tagId);
+            }
+            for (const tagId of toRemove) {
+                removeTagFromCard(cardId, tagId);
+            }
+        }
+
+        saveDatabase();
+        return getCardById(cardId);
+    }
+
+    // Non-API path (original behavior)
+    const card = arg;
+
     // Check if vacation mode applies for this card's board
     const { getColumnById: _getColumnById, getBoardById: _getBoardById } = require('../../out/src/database');
     const boardIdForEdit = card.boardId || _getColumnById(card.columnId)?.board_id;
@@ -188,13 +265,13 @@ async function editCard(card) {
     } catch (e) {
         // Log error and distinguish between different error types
         console.error('Failed to fetch card for editing:', e);
-        
+
         // If card truly doesn't exist, show error and return
         if (e.message && e.message.includes('does not exist')) {
             vscode.window.showErrorMessage(`Card not found: ${card.label}`);
             return;
         }
-        
+
         // For other errors, log but allow user to continue with current card data
         console.warn('Continuing with fallback card data due to fetch error');
         current = undefined;
@@ -208,11 +285,11 @@ async function editCard(card) {
         value: current?.content || '',
         prompt: 'Optional: Edit content/context for this card'
     });
-    
-    const updateData = { 
-        id: card.cardId, 
-        title: newCardTitle, 
-        content: newContent !== undefined ? newContent : current?.content 
+
+    const updateData = {
+        id: card.cardId,
+        title: newCardTitle,
+        content: newContent !== undefined ? newContent : current?.content
     };
 
     // Check if this is a completion column
@@ -220,24 +297,24 @@ async function editCard(card) {
     const currentColumn = getColumnById(card.columnId);
     const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
     const isCompletionColumn = currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
-    
+
     debugLog.log('=== Editing card position ===');
     debugLog.log(`Current position: ${current?.position}`);
     debugLog.log(`Is completion column: ${isCompletionColumn}`);
-    
+
     // Only allow position editing in non-completion columns
     if (!isCompletionColumn) {
         debugLog.log('Prompting user for new position...');
         const currentPos = current?.position || card.position;
         const newPosition = await promptForCardPosition(card.columnId, currentColumn.title, card.cardId, currentPos);
         debugLog.log(`User selected new position: ${newPosition}`);
-        
+
         const currentPosition = current?.position || card.position;
-        
+
         // Only reorder if position actually changed
         if (newPosition !== currentPosition) {
             debugLog.log(`Position changed from ${currentPosition} to ${newPosition}`);
-            
+
             if (newPosition < currentPosition) {
                 // Moving up: decrement cards between new and old position
                 debugLog.log(`Moving up: decrementing cards from position ${newPosition} to ${currentPosition - 1}`);
@@ -259,14 +336,14 @@ async function editCard(card) {
                     updateCard({ id: c.id, position: c.position - 1 });
                 }
             }
-            
+
             updateData.position = newPosition;
             debugLog.log(`Updated card position to ${newPosition}`);
         }
     } else {
         debugLog.log('Skipping position edit for completion column');
     }
-    
+
     updateCard(updateData);
 
     // Tag editing flow integrated into edit
@@ -309,44 +386,120 @@ async function editCard(card) {
     } catch (e) {
         console.error('Failed during tag edit flow:', e);
     }
-    
+
     // Save database after all operations
     saveDatabase();
     debugLog.log('Database saved after card edit');
 }
 
-async function deleteCard(card) {
+async function deleteCard(arg) {
     const debugLog = getDebugLogger();
+
+    // API path
+    if (arg && arg.__api === true) {
+        const cardId = arg.cardId;
+        const currentCard = getCardById(cardId);
+        if (!currentCard) {
+            throw new Error('Card not found: ' + cardId);
+        }
+        const columnId = currentCard.column_id;
+        const position = currentCard.position;
+        dbDeleteCard(cardId);
+        reorderCardsOnRemove(columnId, position);
+        saveDatabase();
+        return { deleted: true, id: cardId };
+    }
+
+    // Non-API path (original behavior)
+    const card = arg;
     const confirm = await vscode.window.showWarningMessage(`Are you sure you want to delete the card "${card.label}"?`, { modal: true }, 'Delete');
     if (confirm === 'Delete') {
         debugLog.log('Deleting card:', card.cardId);
-        
+
         // Get the card's current position and column before deletion
         const currentCard = getCardById(card.cardId);
         const columnId = currentCard.column_id;
         const position = currentCard.position;
-        
+
         debugLog.log(`Card position: ${position}, column: ${columnId}`);
-        
+
         // Delete the card
         dbDeleteCard(card.cardId);
-        
+
         // Reorder remaining cards in the column
         reorderCardsOnRemove(columnId, position);
         debugLog.log(`Reordered cards in column ${columnId} after deletion`);
-        
+
         saveDatabase();
         debugLog.log('Database saved after card deletion');
     }
 }
 
-async function moveCard(card) {
+async function moveCard(arg) {
     const debugLog = getDebugLogger();
     debugLog.log('\n==================== MOVE CARD START ====================');
+
+    // API path
+    if (arg && arg.__api === true) {
+        const cardId = arg.cardId;
+        const destColumnId = arg.columnId;
+
+        const currentCard = getCardById(cardId);
+        if (!currentCard) {
+            throw new Error('Card not found: ' + cardId);
+        }
+
+        const currentColumn = getColumnById(currentCard.column_id);
+        const destColumn = getColumnById(destColumnId);
+        if (!destColumn) {
+            throw new Error('Column not found: ' + destColumnId);
+        }
+
+        const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
+        const movingToCompletion = destColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
+        const movingFromCompletion = currentColumn ? currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim() : false;
+
+        // STEP 1: Decrement positions in source column
+        const currentPosition = currentCard.position;
+        reorderCardsOnRemove(currentCard.column_id, currentPosition);
+
+        const updateData = { id: cardId, column_id: destColumnId };
+
+        // STEP 2: Determine position in destination column
+        let position;
+        if (movingToCompletion) {
+            position = 1;
+            updateData.completed_at = new Date().toISOString();
+        } else {
+            if (arg.position !== undefined) {
+                position = arg.position;
+            } else {
+                // Default to bottom of destination column
+                position = getCardsByColumnId(destColumnId).length + 1;
+            }
+            if (movingFromCompletion) {
+                updateData.completed_at = null;
+            }
+        }
+
+        // STEP 3: Reorder existing cards in destination column to make space
+        reorderCardsOnInsert(destColumnId, position);
+
+        updateData.position = position;
+
+        // STEP 4: Update card
+        updateCard(updateData);
+
+        saveDatabase();
+        return getCardById(cardId);
+    }
+
+    // Non-API path (original behavior)
+    const card = arg;
     debugLog.log(`Moving card: "${card.label}"`);
     debugLog.log(`Current position: ${card.position}`);
     debugLog.log(`Current column ID: ${card.columnId}`);
-    
+
     // Check if vacation mode applies for this card's board
     const { getBoardById: _getBoardById } = require('../../out/src/database');
     const boardTitleForMove = card.boardId ? _getBoardById?.(card.boardId)?.title : undefined;
@@ -365,7 +518,7 @@ async function moveCard(card) {
     const columns = getColumnsByBoardId(card.boardId, true); // Include hidden columns so they can be moved to
     const columnNames = columns.map(column => column.title);
     const selectedColumnName = await vscode.window.showQuickPick(columnNames, { placeHolder: 'Select a column to move the card to' });
-    
+
     if (selectedColumnName) {
         const selectedColumn = columns.find(column => column.title === selectedColumnName);
         if (selectedColumn) {
@@ -373,37 +526,37 @@ async function moveCard(card) {
             const { getColumnById } = require('../../out/src/database');
             const currentColumn = getColumnById(card.columnId);
             const completionColumnName = getSettingsService().getKanbanSettings().completionColumn;
-            
+
             debugLog.log(`Destination column: "${selectedColumn.title}" (ID: ${selectedColumn.id})`);
             debugLog.log(`Completion column setting: "${completionColumnName}"`);
-            
+
             // Check if moving to or from completion column (case-insensitive and trimmed)
             const movingToCompletion = selectedColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
             const movingFromCompletion = currentColumn.title.toLowerCase().trim() === completionColumnName.toLowerCase().trim();
-            
+
             debugLog.log(`Moving to completion column: ${movingToCompletion}`);
             debugLog.log(`Moving from completion column: ${movingFromCompletion}`);
-            
+
             // STEP 1: Decrement positions of all cards in SOURCE column that are positioned AFTER the current card
             // This effectively removes the card from the source column's position sequence
             debugLog.log('STEP 1: Adjusting positions in source column...');
             const sourceCards = getCardsByColumnId(card.columnId);
             debugLog.log(`Cards in source column before adjustment: ${sourceCards.map(c => `${c.position}:${c.id}`).join(', ')}`);
-            
+
             // Get the current card's position from the database (in case it's changed)
             const currentCard = getCardById(card.cardId);
             const currentPosition = currentCard.position;
             debugLog.log(`Current card position from DB: ${currentPosition}`);
-            
+
             // Decrement positions of cards positioned after the current card in the source column
             reorderCardsOnRemove(card.columnId, currentPosition);
             debugLog.log(`Decremented positions in source column`);
-            
+
             const sourceCardsAfter = getCardsByColumnId(card.columnId);
             debugLog.log(`Cards in source column after adjustment: ${sourceCardsAfter.map(c => `${c.position}:${c.id}`).join(', ')}`);
-            
+
             const updateData = { id: card.cardId, column_id: selectedColumn.id };
-            
+
             // STEP 2: Determine position in destination column
             let position;
             if (movingToCompletion) {
@@ -417,33 +570,33 @@ async function moveCard(card) {
                 const excludeCardId = selectedColumn.id === card.columnId ? card.cardId : undefined;
                 position = await promptForCardPosition(selectedColumn.id, selectedColumn.title, excludeCardId);
                 debugLog.log(`User selected position: ${position}`);
-                
+
                 if (movingFromCompletion) {
                     debugLog.log('Clearing completed_at since moving away from completion column');
                     updateData.completed_at = null;
                 }
             }
-            
+
             // STEP 3: Reorder existing cards in destination column to make space
             debugLog.log(`STEP 3: Reordering cards in destination column at position ${position}...`);
             const destCards = getCardsByColumnId(selectedColumn.id);
             debugLog.log(`Cards in destination column before reorder: ${destCards.map(c => `${c.position}:${c.id}`).join(', ')}`);
-            
+
             reorderCardsOnInsert(selectedColumn.id, position);
-            
+
             const destCardsAfter = getCardsByColumnId(selectedColumn.id);
             debugLog.log(`Cards in destination column after reorder: ${destCardsAfter.map(c => `${c.position}:${c.id}`).join(', ')}`);
-            
+
             updateData.position = position;
-            
+
             debugLog.log(`STEP 4: Updating card with new column (${selectedColumn.id}) and position (${position})`);
             // Update card with new column and position
             updateCard(updateData);
-            
+
             // Save database after all position updates and column changes
             saveDatabase();
             debugLog.log('Database saved after card move');
-            
+
             debugLog.log('==================== MOVE CARD COMPLETE ====================\n');
         }
     } else {

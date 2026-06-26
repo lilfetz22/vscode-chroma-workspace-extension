@@ -280,6 +280,72 @@ Configure where your data is stored:
 
 ---
 
+## External API (Local HTTP)
+
+While the extension is active, it exposes a localhost-only HTTP API so external tools (Claude Code skills, GitHub Copilot, custom scripts) can drive its commands instead of editing `.chroma/chroma.db` directly. Routing mutations through the running extension keeps VS Code's in-memory state authoritative and prevents the silent overwrites that happen when an external writer races with the extension's `saveDatabase()` calls.
+
+### Discovery
+
+On activation the extension writes `<workspace>/.chroma/api.json`:
+
+```json
+{
+  "port": 51873,
+  "token": "<64-char hex>",
+  "pid": 12345,
+  "version": "2.23.0",
+  "startedAt": "2026-06-25T18:00:00.000Z"
+}
+```
+
+The file is rewritten on every activation (token rotates per VS Code session) and deleted on deactivate. `.chroma/` is gitignored, so the token never leaves the machine.
+
+### Endpoints
+
+- `GET /health` — `{ ok, version, pid }`. No auth. Use as a liveness probe.
+- `GET /commands` — discovery list of exposed commands and their parameter schemas. Requires `Authorization: Bearer <token>`.
+- `POST /commands/:commandId` — JSON body of arguments. Requires bearer auth. The server invokes `vscode.commands.executeCommand(commandId, { __api: true, ...body })` and returns `{ ok, data }` on success or `{ ok: false, error }` on failure.
+
+### Security
+
+- Bound to `127.0.0.1` only. Requests whose `Host` header is not `127.0.0.1` or `localhost` get 403.
+- Bearer token required on everything except `/health`. Compared with `crypto.timingSafeEqual`.
+- Only `GET` and `POST` accepted; other methods get 405.
+- Request body capped at 1 MB.
+- No CORS headers (browser callers are blocked intentionally).
+
+### Phase 1 exposed commands
+
+| Command | Required params | Optional params |
+|---|---|---|
+| `chroma.addBoard` | `title` | |
+| `chroma.addCard` | `columnId`, `title` | `content`, `position`, `tagIds[]` |
+| `chroma.editCard` | `cardId` | `title`, `content`, `tagIds[]` |
+| `chroma.moveCard` | `cardId`, `columnId` | `position` |
+| `chroma.deleteCard` | `cardId` | |
+| `chroma.addTask` | `title`, `dueDate` | `description`, `recurrence`, `boardId`, `tagIds[]` |
+| `chroma.completeTask` | `taskId` | |
+| `chroma.deleteTask` | `taskId` | |
+
+### Example
+
+```bash
+PORT=$(jq -r .port .chroma/api.json)
+TOKEN=$(jq -r .token .chroma/api.json)
+
+curl -s http://127.0.0.1:$PORT/health
+curl -s -H "Authorization: Bearer $TOKEN" http://127.0.0.1:$PORT/commands
+curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Created via API"}' \
+  http://127.0.0.1:$PORT/commands/chroma.addBoard
+```
+
+When the extension is not running, `.chroma/api.json` will be absent — external tools should fall back to reading/writing the SQLite file directly.
+
+---
+
 ##  Debugging & Troubleshooting
 
 ### Debug Logging

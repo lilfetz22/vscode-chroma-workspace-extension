@@ -58,7 +58,7 @@ describe('Database Persistence', () => {
             fs.unlinkSync(testDbPath);
         }
         if (fs.existsSync(testDbDir)) {
-            fs.rmdirSync(testDbDir, { recursive: true });
+            fs.rmSync(testDbDir, { recursive: true, force: true });
         }
     });
 
