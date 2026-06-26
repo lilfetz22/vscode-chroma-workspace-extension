@@ -500,6 +500,7 @@ exports.activate = async function activate(context) {
       context.subscriptions.push({ dispose: () => apiServer.stop() });
     } catch (e) {
       getDebugLogger().log('ERROR: Failed to start API server:', e?.message || String(e));
+      vscode.window.showWarningMessage('Chroma: HTTP API failed to start — external tools will not be able to connect.');
     }
   }
 
