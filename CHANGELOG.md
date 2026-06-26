@@ -1,3 +1,23 @@
+# [2.24.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.23.0...v2.24.0) (2026-06-26)
+
+
+### Bug Fixes
+
+* **api:** prevent caller from overriding __api flag via request body ([01c737b](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/01c737bba2fc6c47963b69fc9e0df332bf7aae23))
+* **api:** reject unknown params in validateArgs ([14c0903](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/14c0903b50bc56ef3e20d6760f648f314f69942a))
+* **api:** return 400 on malformed percent-encoded command id ([6830763](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/68307638f4acd288ec054f017705f2719578c172))
+* **api:** return error when completeTask or deleteTask targets a missing id ([f4d6152](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f4d6152cefc09ab5908ed6cf351ead3d0393d7c4))
+* **discovery:** write inactive sentinel when api.json cannot be deleted ([6e05345](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/6e0534527fed113579ce8aaaac76a96658bade3a))
+* **extension:** guard against activation without a workspace folder ([2c3d1d6](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/2c3d1d69f1bca530468a927587514d90c63c2faf))
+* **extension:** warn user when HTTP API fails to start ([b219ab7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/b219ab703894e727aad0d88e1e001432462700c5))
+* **test:** replace deprecated rmdirSync with rmSync for recursive delete ([014ee67](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/014ee674e1a43346ca3c0394e706681f9d5f8413))
+
+
+### Features
+
+* **api:** add localhost HTTP server scaffolding ([ffdb5e1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/ffdb5e18e3d49d750a56526a4b15ee80e02ba21a))
+* **api:** wire HTTP server into extension activation ([6399be7](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/6399be70a88fd5d051bbb4100bf3afcad7726d9f))
+
 # [2.23.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.22.0...v2.23.0) (2026-02-24)
 
 
