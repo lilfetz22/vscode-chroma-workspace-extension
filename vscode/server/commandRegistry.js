@@ -90,6 +90,12 @@ function getCommandSpec(id) {
 function validateArgs(spec, body) {
   const args = body && typeof body === 'object' ? body : {};
   const errors = [];
+  const allowedKeys = new Set(spec.params.map((p) => p.name));
+  for (const key of Object.keys(args)) {
+    if (!allowedKeys.has(key)) {
+      errors.push(`unknown param: ${key}`);
+    }
+  }
   for (const p of spec.params) {
     const present = Object.prototype.hasOwnProperty.call(args, p.name) && args[p.name] !== null && args[p.name] !== undefined;
     if (p.required && !present) {
