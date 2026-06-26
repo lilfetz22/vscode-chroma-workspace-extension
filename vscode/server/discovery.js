@@ -38,7 +38,15 @@ function removeDiscoveryFile(workspaceRoot) {
   try {
     fs.unlinkSync(filePath);
   } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
+    if (e.code === 'ENOENT') return;
+    // Unlink failed (e.g. permission error on Windows). Write a sentinel so
+    // external callers can tell the server is gone even if the file lingers.
+    try {
+      fs.writeFileSync(filePath, JSON.stringify({ active: false }), { encoding: 'utf8' });
+    } catch {
+      // Best-effort; nothing more we can do at shutdown time.
+    }
+    throw e;
   }
 }
 
