@@ -504,9 +504,6 @@ exports.activate = async function activate(context) {
     }
   }
 
-  // Note: Database initialization is already handled earlier in the activate function (lines 68-82)
-  // This duplicate initialization block has been removed to prevent conflicts
-
   vscode.workspace.onDidOpenTextDocument((document) => {
     if (document.languageId === 'notesnlh') {
       try {
