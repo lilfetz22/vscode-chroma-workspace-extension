@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { getDb, prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, reorderCardsOnRemove, getColumnById, getCardById, deleteCard } from './database';
+import { prepare, addTagToTask, removeTagFromTask, getTagsByTaskId, getTagsByCardId, getAllBoards, saveDatabase, createCard, getColumnsByBoardId, createBoard, createColumn, addTagToCard, copyTaskTagsToCard, reorderCardsOnInsert, reorderCardsOnRemove, getColumnById, getCardById, deleteCard } from './database';
 import { v4 as uuidv4 } from 'uuid';
 import { selectOrCreateTags } from '../vscode/Tag';
 import { getSettingsService } from './logic/SettingsService';
@@ -243,7 +243,6 @@ export async function convertCardToTask(card: Card) {
     }
 
     try {
-        const db = getDb();
         const id = uuidv4();
         prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, card_id, board_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
             .run(id, title, description, dueDate, recurrence.value, cardId, boardId);
@@ -391,7 +390,6 @@ export async function addTask(arg?: any) {
     // If no boards exist, boardId remains null
 
     try {
-        const db = getDb();
         const id = uuidv4();
         prepare('INSERT INTO tasks (id, title, description, due_date, recurrence, board_id) VALUES (?, ?, ?, ?, ?, ?)')
             .run(id, title, description || null, dueDate, recurrence.value, boardId);
@@ -475,7 +473,6 @@ export async function editTask(task: Task) {
     // If no boards exist, boardId remains null or task's existing value
 
     try {
-        const db = getDb();
         prepare('UPDATE tasks SET title = ?, description = ?, due_date = ?, recurrence = ?, board_id = ? WHERE id = ?')
           .run(title, description !== undefined ? description : task.description || null, dueDate, recurrence.value, boardId, task.id);
         // Integrated tag editing flow
@@ -616,7 +613,6 @@ export async function completeTask(arg?: any) {
     }
 
     try {
-        const db = getDb();
         prepare('UPDATE tasks SET status = ? WHERE id = ?').run('completed', task.id);
         saveDatabase();
         vscode.window.showInformationMessage('Task completed.');
@@ -645,7 +641,6 @@ export async function deleteTask(arg?: any) {
     }
 
     try {
-        const db = getDb();
         prepare('DELETE FROM tasks WHERE id = ?').run(task.id);
         saveDatabase();
         vscode.window.showInformationMessage('Task deleted.');
