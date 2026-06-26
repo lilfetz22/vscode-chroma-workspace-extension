@@ -103,7 +103,13 @@ function makeRouter({ token, version, debugLog }) {
 
     const postMatch = method === 'POST' && url.match(/^\/commands\/([^/?]+)$/);
     if (postMatch) {
-      const commandId = decodeURIComponent(postMatch[1]);
+      let commandId;
+      try {
+        commandId = decodeURIComponent(postMatch[1]);
+      } catch {
+        sendJson(res, 400, { ok: false, error: 'invalid command id encoding' });
+        return;
+      }
       const spec = getCommandSpec(commandId);
       if (!spec) {
         sendJson(res, 404, { ok: false, error: `command not exposed: ${commandId}` });
