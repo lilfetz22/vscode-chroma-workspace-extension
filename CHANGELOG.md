@@ -1,3 +1,10 @@
+## [2.24.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.24.0...v2.24.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* **discovery:** write api.json to configured database directory ([705668e](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/705668ec76f3cddf641f43aa7caceb613f38aba2))
+
 # [2.24.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.23.0...v2.24.0) (2026-06-26)
 
 
