@@ -7,14 +7,13 @@ const path = require('path');
 
 const FILENAME = 'api.json';
 
-function discoveryPath(workspaceRoot) {
-  return path.join(workspaceRoot, '.chroma', FILENAME);
+function discoveryPath(dbDir) {
+  return path.join(dbDir, FILENAME);
 }
 
-function writeDiscoveryFile(workspaceRoot, info) {
-  const dir = path.join(workspaceRoot, '.chroma');
-  fs.mkdirSync(dir, { recursive: true });
-  const filePath = discoveryPath(workspaceRoot);
+function writeDiscoveryFile(dbDir, info) {
+  fs.mkdirSync(dbDir, { recursive: true });
+  const filePath = discoveryPath(dbDir);
   const payload = JSON.stringify({
     port: info.port,
     token: info.token,
@@ -32,9 +31,9 @@ function writeDiscoveryFile(workspaceRoot, info) {
   return filePath;
 }
 
-function removeDiscoveryFile(workspaceRoot) {
-  if (!workspaceRoot) return;
-  const filePath = discoveryPath(workspaceRoot);
+function removeDiscoveryFile(dbDir) {
+  if (!dbDir) return;
+  const filePath = discoveryPath(dbDir);
   try {
     fs.unlinkSync(filePath);
   } catch (e) {

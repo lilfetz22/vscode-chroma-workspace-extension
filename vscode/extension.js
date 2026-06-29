@@ -493,7 +493,7 @@ exports.activate = async function activate(context) {
     try {
       const pkgVersion = require('../package.json').version;
       const apiServer = await startApiServer({
-        workspaceRoot,
+        dbDir: logDir,
         version: pkgVersion,
         debugLog: (msg) => getDebugLogger().log(msg),
       });

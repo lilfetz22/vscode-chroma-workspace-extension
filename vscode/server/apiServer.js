@@ -146,9 +146,9 @@ function makeRouter({ token, version, debugLog }) {
   };
 }
 
-async function startApiServer({ workspaceRoot, version, debugLog }) {
-  if (!workspaceRoot) {
-    debugLog?.('api: no workspace root, skipping HTTP server start');
+async function startApiServer({ dbDir, version, debugLog }) {
+  if (!dbDir) {
+    debugLog?.('api: no db directory, skipping HTTP server start');
     return { stop: () => {} };
   }
 
@@ -168,7 +168,7 @@ async function startApiServer({ workspaceRoot, version, debugLog }) {
 
   let discoveryFilePath;
   try {
-    discoveryFilePath = writeDiscoveryFile(workspaceRoot, { port, token, version });
+    discoveryFilePath = writeDiscoveryFile(dbDir, { port, token, version });
     debugLog?.(`api: listening on 127.0.0.1:${port}, discovery file: ${discoveryFilePath}`);
   } catch (e) {
     debugLog?.(`api: failed to write discovery file: ${e?.message || String(e)}`);
@@ -186,7 +186,7 @@ async function startApiServer({ workspaceRoot, version, debugLog }) {
         debugLog?.(`api: server close error: ${e?.message || String(e)}`);
       }
       try {
-        removeDiscoveryFile(workspaceRoot);
+        removeDiscoveryFile(dbDir);
       } catch (e) {
         debugLog?.(`api: failed to remove discovery file: ${e?.message || String(e)}`);
       }
