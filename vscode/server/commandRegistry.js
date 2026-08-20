@@ -50,6 +50,14 @@ const EXPOSED_COMMANDS = [
     ],
   },
   {
+    id: 'chroma.addTag',
+    description: 'Create a new tag. Color accepts a CSS color name or #RRGGBB; a random color is used when omitted.',
+    params: [
+      { name: 'name', type: 'string', required: true },
+      { name: 'color', type: 'string', required: false },
+    ],
+  },
+  {
     id: 'chroma.addTask',
     description: 'Create a new scheduled task.',
     params: [
