@@ -168,55 +168,55 @@ exports.activate = async function activate(context) {
       notesProvider.refresh();
     }),
     vscode.commands.registerCommand('chroma.addBoard', async (arg) => {
-        const result = await addBoard(arg);
-        kanbanProvider.refresh();
-        DashboardProvider.refresh();
-        return result;
+      const result = await addBoard(arg);
+      kanbanProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.editBoard', (board) => {
-        editBoard(board).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      editBoard(board).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.deleteBoard', (board) => {
-        deleteBoard(board).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      deleteBoard(board).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.addColumn', (board) => {
-        addColumn(board).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      addColumn(board).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.editColumn', (column) => {
-        editColumn(column).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      editColumn(column).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.deleteColumn', (column) => {
-        deleteColumn(column).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      deleteColumn(column).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.hideColumn', (column) => {
-        hideColumn(column).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      hideColumn(column).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.showColumn', (column) => {
-        showColumn(column).then(() => {
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      showColumn(column).then(() => {
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.copyBoardId', (board) => {
-        copyBoardId(board);
+      copyBoardId(board);
     }),
     vscode.commands.registerCommand('chroma.addCard', async (arg) => {
       const result = await addCard(arg);
@@ -231,10 +231,10 @@ exports.activate = async function activate(context) {
       return result;
     }),
     vscode.commands.registerCommand('chroma.deleteCard', async (arg) => {
-        const result = await deleteCard(arg);
-        kanbanProvider.refresh();
-        DashboardProvider.refresh();
-        return result;
+      const result = await deleteCard(arg);
+      kanbanProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.moveCard', async (arg) => {
       const result = await moveCard(arg);
@@ -286,37 +286,37 @@ exports.activate = async function activate(context) {
       DashboardProvider.refresh();
       return result;
     }),
-    vscode.commands.registerCommand('chroma.addTag', () => {
-        addTag().then(() => {
-            tagsProvider.refresh();
-            DashboardProvider.refresh();
-        });
+    vscode.commands.registerCommand('chroma.addTag', async (arg) => {
+      const result = await addTag(arg);
+      tagsProvider.refresh();
+      DashboardProvider.refresh();
+      return result;
     }),
     vscode.commands.registerCommand('chroma.addNote', () => {
-        addNote().then(() => {
-            notesProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      addNote().then(() => {
+        notesProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.editNote', (noteFile) => {
-        editNote(noteFile).then(() => {
-            notesProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      editNote(noteFile).then(() => {
+        notesProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.editTag', (tag) => {
-        editTag(tag).then(() => {
-            tagsProvider.refresh();
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      editTag(tag).then(() => {
+        tagsProvider.refresh();
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.deleteTag', (tag) => {
-        deleteTag(tag).then(() => {
-            tagsProvider.refresh();
-            kanbanProvider.refresh();
-            DashboardProvider.refresh();
-        });
+      deleteTag(tag).then(() => {
+        tagsProvider.refresh();
+        kanbanProvider.refresh();
+        DashboardProvider.refresh();
+      });
     }),
     vscode.commands.registerCommand('chroma.exportAccomplishments', async () => {
       await exportAccomplishments();
@@ -743,16 +743,16 @@ exports.activate = async function activate(context) {
     const tmLanguageContent = fs.readFileSync(tmLanguagePath, 'utf8');
     const tmLanguage = JSON.parse(tmLanguageContent);
 
-    
+
     const languages = tmLanguage.patterns
-    .filter(pattern => pattern.begin && pattern.begin.includes('\\[') && pattern.begin.includes('\\]'))
-    .map(pattern => {
-      const match = pattern.begin.match(/\\\[(.*?)\\\]/);
-      return match ? match[1].split('|') : [];
-    })
-    .flat();
+      .filter(pattern => pattern.begin && pattern.begin.includes('\\[') && pattern.begin.includes('\\]'))
+      .map(pattern => {
+        const match = pattern.begin.match(/\\\[(.*?)\\\]/);
+        return match ? match[1].split('|') : [];
+      })
+      .flat();
     // console.log(new Set(languages));
-    
+
     return new Set(languages);
   }
 
@@ -801,32 +801,32 @@ exports.activate = async function activate(context) {
       const supportedLanguages = getSupportedLanguages();
       const lines = text.split('\n');
       const specialBlocks = [];
-      
+
       // Detect special blocks
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (line.startsWith('//') || line.startsWith('#') || 
-        line.startsWith('[!]') || line.startsWith('[√]')
+        if (line.startsWith('//') || line.startsWith('#') ||
+          line.startsWith('[!]') || line.startsWith('[√]')
         ) {
-            specialBlocks.push({
-                start: new vscode.Position(i, 0),
-                end: new vscode.Position(i, lines[i].length)
-            });
+          specialBlocks.push({
+            start: new vscode.Position(i, 0),
+            end: new vscode.Position(i, lines[i].length)
+          });
         }
         const languageMatch = line.match(/^\[([^\]]+)\]/);
         if (languageMatch && supportedLanguages.has(languageMatch[1])) {
-            const startIndex = i;
-            while (i < lines.length && !lines[i].includes('[end]') && !lines[i].includes('[/')) {
-                i++;
-            }
-            // console.log('end_of_block:', i, lines[i].length)
-            specialBlocks.push({
-                start: new vscode.Position(startIndex, 0),
-                end: new vscode.Position(i, lines[i].length)
-            });
+          const startIndex = i;
+          while (i < lines.length && !lines[i].includes('[end]') && !lines[i].includes('[/')) {
+            i++;
           }
+          // console.log('end_of_block:', i, lines[i].length)
+          specialBlocks.push({
+            start: new vscode.Position(startIndex, 0),
+            end: new vscode.Position(i, lines[i].length)
+          });
+        }
       }
-  
+
       try {
         const doc = nlp(text);
         const json = doc.json();
@@ -857,21 +857,21 @@ exports.activate = async function activate(context) {
                 lineNumber++;
                 characterNumber = 0;
               } else { //  if (!specialblock)
-                characterNumber++;                
+                characterNumber++;
               }
             }
-              // console.log(`Pushing token: ${term.text}, Type: ${posColors[pos]}, 
-              //   Range: ${range.start.line + 1}:${range.start.character + 1}-${range.end.line + 1}:${range.end.character + 1}`);
-              // console.log('special block', lineNumber, characterNumber, isInSpecialBlock(lineNumber, characterNumber, specialBlocks));
+            // console.log(`Pushing token: ${term.text}, Type: ${posColors[pos]}, 
+            //   Range: ${range.start.line + 1}:${range.start.character + 1}-${range.end.line + 1}:${range.end.character + 1}`);
+            // console.log('special block', lineNumber, characterNumber, isInSpecialBlock(lineNumber, characterNumber, specialBlocks));
             if ((!isInSpecialBlock(lineNumber, characterNumber, specialBlocks)) && (posColors[pos]) &&
               (shouldHighlightPOS(pos, config))) {
-                const range = new vscode.Range(
-                  new vscode.Position(lineNumber, characterNumber),
-                  new vscode.Position(lineNumber, characterNumber + term.text.length)
-                );
-                var specialblock = false;
-                builder.push(range, posColors[pos]);
-              }            
+              const range = new vscode.Range(
+                new vscode.Position(lineNumber, characterNumber),
+                new vscode.Position(lineNumber, characterNumber + term.text.length)
+              );
+              var specialblock = false;
+              builder.push(range, posColors[pos]);
+            }
 
             // Handle the term text, including any embedded punctuation
             // if ((lineNumber === 19) || (lineNumber === 18)) {
@@ -904,7 +904,7 @@ exports.activate = async function activate(context) {
             // if ((lineNumber === 19) || (lineNumber === 18)){
             //   console.log('characterNumber:', lineNumber, characterNumber);
             // }
-            if (isInSpecialBlock(lineNumber, characterNumber, specialBlocks)){
+            if (isInSpecialBlock(lineNumber, characterNumber, specialBlocks)) {
               characterNumber = 0;
               specialblock = true;
               // console.log('lineNumber:', lineNumber, 'characterNumber:', characterNumber);
@@ -918,7 +918,7 @@ exports.activate = async function activate(context) {
         console.error('Error in provideDocumentSemanticTokens:', error);
         return null;
       }
-    }  
+    }
   };
   // Register the semantic tokens provider
   const selector = { language: 'notesnlh', scheme: 'file' };
@@ -993,5 +993,6 @@ exports.activate = async function activate(context) {
     );
   } else {
     // No database path resolved — no git service, start the task scheduler immediately.
-    startTaskScheduler();  }
+    startTaskScheduler();
+  }
 };
