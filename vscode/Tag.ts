@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
-import { createTag, getAllTags, updateTag, deleteTag, addTagToCard, removeTagFromCard, getTagsByCardId, getCardById, getDb, saveDatabase } from '../src/database';
+import { addTagToCard, createTag, deleteTag, getAllTags, getTagsByCardId, removeTagFromCard, saveDatabase, updateTag } from '../src/database';
 import { getDebugLogger } from '../src/logic/DebugLogger';
-import { CSS_COLOR_MAP, CLASSIC_COLORS, normalizeHex as utilNormalizeHex } from '../src/utils/colors';
+import { CLASSIC_COLORS, CSS_COLOR_MAP, normalizeHex as utilNormalizeHex } from '../src/utils/colors';
 
 function normalizeHex(input: string): string | undefined {
     // Try the utility normalizeHex first (handles named colors and hex)
     const normalized = utilNormalizeHex(input);
     if (normalized) return normalized;
-    
+
     // Handle 3-digit hex shorthand (e.g., #abc -> #aabbcc)
-    const v = input.trim().replace(/^#/,'');
+    const v = input.trim().replace(/^#/, '');
     if (/^[0-9a-fA-F]{3}$/.test(v)) {
         const r = v[0]; const g = v[1]; const b = v[2];
         return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
@@ -46,7 +46,7 @@ async function pickColor(initial?: string): Promise<string | undefined> {
         hex?: string;
         colorType: 'classic' | 'custom' | 'random';
     }
-    
+
     const items: ColorPickItem[] = [
         { label: '🎲 Random color', description: 'Choose a random color', colorType: 'random' as const },
         ...CLASSIC_COLORS.map(c => ({ label: c.name, description: c.hex, hex: c.hex, colorType: 'classic' as const })),
@@ -60,7 +60,30 @@ async function pickColor(initial?: string): Promise<string | undefined> {
     return promptForCustomColor(initial);
 }
 
-async function addTag() {
+async function addTag(arg?: any) {
+    // API path
+    if (arg && arg.__api === true) {
+        const name = typeof arg.name === 'string' ? arg.name.trim() : '';
+        if (!name) {
+            throw new Error('Tag name is required');
+        }
+        if (getAllTags().some((t: any) => t.name.toLowerCase() === name.toLowerCase())) {
+            throw new Error(`A tag named "${name}" already exists`);
+        }
+        let color: string | undefined;
+        if (arg.color) {
+            color = normalizeHex(arg.color);
+            if (!color) {
+                throw new Error(`Invalid color: ${arg.color}. Use a CSS color name or #RRGGBB`);
+            }
+        } else {
+            color = getRandomColor();
+        }
+        const tag = createTag({ name, color });
+        saveDatabase();
+        return tag;
+    }
+
     const name = await vscode.window.showInputBox({ prompt: 'Enter tag name' });
     if (!name) {
         return;
@@ -90,19 +113,19 @@ async function deleteTagWithConfirmation(tag: any) {
     const debugLog = getDebugLogger();
     debugLog.log('=== deleteTagWithConfirmation called ===');
     debugLog.log('Tag object:', tag);
-    
+
     // Extract tag ID and name - handle both Tag objects and TreeItem objects
     const tagId = tag?.id;
     const tagName = tag?.name || tag?.label;
-    
+
     debugLog.log('Extracted tagId:', tagId);
     debugLog.log('Extracted tagName:', tagName);
-    
+
     if (!tagId) {
         vscode.window.showErrorMessage('Unable to delete tag: Missing tag id.');
         return;
     }
-    
+
     const confirm = await vscode.window.showQuickPick(['Yes', 'No'], { placeHolder: `Are you sure you want to delete the tag "${tagName}"?` });
     if (confirm === 'Yes') {
         try {
@@ -125,12 +148,12 @@ async function assignTag(card: any) {
     debugLog.log('Card object:', card);
     const cardId = card?.id || card?.cardId;
     debugLog.log('Extracted cardId:', cardId);
-    
+
     if (!cardId) {
         vscode.window.showErrorMessage('Unable to assign tag: Missing card id.');
         return;
     }
-    
+
     const tags = getAllTags();
     if (tags.length === 0) {
         vscode.window.showInformationMessage('No tags available. Please create a tag first.');
@@ -192,19 +215,19 @@ async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: 
     const existingTags = getAllTags();
     const exclude = new Set(excludeTagIds || []);
     const preselected = new Set(preselectedTagIds || []);
-    
+
     // Helper to update label with checkmark indicator
     const getLabelWithIndicator = (tagName: string, isSelected: boolean): string => {
         return isSelected ? `$(check) ${tagName}` : tagName;
     };
-    
+
     // Filter out excluded tags and build quick pick items
     const availableTags = existingTags.filter(t => !exclude.has(t.id));
     const items: (vscode.QuickPickItem & { tagId?: string; action?: 'create' | 'done' })[] = [
         { label: '$(add) Create new tag…', action: 'create' as const },
         { label: '$(check) Done selecting tags', action: 'done' as const },
-        ...availableTags.map(t => ({ 
-            label: getLabelWithIndicator(t.name, preselected.has(t.id)), 
+        ...availableTags.map(t => ({
+            label: getLabelWithIndicator(t.name, preselected.has(t.id)),
             description: t.color,
             tagId: t.id
         }))
@@ -214,13 +237,13 @@ async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: 
     let continueSelecting = true;
 
     while (continueSelecting) {
-        const pick = await vscode.window.showQuickPick(items, { 
-            placeHolder: selectedTagIds.length === 0 
-                ? 'Select existing tags or create new ones (optional)' 
+        const pick = await vscode.window.showQuickPick(items, {
+            placeHolder: selectedTagIds.length === 0
+                ? 'Select existing tags or create new ones (optional)'
                 : `${selectedTagIds.length} tag(s) selected. Select more or choose Done`,
             canPickMany: false
         });
-        
+
         if (!pick) {
             // User cancelled
             return undefined;
@@ -232,16 +255,16 @@ async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: 
             // Create new tag
             const name = await vscode.window.showInputBox({ prompt: 'Enter tag name' });
             if (!name) continue;
-            
+
             const color = await pickColor();
             if (!color) continue;
-            
+
             const newTag = createTag({ name, color });
             selectedTagIds.push(newTag.id);
-            
+
             // Add the new tag to items list (after the action items at the top) with checkmark
-            items.push({ 
-                label: getLabelWithIndicator(newTag.name, true), 
+            items.push({
+                label: getLabelWithIndicator(newTag.name, true),
                 description: newTag.color,
                 tagId: newTag.id
             });
@@ -263,4 +286,5 @@ async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: 
     return selectedTagIds;
 }
 
-export { addTag, editTag, deleteTagWithConfirmation as deleteTag, assignTag, removeTag, selectOrCreateTags };
+export { addTag, assignTag, deleteTagWithConfirmation as deleteTag, editTag, removeTag, selectOrCreateTags };
+

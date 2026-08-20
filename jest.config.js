@@ -18,7 +18,7 @@ module.exports = {
     "coverageReporters": ["json", "lcov", "text", "clover"],
     "verbose": true,
     "moduleNameMapper": {
-        "vscode": "<rootDir>/__mocks__/vscode.js",
-        "uuid": "<rootDir>/__mocks__/uuid.js"
+        "^vscode$": "<rootDir>/__mocks__/vscode.js",
+        "^uuid$": "<rootDir>/__mocks__/uuid.js"
     }
 }

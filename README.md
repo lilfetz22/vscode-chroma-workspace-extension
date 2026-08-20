@@ -323,9 +323,13 @@ The file is rewritten on every activation (token rotates per VS Code session) an
 | `chroma.editCard` | `cardId` | `title`, `content`, `tagIds[]` |
 | `chroma.moveCard` | `cardId`, `columnId` | `position` |
 | `chroma.deleteCard` | `cardId` | |
+| `chroma.addTag` | `name` | `color` (CSS color name or `#RRGGBB`; random when omitted) |
 | `chroma.addTask` | `title`, `dueDate` | `description`, `recurrence`, `boardId`, `tagIds[]` |
 | `chroma.completeTask` | `taskId` | |
 | `chroma.deleteTask` | `taskId` | |
+
+`chroma.addTag` rejects a name that matches an existing tag (case-insensitively). The
+interactive "Add Tag" command does not apply that restriction.
 
 ### Example
 
