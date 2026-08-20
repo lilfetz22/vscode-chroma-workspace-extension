@@ -323,6 +323,7 @@ The file is rewritten on every activation (token rotates per VS Code session) an
 | `chroma.editCard` | `cardId` | `title`, `content`, `tagIds[]` |
 | `chroma.moveCard` | `cardId`, `columnId` | `position` |
 | `chroma.deleteCard` | `cardId` | |
+| `chroma.addTag` | `name` | `color` (CSS color name or `#RRGGBB`; random when omitted) |
 | `chroma.addTask` | `title`, `dueDate` | `description`, `recurrence`, `boardId`, `tagIds[]` |
 | `chroma.completeTask` | `taskId` | |
 | `chroma.deleteTask` | `taskId` | |
