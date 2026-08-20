@@ -1,5 +1,5 @@
-import { addTag } from '../vscode/Tag';
 import * as database from '../src/database';
+import { addTag } from '../vscode/Tag';
 
 jest.mock('vscode');
 jest.mock('../src/database');
