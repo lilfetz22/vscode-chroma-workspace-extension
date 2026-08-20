@@ -72,7 +72,7 @@ async function addTag(arg?: any) {
         }
         let color: string | undefined;
         if (arg.color) {
-            color = normalizeHex(arg.color) || nameToHex(arg.color);
+            color = normalizeHex(arg.color);
             if (!color) {
                 throw new Error(`Invalid color: ${arg.color}. Use a CSS color name or #RRGGBB`);
             }
