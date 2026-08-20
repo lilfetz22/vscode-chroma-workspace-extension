@@ -1,3 +1,17 @@
+# [2.25.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.24.1...v2.25.0) (2026-08-20)
+
+
+### Bug Fixes
+
+* **test:** anchor jest moduleNameMapper patterns ([7989cf2](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/7989cf2ef5c4cebbd930d503e6475fa811389dc1))
+
+
+### Features
+
+* **api:** expose chroma.addTag over the HTTP API ([0fb1055](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/0fb10558019f3d1f8c8666727cfe4600b2b35212))
+* **extension:** forward args and return result from chroma.addTag ([ecd1498](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/ecd149852bba9594e623f405e38b3431e8669b6c))
+* **tags:** add programmatic API path to addTag ([f520400](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/f5204006ef9b8b7e183180cb495aea0794bc6a41))
+
 ## [2.24.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.24.0...v2.24.1) (2026-06-29)
 
 
