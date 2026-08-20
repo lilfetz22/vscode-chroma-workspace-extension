@@ -328,6 +328,9 @@ The file is rewritten on every activation (token rotates per VS Code session) an
 | `chroma.completeTask` | `taskId` | |
 | `chroma.deleteTask` | `taskId` | |
 
+`chroma.addTag` rejects a name that matches an existing tag (case-insensitively). The
+interactive "Add Tag" command does not apply that restriction.
+
 ### Example
 
 ```bash
