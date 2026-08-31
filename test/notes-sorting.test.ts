@@ -1,6 +1,6 @@
-import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
 import { NotesProvider } from '../src/views/NotesProvider';
 
 // Mock vscode module
@@ -59,10 +59,10 @@ describe('Notes Sorting Feature', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         (getNotesFolder as jest.Mock).mockReturnValue(notesFolder);
-        
+
         // Get the mock function from vscode.workspace.getConfiguration
         mockGetConfiguration = vscode.workspace.getConfiguration as jest.Mock;
-        
+
         // Clean notes folder before each test
         if (fs.existsSync(notesFolder)) {
             const files = fs.readdirSync(notesFolder);
@@ -206,10 +206,10 @@ describe('Notes Sorting Feature', () => {
         it('should handle files with same modification time', async () => {
             // Create files and then set them to exact same timestamp
             const fixedTime = new Date(Date.now() - 5000);
-            
+
             createTestNote('file1.notesnlh');
             createTestNote('file2.notesnlh');
-            
+
             // Set both files to exact same timestamp
             const notesFolder = (getNotesFolder as jest.Mock)();
             fs.utimesSync(path.join(notesFolder, 'file1.notesnlh'), fixedTime, fixedTime);
@@ -353,15 +353,15 @@ describe('Notes Sorting Feature', () => {
             mockGetConfiguration.mockReturnValue(mockConfig);
 
             createTestNote('valid.notesnlh');
-            
+
             // Create a note entry that will fail stat
             const invalidNotePath = path.join(notesFolder, 'invalid.notesnlh');
             fs.writeFileSync(invalidNotePath, 'test');
             fs.unlinkSync(invalidNotePath); // Delete it to cause stat to fail
-            
+
             // Manually add to folder to test error handling
             // (In real scenario this shouldn't happen, but tests error recovery)
-            
+
             const notes = await notesProvider.getChildren();
             expect(notes.length).toBeGreaterThan(0);
         });
@@ -410,7 +410,7 @@ describe('Notes Sorting Feature', () => {
         });
 
         it('should handle notes with identical timestamps', async () => {
-            
+
             // Create multiple notes with exact same timestamp
             createTestNote('note1.notesnlh', -5000);
             createTestNote('note2.notesnlh', -5000);
@@ -426,7 +426,7 @@ describe('Notes Sorting Feature', () => {
             (getNotesFolder as jest.Mock).mockReturnValue(nonExistentFolder);
 
             const notes = await notesProvider.getChildren();
-            
+
             // Should create folder and return empty array
             expect(notes).toHaveLength(0);
             expect(fs.existsSync(nonExistentFolder)).toBe(true);
@@ -453,7 +453,7 @@ describe('Notes Sorting Feature', () => {
             expect(notes).toHaveLength(100);
             expect(notes[0].name).toBe('note-000.notesnlh'); // Newest
             expect(notes[99].name).toBe('note-099.notesnlh'); // Oldest
-            
+
             // Should complete in reasonable time (< 1 second)
             expect(endTime - startTime).toBeLessThan(1000);
         });
@@ -470,16 +470,16 @@ describe('Notes Sorting Feature', () => {
             mockGetConfiguration.mockReturnValue(mockConfig);
 
             const startTime = Date.now();
-            
+
             // Alternate between sort orders
             await notesProvider.getChildren();
-            
+
             mockConfig.get = jest.fn().mockReturnValue('lastModified');
             await notesProvider.getChildren();
-            
+
             mockConfig.get = jest.fn().mockReturnValue('alphabetical');
             await notesProvider.getChildren();
-            
+
             const endTime = Date.now();
 
             // Should complete all operations quickly
@@ -498,9 +498,9 @@ function createTestNote(filename: string, timestampOffset: number = 0, reference
     const notesFolder = (getNotesFolder as jest.Mock)();
     const filePath = path.join(notesFolder, filename);
     const content = `# ${filename.replace('.notesnlh', '')}\n\nTest content`;
-    
+
     fs.writeFileSync(filePath, content, 'utf8');
-    
+
     if (timestampOffset !== 0 || referenceTime !== undefined) {
         const targetTime = new Date((referenceTime ?? Date.now()) + timestampOffset);
         fs.utimesSync(filePath, targetTime, targetTime);
