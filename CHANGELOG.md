@@ -1,3 +1,10 @@
+## [2.25.1](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.25.0...v2.25.1) (2026-08-31)
+
+
+### Bug Fixes
+
+* **tags:** use native multi-select picker ([fe1fad0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/commit/fe1fad0b65201556a5b059299d4687a458be61de))
+
 # [2.25.0](https://github.com/lilfetz22/vscode-chroma-workspace-extension/compare/v2.24.1...v2.25.0) (2026-08-20)
 
 
