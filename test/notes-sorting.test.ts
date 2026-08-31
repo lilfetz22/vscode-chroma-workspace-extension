@@ -441,8 +441,9 @@ describe('Notes Sorting Feature', () => {
             mockGetConfiguration.mockReturnValue(mockConfig);
 
             // Create 100 notes with varying timestamps
+            const referenceTime = Date.now();
             for (let i = 0; i < 100; i++) {
-                createTestNote(`note-${i.toString().padStart(3, '0')}.notesnlh`, -i * 100);
+                createTestNote(`note-${i.toString().padStart(3, '0')}.notesnlh`, -i * 100, referenceTime);
             }
 
             const startTime = Date.now();
@@ -490,17 +491,18 @@ describe('Notes Sorting Feature', () => {
 /**
  * Helper function to create a test note with optional timestamp offset
  * @param filename Name of the note file
- * @param timestampOffset Milliseconds to offset from current time (negative = past)
+ * @param timestampOffset Milliseconds to offset from the current or supplied reference time (negative = past)
+ * @param referenceTime Optional fixed reference time in milliseconds
  */
-function createTestNote(filename: string, timestampOffset: number = 0): void {
+function createTestNote(filename: string, timestampOffset: number = 0, referenceTime?: number): void {
     const notesFolder = (getNotesFolder as jest.Mock)();
     const filePath = path.join(notesFolder, filename);
     const content = `# ${filename.replace('.notesnlh', '')}\n\nTest content`;
     
     fs.writeFileSync(filePath, content, 'utf8');
     
-    if (timestampOffset !== 0) {
-        const targetTime = new Date(Date.now() + timestampOffset);
+    if (timestampOffset !== 0 || referenceTime !== undefined) {
+        const targetTime = new Date((referenceTime ?? Date.now()) + timestampOffset);
         fs.utimesSync(filePath, targetTime, targetTime);
     }
 }
