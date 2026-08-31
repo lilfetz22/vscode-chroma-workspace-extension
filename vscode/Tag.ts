@@ -212,46 +212,41 @@ async function removeTag(card: any) {
  * @param excludeTagIds - Optional array of tag IDs to exclude from available options (e.g., already-assigned tags)
  */
 async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: string[]): Promise<string[] | undefined> {
-    const existingTags = getAllTags();
     const exclude = new Set(excludeTagIds || []);
-    const preselected = new Set(preselectedTagIds || []);
+    const selected = new Set(preselectedTagIds || []);
 
-    // Helper to update label with checkmark indicator
-    const getLabelWithIndicator = (tagName: string, isSelected: boolean): string => {
-        return isSelected ? `$(check) ${tagName}` : tagName;
-    };
+    while (true) {
+        const existingTags = getAllTags();
+        const availableTags = existingTags.filter(t => !exclude.has(t.id));
+        const items: (vscode.QuickPickItem & { tagId?: string; action?: 'create' })[] = [
+            { label: '$(add) Create new tag…', action: 'create' as const, alwaysShow: true },
+            ...availableTags.map(t => ({
+                label: t.name,
+                description: t.color,
+                picked: selected.has(t.id),
+                tagId: t.id
+            }))
+        ];
 
-    // Filter out excluded tags and build quick pick items
-    const availableTags = existingTags.filter(t => !exclude.has(t.id));
-    const items: (vscode.QuickPickItem & { tagId?: string; action?: 'create' | 'done' })[] = [
-        { label: '$(add) Create new tag…', action: 'create' as const },
-        { label: '$(check) Done selecting tags', action: 'done' as const },
-        ...availableTags.map(t => ({
-            label: getLabelWithIndicator(t.name, preselected.has(t.id)),
-            description: t.color,
-            tagId: t.id
-        }))
-    ];
-
-    const selectedTagIds: string[] = Array.from(preselected);
-    let continueSelecting = true;
-
-    while (continueSelecting) {
-        const pick = await vscode.window.showQuickPick(items, {
-            placeHolder: selectedTagIds.length === 0
-                ? 'Select existing tags or create new ones (optional)'
-                : `${selectedTagIds.length} tag(s) selected. Select more or choose Done`,
-            canPickMany: false
+        const picks = await vscode.window.showQuickPick(items, {
+            placeHolder: selected.size === 0
+                ? 'Select tags or create a new one (optional)'
+                : `${selected.size} tag(s) selected`,
+            canPickMany: true
         });
 
-        if (!pick) {
-            // User cancelled
+        if (!picks) {
             return undefined;
         }
 
-        if (pick.action === 'done') {
-            continueSelecting = false;
-        } else if (pick.action === 'create') {
+        selected.clear();
+        for (const pick of picks) {
+            if (pick.tagId) {
+                selected.add(pick.tagId);
+            }
+        }
+
+        if (picks.some(pick => pick.action === 'create')) {
             // Create new tag
             const name = await vscode.window.showInputBox({ prompt: 'Enter tag name' });
             if (!name) continue;
@@ -260,30 +255,12 @@ async function selectOrCreateTags(preselectedTagIds?: string[], excludeTagIds?: 
             if (!color) continue;
 
             const newTag = createTag({ name, color });
-            selectedTagIds.push(newTag.id);
-
-            // Add the new tag to items list (after the action items at the top) with checkmark
-            items.push({
-                label: getLabelWithIndicator(newTag.name, true),
-                description: newTag.color,
-                tagId: newTag.id
-            });
-        } else if (pick.tagId) {
-            // Toggle tag selection
-            const idx = selectedTagIds.indexOf(pick.tagId);
-            if (idx >= 0) {
-                selectedTagIds.splice(idx, 1);
-                // Remove the checkmark from label
-                pick.label = getLabelWithIndicator(pick.label.replace(/^\$\(check\)\s+/, ''), false);
-            } else {
-                selectedTagIds.push(pick.tagId);
-                // Add checkmark to label
-                pick.label = getLabelWithIndicator(pick.label.replace(/^\$\(check\)\s+/, ''), true);
-            }
+            selected.add(newTag.id);
+            continue;
         }
-    }
 
-    return selectedTagIds;
+        return Array.from(selected);
+    }
 }
 
 export { addTag, assignTag, deleteTagWithConfirmation as deleteTag, editTag, removeTag, selectOrCreateTags };
